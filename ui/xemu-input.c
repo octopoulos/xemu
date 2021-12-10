@@ -33,7 +33,7 @@
 #include "xemu-notifications.h"
 #include "xemu-settings.h"
 
-// #define DEBUG_INPUT
+#define DEBUG_INPUT
 
 #ifdef DEBUG_INPUT
 #define DPRINTF(fmt, ...) \
@@ -51,11 +51,17 @@ ControllerStateList available_controllers =
 ControllerState *bound_controllers[4] = { NULL, NULL, NULL, NULL };
 int test_mode;
 
-static const enum xemu_settings_keys port_index_to_settings_key_map[] = {
-    XEMU_SETTINGS_INPUT_CONTROLLER_1_GUID,
-    XEMU_SETTINGS_INPUT_CONTROLLER_2_GUID,
-    XEMU_SETTINGS_INPUT_CONTROLLER_3_GUID,
-    XEMU_SETTINGS_INPUT_CONTROLLER_4_GUID,
+const int axis_mapping[10][3] = {
+    {CONTROLLER_AXIS_LTRIG, 32767, 0},
+    {CONTROLLER_AXIS_RTRIG, 32767, 0},
+    {CONTROLLER_AXIS_LSTICK_X, -32768, 0},
+    {CONTROLLER_AXIS_LSTICK_Y, 32767, 1},
+    {CONTROLLER_AXIS_LSTICK_X, 32767, 0},
+    {CONTROLLER_AXIS_LSTICK_Y, -32768, 1},
+    {CONTROLLER_AXIS_RSTICK_X, -32768, 0},
+    {CONTROLLER_AXIS_RSTICK_Y, 32767, 1},
+    {CONTROLLER_AXIS_RSTICK_X, 32767, 0},
+    {CONTROLLER_AXIS_RSTICK_Y, -32768, 1},
 };
 
 void xemu_input_init(void)
@@ -89,7 +95,7 @@ void xemu_input_init(void)
     assert(usbhub_dev);
 
     // Check to see if we should auto-bind the keyboard
-    int port = xemu_input_get_controller_default_bind_port(new_con, 0);
+    int port = xemu_input_get_controller_default_bind_port(new_con, 0, 4);
     if (port >= 0) {
         xemu_input_bind(port, new_con, 0);
         char buf[128];
@@ -100,7 +106,45 @@ void xemu_input_init(void)
     QTAILQ_INSERT_TAIL(&available_controllers, new_con, entry);
 }
 
-int xemu_input_get_controller_default_bind_port(ControllerState *state, int start)
+void ParseMappingString(char* text, int* vector) {
+    int i = 0;
+    int length = 0;
+    int number = 0;
+
+    for (char* c = text; *c; ++c) {
+        if (*c >= '0' && *c <= '9') {
+            number = number * 10 + (*c - '0');
+            ++length;
+        }
+        else if (*c == ',') {
+            vector[i] = length? number: -1;
+            length = 0;
+            number = 0;
+            ++i;
+        }
+    }
+
+    if (number)
+        vector[i] = number;
+}
+
+void StringifyMapping(int* vector, char* text) {
+    *text = 0;
+    char buffer[8];
+
+    for (int i = 0; i < 32; ++i) {
+        if (vector[i] > -1) {
+            itoa(vector[i], buffer, 10);
+            for (char* c = buffer; *c; ++c)
+                *text++ = *c;
+        }
+        *text++ = ',';
+    }
+
+    *text = 0;
+}
+
+int xemu_input_get_controller_default_bind_port(ControllerState *state, int start, int end)
 {
     char guid[35] = { 0 };
     if (state->type == INPUT_DEVICE_SDL_GAMECONTROLLER) {
@@ -109,10 +153,19 @@ int xemu_input_get_controller_default_bind_port(ControllerState *state, int star
         snprintf(guid, sizeof(guid), "keyboard");
     }
 
-    for (int i = start; i < 4; i++) {
-        const char *this_port;
-        xemu_settings_get_string(port_index_to_settings_key_map[i], &this_port);
-        if (strcmp(guid, this_port) == 0) {
+    for (int i = start; i < end; i++) {
+        const char *text;
+        xemu_settings_get_string(XEMU_SETTINGS_INPUT_CONTROLLER_1_GUID + i, &text);
+        if (strcmp(guid, text) == 0) {
+            xemu_settings_get_string(XEMU_SETTINGS_INPUT_CONTROLLER_1_KEYB + i, &text);
+            strcpy(state->key_smapping, text);
+            ParseMappingString(state->key_smapping, state->key_mapping);
+
+            xemu_settings_get_string(XEMU_SETTINGS_INPUT_CONTROLLER_1_PAD + i, &text);
+            strcpy(state->pad_smapping, text);
+            ParseMappingString(state->pad_smapping, state->pad_mapping);
+
+            DPRINTF("i=%d guid=%s mapping=%s : %s\n", i, guid, state->pad_smapping, state->key_smapping);
             return i;
         }
     }
@@ -165,7 +218,7 @@ void xemu_input_process_sdl_events(const SDL_Event *event)
         // this dialog.
         int port = 0;
         while (1) {
-            port = xemu_input_get_controller_default_bind_port(new_con, port);
+            port = xemu_input_get_controller_default_bind_port(new_con, port, 4);
             if (port < 0) {
                 // No (additional) default mappings
                 break;
@@ -264,96 +317,72 @@ void xemu_input_update_sdl_kbd_controller_state(ControllerState *state)
     memset(state->axis, 0, sizeof(state->axis));
 
     const uint8_t *kbd = SDL_GetKeyboardState(NULL);
-    const int sdl_kbd_button_map[15] = {
-        SDL_SCANCODE_A,
-        SDL_SCANCODE_B,
-        SDL_SCANCODE_X,
-        SDL_SCANCODE_Y,
-        SDL_SCANCODE_LEFT,
-        SDL_SCANCODE_UP,
-        SDL_SCANCODE_RIGHT,
-        SDL_SCANCODE_DOWN,
-        SDL_SCANCODE_BACKSPACE,
-        SDL_SCANCODE_RETURN,
-        SDL_SCANCODE_1,
-        SDL_SCANCODE_2,
-        SDL_SCANCODE_3,
-        SDL_SCANCODE_4,
-        SDL_SCANCODE_5
-    };
+    int* mapping = state->key_mapping;
 
-    for (int i = 0; i < 15; i++) {
-        state->buttons |= kbd[sdl_kbd_button_map[i]] << i;
+    // buttons
+    for (int i = 0; i < 21; ++i) {
+        if (mapping[i] >= 0)
+            state->buttons |= kbd[mapping[i]] << i;
     }
 
-    /*
-    W = LTrig
-       E
-    S     F
-       D
-    */
-    if (kbd[SDL_SCANCODE_E]) state->axis[CONTROLLER_AXIS_LSTICK_Y] = 32767;
-    if (kbd[SDL_SCANCODE_S]) state->axis[CONTROLLER_AXIS_LSTICK_X] = -32768;
-    if (kbd[SDL_SCANCODE_F]) state->axis[CONTROLLER_AXIS_LSTICK_X] = 32767;
-    if (kbd[SDL_SCANCODE_D]) state->axis[CONTROLLER_AXIS_LSTICK_Y] = -32768;
-    if (kbd[SDL_SCANCODE_W]) state->axis[CONTROLLER_AXIS_LTRIG] = 32767;
-
-    /*
-          O = RTrig
-       I
-    J     L
-       K
-    */
-    if (kbd[SDL_SCANCODE_I]) state->axis[CONTROLLER_AXIS_RSTICK_Y] = 32767;
-    if (kbd[SDL_SCANCODE_J]) state->axis[CONTROLLER_AXIS_RSTICK_X] = -32768;
-    if (kbd[SDL_SCANCODE_L]) state->axis[CONTROLLER_AXIS_RSTICK_X] = 32767;
-    if (kbd[SDL_SCANCODE_K]) state->axis[CONTROLLER_AXIS_RSTICK_Y] = -32768;
-    if (kbd[SDL_SCANCODE_O]) state->axis[CONTROLLER_AXIS_RTRIG] = 32767;
+    // axes
+    for (int i = 0; i < 10; ++i) {
+        int key = mapping[i + 22];
+        if (key >= 0 && kbd[key])
+            state->axis[axis_mapping[i][0]] = axis_mapping[i][1];
+    }
 }
 
 void xemu_input_update_sdl_controller_state(ControllerState *state)
 {
+    // get raw data
+    // it's useful to detect which input was changed (controller remapping)
+    int* raw_inputs = state->raw_inputs;
+    memset(raw_inputs, 0, sizeof(state->raw_inputs));
+    for (int i = 0; i < 21; ++i)
+        raw_inputs[i] = (int)SDL_GameControllerGetButton(state->sdl_gamecontroller, i);
+
+    for (int i = 0; i < 6; ++i)
+        raw_inputs[i + 22] = SDL_GameControllerGetAxis(state->sdl_gamecontroller, i);
+
+    // buttons
+    // note: axes can be assigned to buttons too
+    int* mapping = state->pad_mapping;
     state->buttons = 0;
+
+    for (int i = 0; i < 21; ++i) {
+        int key = mapping[i];
+        if (key >= 32) {
+            key -= 32;
+            if (key < SDL_CONTROLLER_AXIS_MAX) {
+                int value = (abs(raw_inputs[key + 22]) > 8000)? 1: 0;
+                state->buttons |= value << i;
+            }
+        }
+        else if (key >= 0 && key < SDL_CONTROLLER_BUTTON_MAX)
+            state->buttons |= raw_inputs[key] << i;
+    }
+
+    // axes
+    // note: buttons can be assigned to axes too
     memset(state->axis, 0, sizeof(state->axis));
 
-    const SDL_GameControllerButton sdl_button_map[15] = {
-        SDL_CONTROLLER_BUTTON_A,
-        SDL_CONTROLLER_BUTTON_B,
-        SDL_CONTROLLER_BUTTON_X,
-        SDL_CONTROLLER_BUTTON_Y,
-        SDL_CONTROLLER_BUTTON_DPAD_LEFT,
-        SDL_CONTROLLER_BUTTON_DPAD_UP,
-        SDL_CONTROLLER_BUTTON_DPAD_RIGHT,
-        SDL_CONTROLLER_BUTTON_DPAD_DOWN,
-        SDL_CONTROLLER_BUTTON_BACK,
-        SDL_CONTROLLER_BUTTON_START,
-        SDL_CONTROLLER_BUTTON_LEFTSHOULDER,
-        SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,
-        SDL_CONTROLLER_BUTTON_LEFTSTICK,
-        SDL_CONTROLLER_BUTTON_RIGHTSTICK,
-        SDL_CONTROLLER_BUTTON_GUIDE
-    };
-
-    for (int i = 0; i < 15; i++) {
-        state->buttons |= SDL_GameControllerGetButton(state->sdl_gamecontroller, sdl_button_map[i]) << i;
+    for (int i = 0; i < 10; ++i) {
+        int key = mapping[i + 22];
+        if (key >= 32) {
+            key -= 32;
+            if (key < SDL_CONTROLLER_AXIS_MAX) {
+                int value = raw_inputs[key + 22];
+                if (axis_mapping[i][2])
+                    value = -1 - value;
+                state->axis[axis_mapping[i][0]] = value;
+            }
+        }
+        else if (key >= 0 && key < SDL_CONTROLLER_BUTTON_MAX) {
+            if (raw_inputs[key])
+                state->axis[axis_mapping[i][0]] = axis_mapping[i][1];
+        }
     }
-
-    const SDL_GameControllerAxis sdl_axis_map[6] = {
-        SDL_CONTROLLER_AXIS_TRIGGERLEFT,
-        SDL_CONTROLLER_AXIS_TRIGGERRIGHT,
-        SDL_CONTROLLER_AXIS_LEFTX,
-        SDL_CONTROLLER_AXIS_LEFTY,
-        SDL_CONTROLLER_AXIS_RIGHTX,
-        SDL_CONTROLLER_AXIS_RIGHTY,
-    };
-
-    for (int i = 0; i < 6; i++) {
-        state->axis[i] = SDL_GameControllerGetAxis(state->sdl_gamecontroller, sdl_axis_map[i]);
-    }
-
-    // FIXME: Check range
-    state->axis[CONTROLLER_AXIS_LSTICK_Y] = -1 - state->axis[CONTROLLER_AXIS_LSTICK_Y];
-    state->axis[CONTROLLER_AXIS_RSTICK_Y] = -1 - state->axis[CONTROLLER_AXIS_RSTICK_Y];
 }
 
 void xemu_input_update_rumble(ControllerState *state)
@@ -391,8 +420,10 @@ ControllerState *xemu_input_get_bound(int index)
 
 void xemu_input_bind(int index, ControllerState *state, int save)
 {
-    // FIXME: Attempt to disable rumble when unbinding so it's not left
-    // in rumble mode
+    // FIXME: Check if this works
+    // Attempt to disable rumble when unbinding so it's not left in rumble mode
+    if (state && state->sdl_haptic && state->sdl_haptic_effect_id >= 0)
+        SDL_HapticStopEffect(state->sdl_haptic, state->sdl_haptic_effect_id);
 
     // Unbind existing controller
     if (bound_controllers[index]) {
@@ -416,7 +447,7 @@ void xemu_input_bind(int index, ControllerState *state, int save)
                 snprintf(guid_buf, sizeof(guid_buf), "keyboard");
             }
         }
-        xemu_settings_set_string(port_index_to_settings_key_map[index], guid_buf);
+        xemu_settings_set_string(XEMU_SETTINGS_INPUT_CONTROLLER_1_GUID + index, guid_buf);
         xemu_settings_save();
     }
 
@@ -426,6 +457,7 @@ void xemu_input_bind(int index, ControllerState *state, int save)
             // Device was already bound to another port. Unbind it.
             xemu_input_bind(state->bound, NULL, 1);
         }
+        xemu_input_get_controller_default_bind_port(state, index, index + 1);
 
         bound_controllers[index] = state;
         bound_controllers[index]->bound = index;

@@ -105,7 +105,7 @@ static int guest_cursor;
 static int guest_x, guest_y;
 static SDL_Cursor *guest_sprite;
 static Notifier mouse_mode_notifier;
-static SDL_Window *m_window;
+SDL_Window *m_window = NULL;
 static SDL_GLContext m_context;
 int scaling_mode = 1;
 struct decal_shader *blit;
@@ -1169,6 +1169,8 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
         if (scaling_mode == DISPLAY_SCALE_WS169) {
             // Scale to fit window using a fixed 16:9 aspect ratio
             t_ratio = 16.0f/9.0f;
+        } else if (scaling_mode == DISPLAY_SCALE_FS43) {
+            t_ratio = 4.0f/3.0f;
         } else {
             // Scale to fit, preserving framebuffer aspect ratio
             t_ratio = (float)tw/(float)th;
