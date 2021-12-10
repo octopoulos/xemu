@@ -43,7 +43,14 @@ enum controller_state_buttons_mask {
     CONTROLLER_BUTTON_BLACK      = (1 << 11),
     CONTROLLER_BUTTON_LSTICK     = (1 << 12),
     CONTROLLER_BUTTON_RSTICK     = (1 << 13),
-    CONTROLLER_BUTTON_GUIDE      = (1 << 14), // Extension
+    // extensions
+    CONTROLLER_BUTTON_GUIDE      = (1 << 14),
+    CONTROLLER_BUTTON_TOUCHPAD   = (1 << 15),
+    CONTROLLER_BUTTON_MISC1      = (1 << 16),
+    CONTROLLER_BUTTON_PADDLE1    = (1 << 17),
+    CONTROLLER_BUTTON_PADDLE2    = (1 << 18),
+    CONTROLLER_BUTTON_PADDLE3    = (1 << 19),
+    CONTROLLER_BUTTON_PADDLE4    = (1 << 20),
 };
 
 #define CONTROLLER_STATE_BUTTON_ID_TO_MASK(x) (1<<x)
@@ -70,8 +77,9 @@ typedef struct ControllerState {
     int64_t last_haptic_updated_ts;
 
     // Input state
-    uint16_t buttons;
+    int      buttons;
     int16_t  axis[CONTROLLER_AXIS__COUNT];
+    int      raw_inputs[32];
 
     // Rendering state hacked on here for convenience but needs to be moved (FIXME)
     uint32_t animate_guide_button_end;
@@ -89,6 +97,12 @@ typedef struct ControllerState {
     SDL_Joystick       *sdl_joystick;
     SDL_JoystickID      sdl_joystick_id;
     SDL_JoystickGUID    sdl_joystick_guid;
+
+    // pad/key mapping
+    char    pad_smapping[256];
+    int     pad_mapping[32];
+    char    key_smapping[256];
+    int     key_mapping[32];
 
     int   bound;  // Which port this input device is bound to
     void *device; // DeviceState opaque
@@ -111,10 +125,13 @@ void xemu_input_update_sdl_controller_state(ControllerState *state);
 void xemu_input_update_rumble(ControllerState *state);
 ControllerState *xemu_input_get_bound(int index);
 void xemu_input_bind(int index, ControllerState *state, int save);
-int xemu_input_get_controller_default_bind_port(ControllerState *state, int start);
+int xemu_input_get_controller_default_bind_port(ControllerState *state, int start, int end);
 
 void xemu_input_set_test_mode(int enabled);
 int xemu_input_get_test_mode(void);
+
+void ParseMappingString(char* text, int* vector);
+void StringifyMapping(int* vector, char* text);
 
 #ifdef __cplusplus
 }

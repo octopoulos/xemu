@@ -28,6 +28,10 @@
 extern "C" {
 #endif
 
+#define DEFAULT_KEYB_MAPPING	"4,5,27,28,80,82,79,81,42,40,30,31,32,33,34,,,,,,,,26,18,22,9,7,8,13,15,14,12"
+// value >= 32 = axis
+#define DEFAULT_PAD_MAPPING 	"0,1,2,3,13,11,14,12,4,6,9,10,7,8,5,,,,,,,,36,37,32,33,32,33,34,35,34,35"
+
 enum xemu_settings_keys {
 	XEMU_SETTINGS_SYSTEM_FLASH_PATH,
 	XEMU_SETTINGS_SYSTEM_BOOTROM_PATH,
@@ -35,7 +39,7 @@ enum xemu_settings_keys {
 	XEMU_SETTINGS_SYSTEM_EEPROM_PATH,
 	XEMU_SETTINGS_SYSTEM_DVD_PATH,
 	XEMU_SETTINGS_SYSTEM_MEMORY,
-	XEMU_SETTINGS_SYSTEM_SHORTANIM,
+	XEMU_SETTINGS_SYSTEM_SHORT_ANIMATION,
 	XEMU_SETTINGS_SYSTEM_HARD_FPU,
 	XEMU_SETTINGS_AUDIO_USE_DSP,
 	XEMU_SETTINGS_DISPLAY_SCALE,
@@ -45,11 +49,19 @@ enum xemu_settings_keys {
 	XEMU_SETTINGS_INPUT_CONTROLLER_2_GUID,
 	XEMU_SETTINGS_INPUT_CONTROLLER_3_GUID,
 	XEMU_SETTINGS_INPUT_CONTROLLER_4_GUID,
-	XEMU_SETTINGS_NETWORK_ENABLED,
-	XEMU_SETTINGS_NETWORK_BACKEND,
-	XEMU_SETTINGS_NETWORK_LOCAL_ADDR,
-	XEMU_SETTINGS_NETWORK_REMOTE_ADDR,
-	XEMU_SETTINGS_NETWORK_PCAP_INTERFACE,
+	XEMU_SETTINGS_INPUT_CONTROLLER_1_KEYB,
+	XEMU_SETTINGS_INPUT_CONTROLLER_2_KEYB,
+	XEMU_SETTINGS_INPUT_CONTROLLER_3_KEYB,
+	XEMU_SETTINGS_INPUT_CONTROLLER_4_KEYB,
+	XEMU_SETTINGS_INPUT_CONTROLLER_1_PAD,
+	XEMU_SETTINGS_INPUT_CONTROLLER_2_PAD,
+	XEMU_SETTINGS_INPUT_CONTROLLER_3_PAD,
+	XEMU_SETTINGS_INPUT_CONTROLLER_4_PAD,
+	XEMU_SETTINGS_NETWORK_NET_ENABLED,
+	XEMU_SETTINGS_NETWORK_NET_BACKEND,
+	XEMU_SETTINGS_NETWORK_NET_LOCAL_ADDR,
+	XEMU_SETTINGS_NETWORK_NET_REMOTE_ADDR,
+	XEMU_SETTINGS_NETWORK_NET_PCAP_IFACE,
 	XEMU_SETTINGS_MISC_USER_TOKEN,
 	XEMU_SETTINGS_MISC_CHECK_FOR_UPDATE,
 	XEMU_SETTINGS__COUNT,
@@ -98,6 +110,8 @@ int xemu_settings_set_string(enum xemu_settings_keys key, const char *str);
 int xemu_settings_get_string(enum xemu_settings_keys key, const char **str);
 int xemu_settings_set_int(enum xemu_settings_keys key, int val);
 int xemu_settings_get_int(enum xemu_settings_keys key, int *val);
+int xemu_settings_set_float(enum xemu_settings_keys key, float val);
+int xemu_settings_get_float(enum xemu_settings_keys key, float *val);
 int xemu_settings_set_bool(enum xemu_settings_keys key, int val);
 int xemu_settings_get_bool(enum xemu_settings_keys key, int *val);
 int xemu_settings_set_enum(enum xemu_settings_keys key, int val);

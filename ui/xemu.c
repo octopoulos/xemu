@@ -105,7 +105,7 @@ static int guest_cursor;
 static int guest_x, guest_y;
 static SDL_Cursor *guest_sprite;
 static Notifier mouse_mode_notifier;
-static SDL_Window *m_window;
+SDL_Window *m_window = NULL;
 static SDL_GLContext m_context;
 int scaling_mode = 1;
 struct decal_shader *blit;
