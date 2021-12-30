@@ -47,15 +47,15 @@ public:
 
 private:
 	std::string serialized;
-	int result_code;
+	int         result_code;
 	std::string result_msg;
 
 public:
 	CompatibilityReport();
 	~CompatibilityReport();
-	bool Send();
-	int GetResultCode() { return result_code; }
-	std::string& GetResultMessage() { return result_msg; }
+	bool               Send();
+	int                GetResultCode() { return result_code; }
+	std::string&       GetResultMessage() { return result_msg; }
 	const std::string& GetSerializedReport();
-	void SetXbeData(struct xbe* xbe);
+	void               SetXbeData(xbe* xbe);
 };

@@ -27,9 +27,9 @@
 extern "C" {
 #endif
 
-void xemu_monitor_init(void);
-char *xemu_get_monitor_buffer(void);
-void xemu_run_monitor_command(const char *cmd);
+void  xemu_monitor_init(void);
+char* xemu_get_monitor_buffer(void);
+void  xemu_run_monitor_command(const char* cmd);
 
 #ifdef __cplusplus
 }

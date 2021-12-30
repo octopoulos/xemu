@@ -27,7 +27,7 @@ extern "C" {
 
 void xemu_net_enable(void);
 void xemu_net_disable(void);
-int xemu_net_is_enabled(void);
+int  xemu_net_is_enabled(void);
 
 #ifdef __cplusplus
 }

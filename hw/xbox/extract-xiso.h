@@ -7,7 +7,7 @@
 
 namespace extract_iso
 {
-using u8 = uint8_t;
+using u8  = uint8_t;
 using u16 = uint16_t;
 using u32 = uint32_t;
 using u64 = uint64_t;
@@ -30,16 +30,14 @@ struct GameInfo
 	std::string id;
 	std::string region;
 	std::string title;
-	char buffer[256];
+	char        buffer[256];
 };
 
-int CreateXiso(std::string in_root_directory, std::string in_output_directory, std::string in_name);
-int DecodeXiso(
-	std::string in_xiso, std::string in_path, modes in_mode, std::string* out_iso_path, bool in_ll_compat,
-	GameInfo* gameInfo);
+int  CreateXiso(std::string in_root_directory, std::string in_output_directory, std::string in_name);
+int  DecodeXiso(std::string in_xiso, std::string in_path, modes in_mode, std::string* out_iso_path, bool in_ll_compat, GameInfo* gameInfo);
 bool ExtractGameInfo(std::string filename, GameInfo* gameInfo, bool log);
-int ExtractMetadata(int in_xiso, GameInfo* gameInfo);
+int  ExtractMetadata(int in_xiso, GameInfo* gameInfo);
 void PrintHexBytes(char* buffer, int count, size_t offset, bool showHeader);
-int ScanFolder(std::string folder);
-int VerifyXiso(int in_xiso, s32* out_root_dir_sector, s32* out_root_dir_size, std::string in_iso_name);
+int  ScanFolder(std::string folder);
+int  VerifyXiso(int in_xiso, s32* out_root_dir_sector, s32* out_root_dir_size, std::string in_iso_name);
 } // namespace extract_iso

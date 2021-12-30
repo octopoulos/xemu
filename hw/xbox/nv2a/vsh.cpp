@@ -191,19 +191,19 @@ static const VshOpcodeParams mac_opcode_params[] = {
 
 static const char* mask_str[] = {
 	// xyzw xyzw
-	",",	// 0000 ____
-	",w",	// 0001 ___w
-	",z",	// 0010 __z_
-	",zw",	// 0011 __zw
-	",y",	// 0100 _y__
-	",yw",	// 0101 _y_w
-	",yz",	// 0110 _yz_
+	",",    // 0000 ____
+	",w",   // 0001 ___w
+	",z",   // 0010 __z_
+	",zw",  // 0011 __zw
+	",y",   // 0100 _y__
+	",yw",  // 0101 _y_w
+	",yz",  // 0110 _yz_
 	",yzw", // 0111 _yzw
-	",x",	// 1000 x___
-	",xw",	// 1001 x__w
-	",xz",	// 1010 x_z_
+	",x",   // 1000 x___
+	",xw",  // 1001 x__w
+	",xz",  // 1010 x_z_
 	",xzw", // 1011 x_zw
-	",xy",	// 1100 xy__
+	",xy",  // 1100 xy__
 	",xyw", // 1101 xy_w
 	",xyz", // 1110 xyz_
 	",xyzw" // 1111 xyzw
@@ -211,20 +211,49 @@ static const char* mask_str[] = {
 
 /* Note: OpenGL seems to be case-sensitive, and requires upper-case opcodes! */
 static const char* mac_opcode[] = {
-	"NOP",		"MOV", "MUL", "ADD", "MAD", "DP3", "DPH", "DP4", "DST", "MIN", "MAX", "SLT", "SGE",
+	"NOP", "MOV", "MUL", "ADD", "MAD", "DP3", "DPH", "DP4", "DST", "MIN", "MAX", "SLT", "SGE",
 	"ARL A0.x", // Dxbx note : Alias for "mov a0.x"
 };
 
 static const char* ilu_opcode[] = {
-	"NOP", "MOV", "RCP", "RCC", "RSQ", "EXP", "LOG", "LIT",
+	"NOP",
+	"MOV",
+	"RCP",
+	"RCC",
+	"RSQ",
+	"EXP",
+	"LOG",
+	"LIT",
 };
 
 static bool ilu_force_scalar[] = {
-	false, false, true, true, true, true, true, false,
+	false,
+	false,
+	true,
+	true,
+	true,
+	true,
+	true,
+	false,
 };
 
 static const char* out_reg_name[] = {
-	"oPos", "???", "???", "oD0", "oD1", "oFog", "oPts", "oB0", "oB1", "oT0", "oT1", "oT2", "oT3", "???", "???", "A0.x",
+	"oPos",
+	"???",
+	"???",
+	"oD0",
+	"oD1",
+	"oFog",
+	"oPts",
+	"oB0",
+	"oB1",
+	"oT0",
+	"oT1",
+	"oT2",
+	"oT3",
+	"???",
+	"???",
+	"A0.x",
 };
 
 // Retrieves a number of bits in the instruction token
@@ -235,9 +264,7 @@ static int vsh_get_from_token(const uint32_t* shader_token, uint8_t subtoken, ui
 
 uint8_t vsh_get_field(const uint32_t* shader_token, uint8_t field_name)
 {
-	return (uint8_t)(vsh_get_from_token(
-		shader_token, field_mapping[field_name].subtoken, field_mapping[field_name].start_bit,
-		field_mapping[field_name].bit_length));
+	return (uint8_t)(vsh_get_from_token(shader_token, field_mapping[field_name].subtoken, field_mapping[field_name].start_bit, field_mapping[field_name].bit_length));
 }
 
 // Converts the C register address to disassembly format
@@ -245,13 +272,13 @@ static int16_t convert_c_register(const int16_t c_reg)
 {
 	int16_t r = ((((c_reg >> 5) & 7) - 3) * 32) + (c_reg & 31);
 	r += VSH_D3DSCM_CORRECTION; /* to map -96..95 to 0..191 */
-	return r;					// FIXME: = c_reg?!
+	return r;                   // FIXME: = c_reg?!
 }
 
 static std::string decode_swizzle(const uint32_t* shader_token, uint8_t swizzle_field)
 {
 	const char* swizzle_str = "xyzw";
-	uint8_t x, y, z, w;
+	uint8_t     x, y, z, w;
 
 	/* some microcode instructions force a scalar value */
 	if (swizzle_field == FLD_C_SWZ_X && ilu_force_scalar[vsh_get_field(shader_token, FLD_ILU)])
@@ -268,7 +295,7 @@ static std::string decode_swizzle(const uint32_t* shader_token, uint8_t swizzle_
 	{
 		/* Don't print the swizzle if it's .xyzw */
 		return ""; // Will turn ".xyzw" into "."
-		/* Don't print duplicates */
+		           /* Don't print duplicates */
 	}
 	else if (x == y && y == z && z == w)
 		return fmt::format(".{}", swizzle_str[x]);
@@ -328,11 +355,10 @@ static std::string decode_opcode_input(const uint32_t* shader_token, uint8_t par
 	return ret_str.str();
 }
 
-static std::string decode_opcode(
-	const uint32_t* shader_token, VshOutputMux out_mux, uint32_t mask, const char* opcode, std::string inputs)
+static std::string decode_opcode(const uint32_t* shader_token, VshOutputMux out_mux, uint32_t mask, const char* opcode, std::string inputs)
 {
 	std::stringstream ret;
-	int reg_num = vsh_get_field(shader_token, FLD_OUT_R);
+	int               reg_num = vsh_get_field(shader_token, FLD_OUT_R);
 
 	// Test for paired opcodes (in other words : Are both <> NOP?)
 	if (out_mux == OMUX_MAC && vsh_get_field(shader_token, FLD_ILU) != ILU_NOP && reg_num == 1)
@@ -383,31 +409,26 @@ static std::string decode_token(const uint32_t* shader_token)
 		return "";
 
 	// Since it's potentially used twice, decode input C once:
-	auto input_c = decode_opcode_input(
-		shader_token, vsh_get_field(shader_token, FLD_C_MUX), FLD_C_NEG,
-		(vsh_get_field(shader_token, FLD_C_R_HIGH) << 2) | vsh_get_field(shader_token, FLD_C_R_LOW));
+	auto input_c = decode_opcode_input(shader_token, vsh_get_field(shader_token, FLD_C_MUX), FLD_C_NEG, (vsh_get_field(shader_token, FLD_C_R_HIGH) << 2) | vsh_get_field(shader_token, FLD_C_R_LOW));
 
 	if (mac != MAC_NOP)
 	{
 		std::string inputs_mac;
 		if (mac_opcode_params[mac].A)
 		{
-			auto input_a = decode_opcode_input(
-				shader_token, vsh_get_field(shader_token, FLD_A_MUX), FLD_A_NEG, vsh_get_field(shader_token, FLD_A_R));
+			auto input_a = decode_opcode_input(shader_token, vsh_get_field(shader_token, FLD_A_MUX), FLD_A_NEG, vsh_get_field(shader_token, FLD_A_R));
 			inputs_mac += ", " + input_a;
 		}
 		if (mac_opcode_params[mac].B)
 		{
-			auto input_b = decode_opcode_input(
-				shader_token, vsh_get_field(shader_token, FLD_B_MUX), FLD_B_NEG, vsh_get_field(shader_token, FLD_B_R));
+			auto input_b = decode_opcode_input(shader_token, vsh_get_field(shader_token, FLD_B_MUX), FLD_B_NEG, vsh_get_field(shader_token, FLD_B_R));
 			inputs_mac += ", " + input_b;
 		}
 		if (mac_opcode_params[mac].C)
 			inputs_mac += ", " + input_c;
 
 		// Then prepend these inputs with the actual opcode, mask, and input :
-		ret = decode_opcode(
-			shader_token, OMUX_MAC, vsh_get_field(shader_token, FLD_OUT_MAC_MASK), mac_opcode[mac], inputs_mac);
+		ret = decode_opcode(shader_token, OMUX_MAC, vsh_get_field(shader_token, FLD_OUT_MAC_MASK), mac_opcode[mac], inputs_mac);
 	}
 
 	if (ilu != ILU_NOP)
@@ -415,8 +436,7 @@ static std::string decode_token(const uint32_t* shader_token)
 		std::string inputs_c = ", " + input_c;
 
 		// Append the ILU opcode, mask and (the already determined) input C:
-		auto ilu_op = decode_opcode(
-			shader_token, OMUX_ILU, vsh_get_field(shader_token, FLD_OUT_ILU_MASK), ilu_opcode[ilu], inputs_c);
+		auto ilu_op = decode_opcode(shader_token, OMUX_ILU, vsh_get_field(shader_token, FLD_OUT_ILU_MASK), ilu_opcode[ilu], inputs_c);
 
 		ret += ilu_op;
 	}
@@ -425,203 +445,201 @@ static std::string decode_token(const uint32_t* shader_token)
 }
 
 static const char* vsh_header =
-	"\n"
-	"int A0 = 0;\n"
-	"\n"
-	"vec4 R0 = vec4(0.0,0.0,0.0,0.0);\n"
-	"vec4 R1 = vec4(0.0,0.0,0.0,0.0);\n"
-	"vec4 R2 = vec4(0.0,0.0,0.0,0.0);\n"
-	"vec4 R3 = vec4(0.0,0.0,0.0,0.0);\n"
-	"vec4 R4 = vec4(0.0,0.0,0.0,0.0);\n"
-	"vec4 R5 = vec4(0.0,0.0,0.0,0.0);\n"
-	"vec4 R6 = vec4(0.0,0.0,0.0,0.0);\n"
-	"vec4 R7 = vec4(0.0,0.0,0.0,0.0);\n"
-	"vec4 R8 = vec4(0.0,0.0,0.0,0.0);\n"
-	"vec4 R9 = vec4(0.0,0.0,0.0,0.0);\n"
-	"vec4 R10 = vec4(0.0,0.0,0.0,0.0);\n"
-	"vec4 R11 = vec4(0.0,0.0,0.0,0.0);\n"
-	"#define R12 oPos\n" /* R12 is a mirror of oPos */
-	"\n"
+    "\n"
+    "int A0 = 0;\n"
+    "\n"
+    "vec4 R0 = vec4(0.0,0.0,0.0,0.0);\n"
+    "vec4 R1 = vec4(0.0,0.0,0.0,0.0);\n"
+    "vec4 R2 = vec4(0.0,0.0,0.0,0.0);\n"
+    "vec4 R3 = vec4(0.0,0.0,0.0,0.0);\n"
+    "vec4 R4 = vec4(0.0,0.0,0.0,0.0);\n"
+    "vec4 R5 = vec4(0.0,0.0,0.0,0.0);\n"
+    "vec4 R6 = vec4(0.0,0.0,0.0,0.0);\n"
+    "vec4 R7 = vec4(0.0,0.0,0.0,0.0);\n"
+    "vec4 R8 = vec4(0.0,0.0,0.0,0.0);\n"
+    "vec4 R9 = vec4(0.0,0.0,0.0,0.0);\n"
+    "vec4 R10 = vec4(0.0,0.0,0.0,0.0);\n"
+    "vec4 R11 = vec4(0.0,0.0,0.0,0.0);\n"
+    "#define R12 oPos\n" /* R12 is a mirror of oPos */
+    "\n"
 
-	/* See:
-	 * http://msdn.microsoft.com/en-us/library/windows/desktop/bb174703%28v=vs.85%29.aspx
-	 * https://www.opengl.org/registry/specs/NV/vertex_program1_1.txt
-	 */
-	"\n"
-	// QQQ #ifdef NICE_CODE
-	"/* Converts the input to vec4, pads with last component */\n"
-	"vec4 _in(float v) { return vec4(v); }\n"
-	"vec4 _in(vec2 v) { return v.xyyy; }\n"
-	"vec4 _in(vec3 v) { return v.xyzz; }\n"
-	"vec4 _in(vec4 v) { return v.xyzw; }\n"
-	//#else
-	//    "/* Make sure input is always a vec4 */\n"
-	//   "#define _in(v) vec4(v)\n"
-	//#endif
-	"\n"
-	"#define INFINITY (1.0 / 0.0)\n"
-	"\n"
-	"#define MOV(dest, mask, src) dest.mask = _MOV(_in(src)).mask\n"
-	"vec4 _MOV(vec4 src)\n"
-	"{\n"
-	"  return src;\n"
-	"}\n"
-	"\n"
-	"#define MUL(dest, mask, src0, src1) dest.mask = _MUL(_in(src0), _in(src1)).mask\n"
-	"vec4 _MUL(vec4 src0, vec4 src1)\n"
-	"{\n"
-	"  return src0 * src1;\n"
-	"}\n"
-	"\n"
-	"#define ADD(dest, mask, src0, src1) dest.mask = _ADD(_in(src0), _in(src1)).mask\n"
-	"vec4 _ADD(vec4 src0, vec4 src1)\n"
-	"{\n"
-	"  return src0 + src1;\n"
-	"}\n"
-	"\n"
-	"#define MAD(dest, mask, src0, src1, src2) dest.mask = _MAD(_in(src0), _in(src1), _in(src2)).mask\n"
-	"vec4 _MAD(vec4 src0, vec4 src1, vec4 src2)\n"
-	"{\n"
-	"  return src0 * src1 + src2;\n"
-	"}\n"
-	"\n"
-	"#define DP3(dest, mask, src0, src1) dest.mask = _DP3(_in(src0), _in(src1)).mask\n"
-	"vec4 _DP3(vec4 src0, vec4 src1)\n"
-	"{\n"
-	"  return vec4(dot(src0.xyz, src1.xyz));\n"
-	"}\n"
-	"\n"
-	"#define DPH(dest, mask, src0, src1) dest.mask = _DPH(_in(src0), _in(src1)).mask\n"
-	"vec4 _DPH(vec4 src0, vec4 src1)\n"
-	"{\n"
-	"  return vec4(dot(vec4(src0.xyz, 1.0), src1));\n"
-	"}\n"
-	"\n"
-	"#define DP4(dest, mask, src0, src1) dest.mask = _DP4(_in(src0), _in(src1)).mask\n"
-	"vec4 _DP4(vec4 src0, vec4 src1)\n"
-	"{\n"
-	"  return vec4(dot(src0, src1));\n"
-	"}\n"
-	"\n"
-	"#define DST(dest, mask, src0, src1) dest.mask = _DST(_in(src0), _in(src1)).mask\n"
-	"vec4 _DST(vec4 src0, vec4 src1)\n"
-	"{\n"
-	"  return vec4(1.0,\n"
-	"              src0.y * src1.y,\n"
-	"              src0.z,\n"
-	"              src1.w);\n"
-	"}\n"
-	"\n"
-	"#define MIN(dest, mask, src0, src1) dest.mask = _MIN(_in(src0), _in(src1)).mask\n"
-	"vec4 _MIN(vec4 src0, vec4 src1)\n"
-	"{\n"
-	"  return min(src0, src1);\n"
-	"}\n"
-	"\n"
-	"#define MAX(dest, mask, src0, src1) dest.mask = _MAX(_in(src0), _in(src1)).mask\n"
-	"vec4 _MAX(vec4 src0, vec4 src1)\n"
-	"{\n"
-	"  return max(src0, src1);\n"
-	"}\n"
-	"\n"
-	"#define SLT(dest, mask, src0, src1) dest.mask = _SLT(_in(src0), _in(src1)).mask\n"
-	"vec4 _SLT(vec4 src0, vec4 src1)\n"
-	"{\n"
-	"  return vec4(lessThan(src0, src1));\n"
-	"}\n"
-	"\n"
-	"#define ARL(dest, src) dest = _ARL(_in(src).x)\n"
-	"int _ARL(float src)\n"
-	"{\n"
-	"  /* Xbox GPU does specify rounding, OpenGL doesn't; so we need a bias.\n"
-	"   * Example: We probably want to floor 16.99.. to 17, not 16.\n"
-	"   * Source of error (why we get 16.99.. instead of 17.0) is typically\n"
-	"   * vertex-attributes being normalized from a byte value to float:\n"
-	"   *   17 / 255 = 0.06666.. so is this 0.06667 (ceil) or 0.06666 (floor)?\n"
-	"   * Which value we get depends on the host GPU.\n"
-	"   * If we multiply these rounded values by 255 later, we get:\n"
-	"   *   17.00 (ARL result = 17) or 16.99 (ARL result = 16).\n"
-	"   * We assume the intend was to get 17, so we add our bias to fix it. */\n"
-	"  return int(floor(src + 0.001));\n"
-	"}\n"
-	"\n"
-	"#define SGE(dest, mask, src0, src1) dest.mask = _SGE(_in(src0), _in(src1)).mask\n"
-	"vec4 _SGE(vec4 src0, vec4 src1)\n"
-	"{\n"
-	"  return vec4(greaterThanEqual(src0, src1));\n"
-	"}\n"
-	"\n"
-	"#define RCP(dest, mask, src) dest.mask = _RCP(_in(src).x).mask\n"
-	"vec4 _RCP(float src)\n"
-	"{\n"
-	"  return vec4(1.0 / src);\n"
-	"}\n"
-	"\n"
-	"#define RCC(dest, mask, src) dest.mask = _RCC(_in(src).x).mask\n"
-	"vec4 _RCC(float src)\n"
-	"{\n"
-	"  float t = 1.0 / src;\n"
-	"  if (t > 0.0) {\n"
-	"    t = clamp(t, 5.42101e-020, 1.884467e+019);\n"
-	"  } else {\n"
-	"    t = clamp(t, -1.884467e+019, -5.42101e-020);\n"
-	"  }\n"
-	"  return vec4(t);\n"
-	"}\n"
-	"\n"
-	"#define RSQ(dest, mask, src) dest.mask = _RSQ(_in(src).x).mask\n"
-	"vec4 _RSQ(float src)\n"
-	"{\n"
-	"  if (src == 0.0) { return vec4(INFINITY); }\n"
-	"  if (isinf(src)) { return vec4(0.0); }\n"
-	"  return vec4(inversesqrt(abs(src)));\n"
-	"}\n"
-	"\n"
-	"#define EXP(dest, mask, src) dest.mask = _EXP(_in(src).x).mask\n"
-	"vec4 _EXP(float src)\n"
-	"{\n"
-	"  vec4 result;\n"
-	"  result.x = exp2(floor(src));\n"
-	"  result.y = src - floor(src);\n"
-	"  result.z = exp2(src);\n"
-	"  result.w = 1.0;\n"
-	"  return result;\n"
-	"}\n"
-	"\n"
-	"#define LOG(dest, mask, src) dest.mask = _LOG(_in(src).x).mask\n"
-	"vec4 _LOG(float src)\n"
-	"{\n"
-	"  float tmp = abs(src);\n"
-	"  if (tmp == 0.0) { return vec4(-INFINITY, 1.0f, -INFINITY, 1.0f); }\n"
-	"  vec4 result;\n"
-	"  result.x = floor(log2(tmp));\n"
-	"  result.y = tmp / exp2(floor(log2(tmp)));\n"
-	"  result.z = log2(tmp);\n"
-	"  result.w = 1.0;\n"
-	"  return result;\n"
-	"}\n"
-	"\n"
-	"#define LIT(dest, mask, src) dest.mask = _LIT(_in(src)).mask\n"
-	"vec4 _LIT(vec4 src)\n"
-	"{\n"
-	"  vec4 s = src;\n"
-	"  float epsilon = 1.0 / 256.0;\n"
-	"  s.w = clamp(s.w, -(128.0 - epsilon), 128.0 - epsilon);\n"
-	"  s.x = max(s.x, 0.0);\n"
-	"  s.y = max(s.y, 0.0);\n"
-	"  vec4 t = vec4(1.0, 0.0, 0.0, 1.0);\n"
-	"  t.y = s.x;\n"
+    /* See:
+     * http://msdn.microsoft.com/en-us/library/windows/desktop/bb174703%28v=vs.85%29.aspx
+     * https://www.opengl.org/registry/specs/NV/vertex_program1_1.txt
+     */
+    "\n"
+    // QQQ #ifdef NICE_CODE
+    "/* Converts the input to vec4, pads with last component */\n"
+    "vec4 _in(float v) { return vec4(v); }\n"
+    "vec4 _in(vec2 v) { return v.xyyy; }\n"
+    "vec4 _in(vec3 v) { return v.xyzz; }\n"
+    "vec4 _in(vec4 v) { return v.xyzw; }\n"
+    //#else
+    //    "/* Make sure input is always a vec4 */\n"
+    //   "#define _in(v) vec4(v)\n"
+    //#endif
+    "\n"
+    "#define INFINITY (1.0 / 0.0)\n"
+    "\n"
+    "#define MOV(dest, mask, src) dest.mask = _MOV(_in(src)).mask\n"
+    "vec4 _MOV(vec4 src)\n"
+    "{\n"
+    "  return src;\n"
+    "}\n"
+    "\n"
+    "#define MUL(dest, mask, src0, src1) dest.mask = _MUL(_in(src0), _in(src1)).mask\n"
+    "vec4 _MUL(vec4 src0, vec4 src1)\n"
+    "{\n"
+    "  return src0 * src1;\n"
+    "}\n"
+    "\n"
+    "#define ADD(dest, mask, src0, src1) dest.mask = _ADD(_in(src0), _in(src1)).mask\n"
+    "vec4 _ADD(vec4 src0, vec4 src1)\n"
+    "{\n"
+    "  return src0 + src1;\n"
+    "}\n"
+    "\n"
+    "#define MAD(dest, mask, src0, src1, src2) dest.mask = _MAD(_in(src0), _in(src1), _in(src2)).mask\n"
+    "vec4 _MAD(vec4 src0, vec4 src1, vec4 src2)\n"
+    "{\n"
+    "  return src0 * src1 + src2;\n"
+    "}\n"
+    "\n"
+    "#define DP3(dest, mask, src0, src1) dest.mask = _DP3(_in(src0), _in(src1)).mask\n"
+    "vec4 _DP3(vec4 src0, vec4 src1)\n"
+    "{\n"
+    "  return vec4(dot(src0.xyz, src1.xyz));\n"
+    "}\n"
+    "\n"
+    "#define DPH(dest, mask, src0, src1) dest.mask = _DPH(_in(src0), _in(src1)).mask\n"
+    "vec4 _DPH(vec4 src0, vec4 src1)\n"
+    "{\n"
+    "  return vec4(dot(vec4(src0.xyz, 1.0), src1));\n"
+    "}\n"
+    "\n"
+    "#define DP4(dest, mask, src0, src1) dest.mask = _DP4(_in(src0), _in(src1)).mask\n"
+    "vec4 _DP4(vec4 src0, vec4 src1)\n"
+    "{\n"
+    "  return vec4(dot(src0, src1));\n"
+    "}\n"
+    "\n"
+    "#define DST(dest, mask, src0, src1) dest.mask = _DST(_in(src0), _in(src1)).mask\n"
+    "vec4 _DST(vec4 src0, vec4 src1)\n"
+    "{\n"
+    "  return vec4(1.0,\n"
+    "              src0.y * src1.y,\n"
+    "              src0.z,\n"
+    "              src1.w);\n"
+    "}\n"
+    "\n"
+    "#define MIN(dest, mask, src0, src1) dest.mask = _MIN(_in(src0), _in(src1)).mask\n"
+    "vec4 _MIN(vec4 src0, vec4 src1)\n"
+    "{\n"
+    "  return min(src0, src1);\n"
+    "}\n"
+    "\n"
+    "#define MAX(dest, mask, src0, src1) dest.mask = _MAX(_in(src0), _in(src1)).mask\n"
+    "vec4 _MAX(vec4 src0, vec4 src1)\n"
+    "{\n"
+    "  return max(src0, src1);\n"
+    "}\n"
+    "\n"
+    "#define SLT(dest, mask, src0, src1) dest.mask = _SLT(_in(src0), _in(src1)).mask\n"
+    "vec4 _SLT(vec4 src0, vec4 src1)\n"
+    "{\n"
+    "  return vec4(lessThan(src0, src1));\n"
+    "}\n"
+    "\n"
+    "#define ARL(dest, src) dest = _ARL(_in(src).x)\n"
+    "int _ARL(float src)\n"
+    "{\n"
+    "  /* Xbox GPU does specify rounding, OpenGL doesn't; so we need a bias.\n"
+    "   * Example: We probably want to floor 16.99.. to 17, not 16.\n"
+    "   * Source of error (why we get 16.99.. instead of 17.0) is typically\n"
+    "   * vertex-attributes being normalized from a byte value to float:\n"
+    "   *   17 / 255 = 0.06666.. so is this 0.06667 (ceil) or 0.06666 (floor)?\n"
+    "   * Which value we get depends on the host GPU.\n"
+    "   * If we multiply these rounded values by 255 later, we get:\n"
+    "   *   17.00 (ARL result = 17) or 16.99 (ARL result = 16).\n"
+    "   * We assume the intend was to get 17, so we add our bias to fix it. */\n"
+    "  return int(floor(src + 0.001));\n"
+    "}\n"
+    "\n"
+    "#define SGE(dest, mask, src0, src1) dest.mask = _SGE(_in(src0), _in(src1)).mask\n"
+    "vec4 _SGE(vec4 src0, vec4 src1)\n"
+    "{\n"
+    "  return vec4(greaterThanEqual(src0, src1));\n"
+    "}\n"
+    "\n"
+    "#define RCP(dest, mask, src) dest.mask = _RCP(_in(src).x).mask\n"
+    "vec4 _RCP(float src)\n"
+    "{\n"
+    "  return vec4(1.0 / src);\n"
+    "}\n"
+    "\n"
+    "#define RCC(dest, mask, src) dest.mask = _RCC(_in(src).x).mask\n"
+    "vec4 _RCC(float src)\n"
+    "{\n"
+    "  float t = 1.0 / src;\n"
+    "  if (t > 0.0) {\n"
+    "    t = clamp(t, 5.42101e-020, 1.884467e+019);\n"
+    "  } else {\n"
+    "    t = clamp(t, -1.884467e+019, -5.42101e-020);\n"
+    "  }\n"
+    "  return vec4(t);\n"
+    "}\n"
+    "\n"
+    "#define RSQ(dest, mask, src) dest.mask = _RSQ(_in(src).x).mask\n"
+    "vec4 _RSQ(float src)\n"
+    "{\n"
+    "  if (src == 0.0) { return vec4(INFINITY); }\n"
+    "  if (isinf(src)) { return vec4(0.0); }\n"
+    "  return vec4(inversesqrt(abs(src)));\n"
+    "}\n"
+    "\n"
+    "#define EXP(dest, mask, src) dest.mask = _EXP(_in(src).x).mask\n"
+    "vec4 _EXP(float src)\n"
+    "{\n"
+    "  vec4 result;\n"
+    "  result.x = exp2(floor(src));\n"
+    "  result.y = src - floor(src);\n"
+    "  result.z = exp2(src);\n"
+    "  result.w = 1.0;\n"
+    "  return result;\n"
+    "}\n"
+    "\n"
+    "#define LOG(dest, mask, src) dest.mask = _LOG(_in(src).x).mask\n"
+    "vec4 _LOG(float src)\n"
+    "{\n"
+    "  float tmp = abs(src);\n"
+    "  if (tmp == 0.0) { return vec4(-INFINITY, 1.0f, -INFINITY, 1.0f); }\n"
+    "  vec4 result;\n"
+    "  result.x = floor(log2(tmp));\n"
+    "  result.y = tmp / exp2(floor(log2(tmp)));\n"
+    "  result.z = log2(tmp);\n"
+    "  result.w = 1.0;\n"
+    "  return result;\n"
+    "}\n"
+    "\n"
+    "#define LIT(dest, mask, src) dest.mask = _LIT(_in(src)).mask\n"
+    "vec4 _LIT(vec4 src)\n"
+    "{\n"
+    "  vec4 s = src;\n"
+    "  float epsilon = 1.0 / 256.0;\n"
+    "  s.w = clamp(s.w, -(128.0 - epsilon), 128.0 - epsilon);\n"
+    "  s.x = max(s.x, 0.0);\n"
+    "  s.y = max(s.y, 0.0);\n"
+    "  vec4 t = vec4(1.0, 0.0, 0.0, 1.0);\n"
+    "  t.y = s.x;\n"
 #if 1
-	"  t.z = (s.x > 0.0) ? exp2(s.w * log2(s.y)) : 0.0;\n"
+    "  t.z = (s.x > 0.0) ? exp2(s.w * log2(s.y)) : 0.0;\n"
 #else
-	"  t.z = (s.x > 0.0) ? pow(s.y, s.w) : 0.0;\n"
+    "  t.z = (s.x > 0.0) ? pow(s.y, s.w) : 0.0;\n"
 #endif
-	"  return t;\n"
-	"}\n";
+    "  return t;\n"
+    "}\n";
 
-void vsh_translate(
-	uint16_t version, const uint32_t* tokens, uint32_t length, bool z_perspective, std::stringstream& header,
-	std::stringstream& body)
+void vsh_translate(uint16_t version, const uint32_t* tokens, uint32_t length, bool z_perspective, std::stringstream& header, std::stringstream& body)
 {
 	header << vsh_header;
 
@@ -629,12 +647,12 @@ void vsh_translate(
 	for (uint32_t slot = 0; slot < length; slot++)
 	{
 		const uint32_t* cur_token = &tokens[slot * VSH_TOKEN_SIZE];
-		auto token_str = decode_token(cur_token);
+		auto            token_str = decode_token(cur_token);
 		body << fmt::format(
-			"  /* Slot %d: 0x%08X 0x%08X 0x%08X 0x%08X */", slot, cur_token[0], cur_token[1], cur_token[2],
-			cur_token[3])
-			 << "\n"
-			 << token_str << "\n";
+		    "  /* Slot %d: 0x%08X 0x%08X 0x%08X 0x%08X */", slot, cur_token[0], cur_token[1], cur_token[2],
+		    cur_token[3])
+		     << "\n"
+		     << token_str << "\n";
 
 		if (vsh_get_field(cur_token, FLD_FINAL))
 		{
@@ -647,41 +665,40 @@ void vsh_translate(
 	/* pre-divide and output the generated W so we can do persepctive correct
 	 * interpolation manually. OpenGL can't, since we give it a W of 1 to work
 	 * around the perspective divide */
-	body <<
-		"  if (oPos.w == 0.0 || isinf(oPos.w)) {\n"
-		"    vtx.inv_w = 1.0;\n"
-		"  } else {\n"
-		"    vtx.inv_w = 1.0 / oPos.w;\n"
-		"  }\n";
+	body << "  if (oPos.w == 0.0 || isinf(oPos.w)) {\n"
+	        "    vtx.inv_w = 1.0;\n"
+	        "  } else {\n"
+	        "    vtx.inv_w = 1.0 / oPos.w;\n"
+	        "  }\n";
 
 	body <<
-		/* the shaders leave the result in screen space, while
-		 * opengl expects it in clip space.
-		 * TODO: the pixel-center co-ordinate differences should handled
-		 */
-		"  oPos.x = 2.0 * (oPos.x - surfaceSize.x * 0.5) / surfaceSize.x;\n"
-		"  oPos.y = -2.0 * (oPos.y - surfaceSize.y * 0.5) / surfaceSize.y;\n";
+	    /* the shaders leave the result in screen space, while
+	     * opengl expects it in clip space.
+	     * TODO: the pixel-center co-ordinate differences should handled
+	     */
+	    "  oPos.x = 2.0 * (oPos.x - surfaceSize.x * 0.5) / surfaceSize.x;\n"
+	    "  oPos.y = -2.0 * (oPos.y - surfaceSize.y * 0.5) / surfaceSize.y;\n";
 	if (z_perspective)
 		body << "  oPos.z = oPos.w;\n";
 
 	body <<
-		/* Map the clip range into clip space so z is clipped correctly.
-		 * Note this makes the values in the depth buffer wrong. This should be
-		 * handled with gl_ClipDistance instead, but that has performance issues
-		 * on OS X.
-		 */
-		"  if (clipRange.y != clipRange.x) {\n"
-		"    oPos.z = (oPos.z - clipRange.x)/(0.5*(clipRange.y - clipRange.x)) - 1;\n"
-		"  }\n"
+	    /* Map the clip range into clip space so z is clipped correctly.
+	     * Note this makes the values in the depth buffer wrong. This should be
+	     * handled with gl_ClipDistance instead, but that has performance issues
+	     * on OS X.
+	     */
+	    "  if (clipRange.y != clipRange.x) {\n"
+	    "    oPos.z = (oPos.z - clipRange.x)/(0.5*(clipRange.y - clipRange.x)) - 1;\n"
+	    "  }\n"
 
-		/* Correct for the perspective divide */
-		"  if (oPos.w < 0.0) {\n"
-		/* undo the perspective divide in the case where the point would be
-		 * clipped so opengl can clip it correctly */
-		"    oPos.xyz *= oPos.w;\n"
-		"  } else {\n"
-		/* we don't want the OpenGL perspective divide to happen, but we
-		 * can't multiply by W because it could be meaningless here */
-		"    oPos.w = 1.0;\n"
-		"  }\n";
+	    /* Correct for the perspective divide */
+	    "  if (oPos.w < 0.0) {\n"
+	    /* undo the perspective divide in the case where the point would be
+	     * clipped so opengl can clip it correctly */
+	    "    oPos.xyz *= oPos.w;\n"
+	    "  } else {\n"
+	    /* we don't want the OpenGL perspective divide to happen, but we
+	     * can't multiply by W because it could be meaningless here */
+	    "    oPos.w = 1.0;\n"
+	    "  }\n";
 }

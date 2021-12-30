@@ -32,7 +32,7 @@ using namespace std::string_literals;
 
 struct EnumMap
 {
-	int value;
+	int         value;
 	const char* text;
 };
 
@@ -82,32 +82,32 @@ const EnumMap rendererMaps[] = {
 
 struct Config
 {
-	char type;
+	char        type;
 	const char* section;
-	int restart;
+	int         restart;
 	const char* name;
-	ptrdiff_t offset;
+	ptrdiff_t   offset;
 	union
 	{
 		const char* defStr;
-		int defInt;
-		float defFloat;
-		int defBool;
+		int         defInt;
+		float       defFloat;
+		int         defBool;
 	};
 	union
 	{
-		int minInt;
+		int   minInt;
 		float minFloat;
 	};
 	union
 	{
-		int maxInt;
+		int   maxInt;
 		float maxFloat;
 	};
 	const EnumMap* enumMap;
-	const char* someInts;
-	void *ptr;
-	int size;
+	const char*    someInts;
+	void*          ptr;
+	int            size;
 
 	const char* GetArray(int index)
 	{
@@ -144,9 +144,10 @@ struct Config
 	const char* GetEnum()
 	{
 		assert(ptr && enumMap);
-		int val = *(int*)ptr;
+		int val   = *(int*)ptr;
 		int count = 0;
-		for (int i = 0; enumMap[i].text; ++i, ++count);
+		for (int i = 0; enumMap[i].text; ++i, ++count)
+			;
 		val = std::clamp(val, 0, count - 1);
 		return enumMap[val].text;
 	}
@@ -156,8 +157,9 @@ struct Config
 		assert(ptr && enumMap);
 		CHECK_TYPE('e');
 		int count = 0;
-		for (int i = 0; enumMap[i].text; ++i, ++count);
-		val = std::clamp(val, 0, count - 1);
+		for (int i = 0; enumMap[i].text; ++i, ++count)
+			;
+		val        = std::clamp(val, 0, count - 1);
 		*(int*)ptr = val;
 	}
 
@@ -230,24 +232,12 @@ struct Config
 	{
 		switch (type)
 		{
-		case 'a':
-			SetArray(-1, defStr);
-			break;
-		case 'b':
-			SetBool(defInt);
-			break;
-		case 'e':
-			SetEnum(defInt);
-			break;
-		case 'f':
-			SetFloat(defFloat);
-			break;
-		case 'i':
-			SetInt(defInt);
-			break;
-		case 's':
-			SetString(defStr);
-			break;
+		case 'a': SetArray(-1, defStr); break;
+		case 'b': SetBool(defInt); break;
+		case 'e': SetEnum(defInt); break;
+		case 'f': SetFloat(defFloat); break;
+		case 'i': SetInt(defInt); break;
+		case 's': SetString(defStr); break;
 		}
 	}
 };
@@ -322,8 +312,9 @@ static std::vector<Config> configs = {
 static std::map<std::string, Config*> configMap;
 
 static std::string settingsDir;
-static int failedLoad;
+static int         failedLoad;
 
+// global variable
 XSettings xsettings;
 
 // API
@@ -348,7 +339,7 @@ int xsettingsCompare(XSettings* previous)
 
 	for (auto& config : configs)
 	{
-		void* other = (void*)((char *)previous + config.offset);
+		void* other = (void*)((char*)previous + config.offset);
 		if (memcmp(config.ptr, other, config.size))
 		{
 			changed |= 1;
@@ -404,10 +395,10 @@ void xsettingsInit()
 	Config* prev = &configs[0];
 	for (auto& config : configs)
 	{
-		config.ptr = (void*)((char *)&xsettings + config.offset);
+		config.ptr             = (void*)((char*)&xsettings + config.offset);
 		configMap[config.name] = &config;
-		prev->size = config.offset - prev->offset;
-		prev = &config;
+		prev->size             = config.offset - prev->offset;
+		prev                   = &config;
 	}
 	configs.back().size = sizeof(XSettings) - prev->offset;
 
@@ -417,13 +408,13 @@ void xsettingsInit()
 	// portable mode?
 	bool isPortable = false;
 	{
-		char* baseDir = SDL_GetBasePath();
+		char*                 baseDir = SDL_GetBasePath();
 		std::filesystem::path path(baseDir);
 		path += "xemu.toml";
 		if (std::filesystem::exists(path))
 		{
 			settingsDir = path.string();
-			isPortable = true;
+			isPortable  = true;
 		}
 		SDL_free(baseDir);
 	}
@@ -432,7 +423,7 @@ void xsettingsInit()
 	if (!isPortable)
 	{
 		char* baseDir = SDL_GetPrefPath("xemu", "xemu");
-		settingsDir = baseDir;
+		settingsDir   = baseDir;
 		SDL_free(baseDir);
 	}
 }
@@ -461,7 +452,7 @@ void xsettingsLoad()
 	for (const auto& [section, data] : doc)
 	{
 		data.visit([](auto& node) noexcept
-		{
+		           {
 			if constexpr (toml::is_table<decltype(node)>)
 			{
 				for (const auto& [key, value] : node)
@@ -503,8 +494,7 @@ void xsettingsLoad()
 						}
 					});
 				}
-			}
-		});
+			} });
 	}
 
 	failedLoad = 0;
@@ -526,35 +516,25 @@ int xsettingsSave()
 			if (section.size())
 				doc.insert_or_assign(prev_section, section);
 			prev_section = config.section;
-			section = toml::table {};
+			section      = toml::table {};
 		}
 
 		switch (config.type)
 		{
 		case 'a':
-			{
-				toml::array array;
-				for (int i = 0; i < config.minInt; ++i)
-					array.push_back(config.GetArray(i));
+		{
+			toml::array array;
+			for (int i = 0; i < config.minInt; ++i)
+				array.push_back(config.GetArray(i));
 
-				section.insert_or_assign(config.name, array);
-				break;
-			}
-		case 'b':
-			section.insert_or_assign(config.name, config.GetBool());
+			section.insert_or_assign(config.name, array);
 			break;
-		case 'e':
-			section.insert_or_assign(config.name, config.GetEnum());
-			break;
-		case 'f':
-			section.insert_or_assign(config.name, config.GetFloat());
-			break;
-		case 'i':
-			section.insert_or_assign(config.name, config.GetInt());
-			break;
-		case 's':
-			section.insert_or_assign(config.name, config.GetString());
-			break;
+		}
+		case 'b': section.insert_or_assign(config.name, config.GetBool()); break;
+		case 'e': section.insert_or_assign(config.name, config.GetEnum()); break;
+		case 'f': section.insert_or_assign(config.name, config.GetFloat()); break;
+		case 'i': section.insert_or_assign(config.name, config.GetInt()); break;
+		case 's': section.insert_or_assign(config.name, config.GetString()); break;
 		}
 	}
 

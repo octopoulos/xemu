@@ -32,12 +32,12 @@ enum SHADER_TYPE
 	SHADER_TYPE_LOGO,
 };
 
-struct decal_shader
+struct DecalShader
 {
-	int flip;
-	float scale;
-	float smoothing;
-	float outline_dist;
+	int      flip;
+	float    scale;
+	float    smoothing;
+	float    outline_dist;
 	uint32_t time;
 
 	// GL object handles
@@ -58,39 +58,22 @@ struct decal_shader
 	GLint palette_loc[256];
 };
 
-struct fbo
+struct FBO
 {
 	GLuint fbo;
 	GLuint tex;
-	int w, h;
+	int    w, h;
 };
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 extern GLuint main_fb;
-extern GLint vp[4];
+extern GLint  vp[4];
 
 GLuint compile_shader(GLenum type, const char* src);
-
-struct decal_shader* create_decal_shader(enum SHADER_TYPE type);
-void delete_decal_shader(struct decal_shader* s);
-
+void   create_decal_shader(DecalShader& s, enum SHADER_TYPE type);
 GLuint load_texture_from_file(const char* name);
 GLuint load_texture_from_memory(const unsigned char* buf, unsigned int size);
-
-struct fbo* create_fbo(int width, int height);
-void render_to_default_fb(void);
-GLuint render_to_fbo(struct fbo* fbo);
-
-void render_decal(
-	struct decal_shader* s, float x, float y, float w, float h, float tex_x, float tex_y, float tex_w, float tex_h,
-	uint32_t primary, uint32_t secondary, uint32_t fill);
-
-void render_decal_image(
-	struct decal_shader* s, float x, float y, float w, float h, float tex_x, float tex_y, float tex_w, float tex_h);
-
-#ifdef __cplusplus
-}
-#endif
+FBO*   create_fbo(int width, int height);
+void   render_to_default_fb(void);
+GLuint render_to_fbo(FBO* fbo);
+void   render_decal(DecalShader& s, float x, float y, float w, float h, float tex_x, float tex_y, float tex_w, float tex_h, uint32_t primary, uint32_t secondary, uint32_t fill);
+void   render_decal_image(DecalShader& s, float x, float y, float w, float h, float tex_x, float tex_y, float tex_w, float tex_h);

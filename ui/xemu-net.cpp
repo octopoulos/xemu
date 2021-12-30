@@ -38,7 +38,7 @@
 #endif
 #include "xemu-notifications.h"
 
-static const char* id = "xemu-netdev";
+static const char* id         = "xemu-netdev";
 static const char* id_hubport = "xemu-netdev-hubport";
 
 void xemu_net_enable(void)
@@ -49,8 +49,8 @@ void xemu_net_enable(void)
 	if (nc != NULL)
 		return;
 
-	int backend = xsettings.net_backend;
-	const char* local_addr = xsettings.net_local_addr;
+	int         backend     = xsettings.net_backend;
+	const char* local_addr  = xsettings.net_local_addr;
 	const char* remote_addr = xsettings.net_remote_addr;
 
 	// Create the netdev
@@ -76,7 +76,7 @@ void xemu_net_enable(void)
 			return;
 #endif
 		const char* iface = xsettings.net_pcap_iface;
-		qdict = qdict_new();
+		qdict             = qdict_new();
 		qdict_put_str(qdict, "id", id);
 		qdict_put_str(qdict, "type", "pcap");
 		qdict_put_str(qdict, "ifname", iface);
@@ -120,7 +120,7 @@ void xemu_net_enable(void)
 static void remove_netdev(const char* name)
 {
 	NetClientState* nc;
-	QemuOpts* opts;
+	QemuOpts*       opts;
 
 	nc = qemu_find_netdev(name);
 	if (!nc)

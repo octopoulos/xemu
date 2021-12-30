@@ -37,22 +37,27 @@
 #ifdef DEBUG_INPUT
 #	define DPRINTF(fmt, ...) fprintf(stderr, fmt, ##__VA_ARGS__)
 #else
-#	define DPRINTF(fmt, ...) do {} while (0)
+#	define DPRINTF(fmt, ...) do { } while (0)
 #endif
 
-#define XEMU_INPUT_MIN_INPUT_UPDATE_INTERVAL_US	 2500
+#define XEMU_INPUT_MIN_INPUT_UPDATE_INTERVAL_US  2500
 #define XEMU_INPUT_MIN_HAPTIC_UPDATE_INTERVAL_US 2500
 
 ControllerStateList available_controllers = QTAILQ_HEAD_INITIALIZER(available_controllers);
-ControllerState* bound_controllers[4] = { NULL, NULL, NULL, NULL };
-int test_mode;
+ControllerState*    bound_controllers[4]  = { NULL, NULL, NULL, NULL };
+int                 test_mode;
 
 const int axis_mapping[10][3] = {
-	{ CONTROLLER_AXIS_LTRIG, 32767, 0 },	 { CONTROLLER_AXIS_RTRIG, 32767, 0 },
-	{ CONTROLLER_AXIS_LSTICK_X, -32768, 0 }, { CONTROLLER_AXIS_LSTICK_Y, 32767, 1 },
-	{ CONTROLLER_AXIS_LSTICK_X, 32767, 0 },	 { CONTROLLER_AXIS_LSTICK_Y, -32768, 1 },
-	{ CONTROLLER_AXIS_RSTICK_X, -32768, 0 }, { CONTROLLER_AXIS_RSTICK_Y, 32767, 1 },
-	{ CONTROLLER_AXIS_RSTICK_X, 32767, 0 },	 { CONTROLLER_AXIS_RSTICK_Y, -32768, 1 },
+	{ CONTROLLER_AXIS_LTRIG, 32767, 0 },
+	{ CONTROLLER_AXIS_RTRIG, 32767, 0 },
+	{ CONTROLLER_AXIS_LSTICK_X, -32768, 0 },
+	{ CONTROLLER_AXIS_LSTICK_Y, 32767, 1 },
+	{ CONTROLLER_AXIS_LSTICK_X, 32767, 0 },
+	{ CONTROLLER_AXIS_LSTICK_Y, -32768, 1 },
+	{ CONTROLLER_AXIS_RSTICK_X, -32768, 0 },
+	{ CONTROLLER_AXIS_RSTICK_Y, 32767, 1 },
+	{ CONTROLLER_AXIS_RSTICK_X, 32767, 0 },
+	{ CONTROLLER_AXIS_RSTICK_Y, -32768, 1 },
 };
 
 void xemu_input_init(void)
@@ -74,8 +79,8 @@ void xemu_input_init(void)
 	// Create the keyboard input (always first)
 	ControllerState* new_con = (ControllerState*)malloc(sizeof(ControllerState));
 	memset(new_con, 0, sizeof(ControllerState));
-	new_con->type = INPUT_DEVICE_SDL_KEYBOARD;
-	new_con->name = "Keyboard";
+	new_con->type  = INPUT_DEVICE_SDL_KEYBOARD;
+	new_con->name  = "Keyboard";
 	new_con->bound = -1;
 
 	// Create USB Daughterboard for 1.0 Xbox. This is connected to Port 1 of the Root hub.
@@ -83,8 +88,8 @@ void xemu_input_init(void)
 	qdict_put_str(usbhub_qdict, "driver", "usb-hub");
 	qdict_put_int(usbhub_qdict, "port", 1);
 	qdict_put_int(usbhub_qdict, "ports", 4);
-	QemuOpts* usbhub_opts = qemu_opts_from_qdict(qemu_find_opts("device"), usbhub_qdict, &error_fatal);
-	DeviceState* usbhub_dev = qdev_device_add(usbhub_opts, &error_fatal);
+	QemuOpts*    usbhub_opts = qemu_opts_from_qdict(qemu_find_opts("device"), usbhub_qdict, &error_fatal);
+	DeviceState* usbhub_dev  = qdev_device_add(usbhub_opts, &error_fatal);
 	assert(usbhub_dev);
 
 	// Check to see if we should auto-bind the keyboard
@@ -106,10 +111,10 @@ void xemu_input_init(void)
  */
 void ParseMappingString(char* mapping, int* vector, const char* defaultMapping)
 {
-	int i = 0;
-	int length = 0;
-	int number = 0;
-	char* text = *mapping ? mapping : (char*)defaultMapping;
+	int   i      = 0;
+	int   length = 0;
+	int   number = 0;
+	char* text   = *mapping ? mapping : (char*)defaultMapping;
 
 	for (char* c = text; *c; ++c)
 	{
@@ -121,8 +126,8 @@ void ParseMappingString(char* mapping, int* vector, const char* defaultMapping)
 		else if (*c == ',')
 		{
 			vector[i] = length ? number : -1;
-			length = 0;
-			number = 0;
+			length    = 0;
+			number    = 0;
 			++i;
 		}
 	}
@@ -138,7 +143,7 @@ void ParseMappingString(char* mapping, int* vector, const char* defaultMapping)
 void StringifyMapping(int* vector, char* mapping, const char* defaultMapping)
 {
 	char* text = mapping;
-	*text = 0;
+	*text      = 0;
 	char buffer[8];
 
 	for (int i = 0; i < 32; ++i)
@@ -201,15 +206,15 @@ void xemu_input_process_sdl_events(const SDL_Event* event)
 		// Success! Create a new node to track this controller and continue init
 		ControllerState* new_con = (ControllerState*)malloc(sizeof(ControllerState));
 		memset(new_con, 0, sizeof(ControllerState));
-		new_con->type = INPUT_DEVICE_SDL_GAMECONTROLLER;
-		new_con->name = SDL_GameControllerName(sdl_con);
-		new_con->sdl_gamecontroller = sdl_con;
-		new_con->sdl_joystick = SDL_GameControllerGetJoystick(new_con->sdl_gamecontroller);
-		new_con->sdl_joystick_id = SDL_JoystickInstanceID(new_con->sdl_joystick);
-		new_con->sdl_joystick_guid = SDL_JoystickGetGUID(new_con->sdl_joystick);
-		new_con->sdl_haptic = SDL_HapticOpenFromJoystick(new_con->sdl_joystick);
+		new_con->type                 = INPUT_DEVICE_SDL_GAMECONTROLLER;
+		new_con->name                 = SDL_GameControllerName(sdl_con);
+		new_con->sdl_gamecontroller   = sdl_con;
+		new_con->sdl_joystick         = SDL_GameControllerGetJoystick(new_con->sdl_gamecontroller);
+		new_con->sdl_joystick_id      = SDL_JoystickInstanceID(new_con->sdl_joystick);
+		new_con->sdl_joystick_guid    = SDL_JoystickGetGUID(new_con->sdl_joystick);
+		new_con->sdl_haptic           = SDL_HapticOpenFromJoystick(new_con->sdl_joystick);
 		new_con->sdl_haptic_effect_id = -1;
-		new_con->bound = -1;
+		new_con->bound                = -1;
 
 		char guid_buf[35] = { 0 };
 		SDL_JoystickGetGUIDString(new_con->sdl_joystick_guid, guid_buf, sizeof(guid_buf));
@@ -253,8 +258,9 @@ void xemu_input_process_sdl_events(const SDL_Event* event)
 	else if (event->type == SDL_CONTROLLERDEVICEREMOVED)
 	{
 		DPRINTF("Controller Removed: %d\n", event->cdevice.which);
-		int handled = 0;
-		ControllerState *iter, *next;
+		int              handled = 0;
+		ControllerState* iter;
+		ControllerState* next;
 		QTAILQ_FOREACH_SAFE(iter, &available_controllers, entry, next)
 		{
 			if (iter->type != INPUT_DEVICE_SDL_GAMECONTROLLER)
@@ -326,8 +332,8 @@ void xemu_input_update_sdl_kbd_controller_state(ControllerState* state)
 	state->buttons = 0;
 	memset(state->axis, 0, sizeof(state->axis));
 
-	const uint8_t* kbd = SDL_GetKeyboardState(NULL);
-	int* mapping = state->key_mapping;
+	const uint8_t* kbd     = SDL_GetKeyboardState(NULL);
+	int*           mapping = state->key_mapping;
 
 	// buttons
 	for (int i = 0; i < 21; ++i)
@@ -359,7 +365,7 @@ void xemu_input_update_sdl_controller_state(ControllerState* state)
 
 	// buttons
 	// note: axes can be assigned to buttons too
-	int* mapping = state->pad_mapping;
+	int* mapping   = state->pad_mapping;
 	state->buttons = 0;
 
 	for (int i = 0; i < 21; ++i)
@@ -417,8 +423,8 @@ void xemu_input_update_rumble(ControllerState* state)
 		return;
 
 	memset(&state->sdl_haptic_effect, 0, sizeof(state->sdl_haptic_effect));
-	state->sdl_haptic_effect.type = SDL_HAPTIC_LEFTRIGHT;
-	state->sdl_haptic_effect.leftright.length = SDL_HAPTIC_INFINITY;
+	state->sdl_haptic_effect.type                      = SDL_HAPTIC_LEFTRIGHT;
+	state->sdl_haptic_effect.leftright.length          = SDL_HAPTIC_INFINITY;
 	state->sdl_haptic_effect.leftright.large_magnitude = state->rumble_l >> 1;
 	state->sdl_haptic_effect.leftright.small_magnitude = state->rumble_r >> 1;
 	if (state->sdl_haptic_effect_id == -1)
@@ -452,9 +458,9 @@ void xemu_input_bind(int index, ControllerState* state, int save)
 		qdev_unplug((DeviceState*)bound_controllers[index]->device, &err);
 		assert(err == NULL);
 
-		bound_controllers[index]->bound = -1;
+		bound_controllers[index]->bound  = -1;
 		bound_controllers[index]->device = NULL;
-		bound_controllers[index] = NULL;
+		bound_controllers[index]         = NULL;
 	}
 
 	// Save this controller's GUID in settings for auto re-connect
@@ -483,11 +489,11 @@ void xemu_input_bind(int index, ControllerState* state, int save)
 		}
 		xemu_input_get_controller_default_bind_port(state, index, index + 1);
 
-		bound_controllers[index] = state;
+		bound_controllers[index]        = state;
 		bound_controllers[index]->bound = index;
 
 		const int port_map[4] = { 3, 4, 1, 2 };
-		char* tmp;
+		char*     tmp;
 
 		// Create controller's internal USB hub.
 		QDict* usbhub_qdict = qdict_new();
@@ -495,8 +501,8 @@ void xemu_input_bind(int index, ControllerState* state, int save)
 		tmp = g_strdup_printf("1.%d", port_map[index]);
 		qdict_put_str(usbhub_qdict, "port", tmp);
 		qdict_put_int(usbhub_qdict, "ports", 3);
-		QemuOpts* usbhub_opts = qemu_opts_from_qdict(qemu_find_opts("device"), usbhub_qdict, &error_abort);
-		DeviceState* usbhub_dev = qdev_device_add(usbhub_opts, &error_abort);
+		QemuOpts*    usbhub_opts = qemu_opts_from_qdict(qemu_find_opts("device"), usbhub_qdict, &error_abort);
+		DeviceState* usbhub_dev  = qdev_device_add(usbhub_opts, &error_abort);
 		g_free(tmp);
 
 		// Create XID controller. This is connected to Port 1 of the controller's internal USB Hub
@@ -507,7 +513,7 @@ void xemu_input_bind(int index, ControllerState* state, int save)
 
 		// Specify device identifier
 		static int id_counter = 0;
-		tmp = g_strdup_printf("gamepad_%d", id_counter++);
+		tmp                   = g_strdup_printf("gamepad_%d", id_counter++);
 		qdict_put_str(qdict, "id", tmp);
 		g_free(tmp);
 
@@ -518,8 +524,8 @@ void xemu_input_bind(int index, ControllerState* state, int save)
 		g_free(tmp);
 
 		// Create the device
-		QemuOpts* opts = qemu_opts_from_qdict(qemu_find_opts("device"), qdict, &error_abort);
-		DeviceState* dev = qdev_device_add(opts, &error_abort);
+		QemuOpts*    opts = qemu_opts_from_qdict(qemu_find_opts("device"), qdict, &error_abort);
+		DeviceState* dev  = qdev_device_add(opts, &error_abort);
 		assert(dev);
 
 		// Unref for eventual cleanup

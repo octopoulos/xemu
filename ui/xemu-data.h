@@ -24,7 +24,7 @@ extern "C" {
 #endif
 
 // Note: Not thread safe. Returns a pointer to an internally allocated buffer.
-const char *xemu_get_resource_path(const char *filename);
+const char* xemu_get_resource_path(const char* filename);
 
 #ifdef __cplusplus
 }

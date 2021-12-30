@@ -31,13 +31,12 @@
  * If there are no bits left from any component it will pack the other masks
  * more tighly (Example: zzxzxzyx = Fewer x than z and even fewer y)
  */
-static void generate_swizzle_masks(
-	uint32_t width, uint32_t height, uint32_t depth, uint32_t* mask_x, uint32_t* mask_y, uint32_t* mask_z)
+static void generate_swizzle_masks(uint32_t width, uint32_t height, uint32_t depth, uint32_t* mask_x, uint32_t* mask_y, uint32_t* mask_z)
 {
 	uint32_t x = 0, y = 0, z = 0;
-	uint32_t bit = 1;
+	uint32_t bit      = 1;
 	uint32_t mask_bit = 1;
-	bool done;
+	bool     done;
 	do
 	{
 		done = true;
@@ -74,7 +73,7 @@ static void generate_swizzle_masks(
 static uint32_t fill_pattern(uint32_t pattern, uint32_t value)
 {
 	uint32_t result = 0;
-	uint32_t bit = 1;
+	uint32_t bit    = 1;
 	while (value)
 	{
 		if (pattern & bit)
@@ -88,15 +87,12 @@ static uint32_t fill_pattern(uint32_t pattern, uint32_t value)
 	return result;
 }
 
-static uint32_t get_swizzled_offset(
-	uint32_t x, uint32_t y, uint32_t z, uint32_t mask_x, uint32_t mask_y, uint32_t mask_z, uint32_t bytes_per_pixel)
+static uint32_t get_swizzled_offset(uint32_t x, uint32_t y, uint32_t z, uint32_t mask_x, uint32_t mask_y, uint32_t mask_z, uint32_t bytes_per_pixel)
 {
 	return bytes_per_pixel * (fill_pattern(mask_x, x) | fill_pattern(mask_y, y) | fill_pattern(mask_z, z));
 }
 
-void swizzle_box(
-	const uint8_t* src_buf, uint32_t width, uint32_t height, uint32_t depth, uint8_t* dst_buf, uint32_t row_pitch,
-	uint32_t slice_pitch, uint32_t bytes_per_pixel)
+void swizzle_box(const uint8_t* src_buf, uint32_t width, uint32_t height, uint32_t depth, uint8_t* dst_buf, uint32_t row_pitch, uint32_t slice_pitch, uint32_t bytes_per_pixel)
 {
 	uint32_t mask_x, mask_y, mask_z;
 	generate_swizzle_masks(width, height, depth, &mask_x, &mask_y, &mask_z);
@@ -108,7 +104,7 @@ void swizzle_box(
 			for (uint32_t x = 0; x < width; x++)
 			{
 				const uint8_t* src = src_buf + y * row_pitch + x * bytes_per_pixel;
-				uint8_t* dst = dst_buf + get_swizzled_offset(x, y, 0, mask_x, mask_y, 0, bytes_per_pixel);
+				uint8_t*       dst = dst_buf + get_swizzled_offset(x, y, 0, mask_x, mask_y, 0, bytes_per_pixel);
 				memcpy(dst, src, bytes_per_pixel);
 			}
 		}
@@ -116,9 +112,7 @@ void swizzle_box(
 	}
 }
 
-void unswizzle_box(
-	const uint8_t* src_buf, uint32_t width, uint32_t height, uint32_t depth, uint8_t* dst_buf, uint32_t row_pitch,
-	uint32_t slice_pitch, uint32_t bytes_per_pixel)
+void unswizzle_box(const uint8_t* src_buf, uint32_t width, uint32_t height, uint32_t depth, uint8_t* dst_buf, uint32_t row_pitch, uint32_t slice_pitch, uint32_t bytes_per_pixel)
 {
 	uint32_t mask_x, mask_y, mask_z;
 	generate_swizzle_masks(width, height, depth, &mask_x, &mask_y, &mask_z);
@@ -130,7 +124,7 @@ void unswizzle_box(
 			for (uint32_t x = 0; x < width; x++)
 			{
 				const uint8_t* src = src_buf + get_swizzled_offset(x, y, z, mask_x, mask_y, mask_z, bytes_per_pixel);
-				uint8_t* dst = dst_buf + y * row_pitch + x * bytes_per_pixel;
+				uint8_t*       dst = dst_buf + y * row_pitch + x * bytes_per_pixel;
 				memcpy(dst, src, bytes_per_pixel);
 			}
 		}
@@ -138,14 +132,12 @@ void unswizzle_box(
 	}
 }
 
-void unswizzle_rect(
-	const uint8_t* src_buf, uint32_t width, uint32_t height, uint8_t* dst_buf, uint32_t pitch, uint32_t bytes_per_pixel)
+void unswizzle_rect(const uint8_t* src_buf, uint32_t width, uint32_t height, uint8_t* dst_buf, uint32_t pitch, uint32_t bytes_per_pixel)
 {
 	unswizzle_box(src_buf, width, height, 1, dst_buf, pitch, 0, bytes_per_pixel);
 }
 
-void swizzle_rect(
-	const uint8_t* src_buf, uint32_t width, uint32_t height, uint8_t* dst_buf, uint32_t pitch, uint32_t bytes_per_pixel)
+void swizzle_rect(const uint8_t* src_buf, uint32_t width, uint32_t height, uint8_t* dst_buf, uint32_t pitch, uint32_t bytes_per_pixel)
 {
 	swizzle_box(src_buf, width, height, 1, dst_buf, pitch, 0, bytes_per_pixel);
 }

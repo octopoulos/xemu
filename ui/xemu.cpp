@@ -95,25 +95,25 @@ void xb_surface_gl_destroy_texture(DisplaySurface* surface);
 
 static void sleep_ns(int64_t ns);
 
-static int sdl2_num_outputs;
-static SDL2_Console* sdl2_console;
+static int                   sdl2_num_outputs;
+static SDL2_Console*         sdl2_console;
 static extract_iso::GameInfo gameInfo;
-static SDL_Surface* guest_sprite_surface;
-static int gui_grab; /* if true, all keyboard/mouse events are grabbed */
-static int gui_saved_grab;
-static int gui_fullscreen;
-static int gui_grab_code = KMOD_LALT;	// | KMOD_LCTRL;
-static SDL_Cursor* sdl_cursor_normal;
-static SDL_Cursor* sdl_cursor_hidden;
-static int absolute_enabled;
-static int guest_cursor;
-static int guest_x, guest_y;
-static SDL_Cursor* guest_sprite;
-static Notifier mouse_mode_notifier;
-SDL_Window* m_window = NULL;
-static SDL_GLContext m_context;
-static int textureDims[] = { 0, 0 };
-struct decal_shader* blit;
+static SDL_Surface*          guest_sprite_surface;
+static int                   gui_grab; /* if true, all keyboard/mouse events are grabbed */
+static int                   gui_saved_grab;
+static int                   gui_fullscreen;
+static int                   gui_grab_code = KMOD_LALT; // | KMOD_LCTRL;
+static SDL_Cursor*           sdl_cursor_normal;
+static SDL_Cursor*           sdl_cursor_hidden;
+static int                   absolute_enabled;
+static int                   guest_cursor;
+static int                   guest_x, guest_y;
+static SDL_Cursor*           guest_sprite;
+static Notifier              mouse_mode_notifier;
+SDL_Window*                  m_window = NULL;
+static SDL_GLContext         m_context;
+static int                   textureDims[] = { 0, 0 };
+DecalShader                  blit;
 
 static QemuSemaphore display_init_sem;
 
@@ -130,7 +130,7 @@ void xemu_toggle_fullscreen()
 }
 
 #define SDL2_REFRESH_INTERVAL_BUSY 16
-#define SDL2_MAX_IDLE_COUNT		   (2 * GUI_REFRESH_INTERVAL_DEFAULT / SDL2_REFRESH_INTERVAL_BUSY + 1)
+#define SDL2_MAX_IDLE_COUNT        (2 * GUI_REFRESH_INTERVAL_DEFAULT / SDL2_REFRESH_INTERVAL_BUSY + 1)
 
 static SDL2_Console* get_scon_from_window(uint32_t window_id)
 {
@@ -233,9 +233,9 @@ static void sdl_mouse_mode_change(Notifier* notify, void* data)
 static void sdl_send_mouse_event(SDL2_Console* scon, int dx, int dy, int x, int y, uint32_t state)
 {
 	static uint32_t bmap[INPUT_BUTTON__MAX] = {
-		[INPUT_BUTTON_LEFT] = SDL_BUTTON(SDL_BUTTON_LEFT),
+		[INPUT_BUTTON_LEFT]   = SDL_BUTTON(SDL_BUTTON_LEFT),
 		[INPUT_BUTTON_MIDDLE] = SDL_BUTTON(SDL_BUTTON_MIDDLE),
-		[INPUT_BUTTON_RIGHT] = SDL_BUTTON(SDL_BUTTON_RIGHT),
+		[INPUT_BUTTON_RIGHT]  = SDL_BUTTON(SDL_BUTTON_RIGHT),
 	};
 	static uint32_t prev_state;
 
@@ -305,9 +305,9 @@ static int get_mod_state()
 static void handle_keydown(SDL_Event* ev)
 {
 	// int win;
-	SDL2_Console* scon = get_scon_from_window(ev->key.windowID);
-	int gui_key_modifier_pressed = get_mod_state();
-	int gui_keysym = 0;
+	SDL2_Console* scon                     = get_scon_from_window(ev->key.windowID);
+	int           gui_key_modifier_pressed = get_mod_state();
+	int           gui_keysym               = 0;
 
 	if (!scon->ignore_hotkeys && gui_key_modifier_pressed && !ev->key.repeat)
 	{
@@ -373,7 +373,7 @@ static void handle_keyup(SDL_Event* ev)
 static void handle_textinput(SDL_Event* ev)
 {
 	SDL2_Console* scon = get_scon_from_window(ev->text.windowID);
-	QemuConsole* con = scon ? scon->dcl.con : NULL;
+	QemuConsole*  con  = scon ? scon->dcl.con : NULL;
 
 	if (qemu_console_is_graphic(con))
 		return;
@@ -382,7 +382,7 @@ static void handle_textinput(SDL_Event* ev)
 
 static void handle_mousemotion(SDL_Event* ev)
 {
-	int max_x, max_y;
+	int           max_x, max_y;
 	SDL2_Console* scon = get_scon_from_window(ev->motion.windowID);
 
 	if (!scon || !qemu_console_is_graphic(scon->dcl.con))
@@ -396,7 +396,7 @@ static void handle_mousemotion(SDL_Event* ev)
 		max_y = scr_h - 1;
 
 		if (gui_grab && !gui_fullscreen
-			&& (ev->motion.x == 0 || ev->motion.y == 0 || ev->motion.x == max_x || ev->motion.y == max_y))
+		    && (ev->motion.x == 0 || ev->motion.y == 0 || ev->motion.x == max_x || ev->motion.y == max_y))
 			sdl_grab_end(scon);
 
 		if (!gui_grab && (ev->motion.x > 0 && ev->motion.x < max_x && ev->motion.y > 0 && ev->motion.y < max_y))
@@ -409,9 +409,9 @@ static void handle_mousemotion(SDL_Event* ev)
 
 static void handle_mousebutton(SDL_Event* ev)
 {
-	uint32_t buttonstate = SDL_GetMouseState(NULL, NULL);
+	uint32_t              buttonstate = SDL_GetMouseState(NULL, NULL);
 	SDL_MouseButtonEvent* bev;
-	SDL2_Console* scon = get_scon_from_window(ev->button.windowID);
+	SDL2_Console*         scon = get_scon_from_window(ev->button.windowID);
 
 	if (!scon || !qemu_console_is_graphic(scon->dcl.con))
 		return;
@@ -437,9 +437,9 @@ static void handle_mousebutton(SDL_Event* ev)
 
 static void handle_mousewheel(SDL_Event* ev)
 {
-	SDL2_Console* scon = get_scon_from_window(ev->wheel.windowID);
-	SDL_MouseWheelEvent* wev = &ev->wheel;
-	InputButton btn;
+	SDL2_Console*        scon = get_scon_from_window(ev->wheel.windowID);
+	SDL_MouseWheelEvent* wev  = &ev->wheel;
+	InputButton          btn;
 
 	if (!scon || !qemu_console_is_graphic(scon->dcl.con))
 		return;
@@ -459,8 +459,8 @@ static void handle_mousewheel(SDL_Event* ev)
 
 static void handle_windowevent(SDL_Event* ev)
 {
-	SDL2_Console* scon = get_scon_from_window(ev->window.windowID);
-	bool allow_close = true;
+	SDL2_Console* scon        = get_scon_from_window(ev->window.windowID);
+	bool          allow_close = true;
 
 	if (!scon)
 		return;
@@ -471,7 +471,7 @@ static void handle_windowevent(SDL_Event* ev)
 	{
 		QemuUIInfo info;
 		memset(&info, 0, sizeof(info));
-		info.width = ev->window.data1;
+		info.width  = ev->window.data1;
 		info.height = ev->window.data2;
 		dpy_set_ui_info(scon->dcl.con, &info);
 
@@ -531,7 +531,7 @@ static void handle_windowevent(SDL_Event* ev)
 void sdl2_poll_events(SDL2_Console* scon)
 {
 	SDL_Event ev1, *ev = &ev1;
-	bool allow_close = true;
+	bool      allow_close = true;
 
 	if (scon->last_vm_running != runstate_is_running())
 	{
@@ -599,7 +599,7 @@ void sdl2_poll_events(SDL2_Console* scon)
 
 	xemu_input_update_controllers();
 
-	scon->idle_counter = 0;
+	scon->idle_counter        = 0;
 	scon->dcl.update_interval = 16; // Ignored
 }
 
@@ -638,7 +638,7 @@ static void sdl_mouse_define(DisplayChangeListener* dcl, QEMUCursor* c)
 		SDL_FreeSurface(guest_sprite_surface);
 
 	guest_sprite_surface =
-		SDL_CreateRGBSurfaceFrom(c->data, c->width, c->height, 32, c->width * 4, 0xff0000, 0x00ff00, 0xff, 0xff000000);
+	    SDL_CreateRGBSurfaceFrom(c->data, c->width, c->height, 32, c->width * 4, 0xff0000, 0x00ff00, 0xff, 0xff000000);
 
 	if (!guest_sprite_surface)
 	{
@@ -656,20 +656,20 @@ static void sdl_mouse_define(DisplayChangeListener* dcl, QEMUCursor* c)
 }
 
 static const DisplayChangeListenerOps dcl_gl_ops = {
-	.dpy_name = "sdl2-gl",
-	.dpy_gfx_update = sdl2_gl_update,
-	.dpy_gfx_switch = sdl2_gl_switch,
+	.dpy_name             = "sdl2-gl",
+	.dpy_gfx_update       = sdl2_gl_update,
+	.dpy_gfx_switch       = sdl2_gl_switch,
 	.dpy_gfx_check_format = xb_console_gl_check_format,
 	// .dpy_refresh = sdl2_gl_refresh,
-	.dpy_mouse_set = sdl_mouse_warp,
+	.dpy_mouse_set     = sdl_mouse_warp,
 	.dpy_cursor_define = sdl_mouse_define,
 
-	.dpy_gl_ctx_create = sdl2_gl_create_context,
-	.dpy_gl_ctx_destroy = sdl2_gl_destroy_context,
+	.dpy_gl_ctx_create       = sdl2_gl_create_context,
+	.dpy_gl_ctx_destroy      = sdl2_gl_destroy_context,
 	.dpy_gl_ctx_make_current = sdl2_gl_make_context_current,
-	.dpy_gl_scanout_disable = sdl2_gl_scanout_disable,
-	.dpy_gl_scanout_texture = sdl2_gl_scanout_texture,
-	.dpy_gl_update = sdl2_gl_scanout_flush,
+	.dpy_gl_scanout_disable  = sdl2_gl_scanout_disable,
+	.dpy_gl_scanout_texture  = sdl2_gl_scanout_texture,
+	.dpy_gl_update           = sdl2_gl_scanout_flush,
 };
 
 static void sdl2_display_very_early_init(DisplayOptions* o)
@@ -713,9 +713,9 @@ static void sdl2_display_very_early_init(DisplayOptions* o)
 
 	// Create main window
 	{
-		int winWidth = xsettings.resize_on_boot ? xsettings.resize_width : 1024;
-		int winHeight = xsettings.resize_on_boot ? xsettings.resize_height : 768;
-		uint32_t flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
+		int      winWidth  = xsettings.resize_on_boot ? xsettings.resize_width : 1024;
+		int      winHeight = xsettings.resize_on_boot ? xsettings.resize_height : 768;
+		uint32_t flags     = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
 		if (xsettings.start_fullscreen)
 			flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 
@@ -740,12 +740,12 @@ static void sdl2_display_very_early_init(DisplayOptions* o)
 	if (m_context == NULL)
 	{
 		SDL_ShowSimpleMessageBox(
-			SDL_MESSAGEBOX_ERROR, "Unable to create OpenGL context",
-			"Unable to create OpenGL context. This usually means the\r\n"
-			"graphics device on this system does not support OpenGL 4.0.\r\n"
-			"\r\n"
-			"xemu cannot continue and will now exit.",
-			m_window);
+		    SDL_MESSAGEBOX_ERROR, "Unable to create OpenGL context",
+		    "Unable to create OpenGL context. This usually means the\r\n"
+		    "graphics device on this system does not support OpenGL 4.0.\r\n"
+		    "\r\n"
+		    "xemu cannot continue and will now exit.",
+		    m_window);
 		SDL_DestroyWindow(m_window);
 		SDL_Quit();
 		exit(1);
@@ -757,7 +757,7 @@ static void sdl2_display_very_early_init(DisplayOptions* o)
 	if (icon_data)
 	{
 		SDL_Surface* icon = SDL_CreateRGBSurfaceFrom(
-			icon_data, width, height, 32, width * 4, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
+		    icon_data, width, height, 32, width * 4, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
 		if (icon)
 			SDL_SetWindowIcon(m_window, icon);
 		// Note: Retaining the memory allocated by stbi_load. It's used in place by the SDL surface.
@@ -784,13 +784,14 @@ static void sdl2_display_early_init(DisplayOptions* o)
 	SDL_GL_MakeCurrent(m_window, m_context);
 	SDL_GL_SetSwapInterval(0);
 	xemu_hud_init(m_window, m_context);
-	blit = create_decal_shader(SHADER_TYPE_BLIT_GAMMA);
+
+	create_decal_shader(blit, SHADER_TYPE_BLIT_GAMMA);
 }
 
 static void sdl2_display_init(DisplayState* ds, DisplayOptions* o)
 {
-	uint8_t data = 0;
-	int i;
+	uint8_t       data = 0;
+	int           i;
 	SDL_SysWMinfo info;
 
 	assert(o->type == DISPLAY_TYPE_XEMU);
@@ -800,8 +801,8 @@ static void sdl2_display_init(DisplayState* ds, DisplayOptions* o)
 	SDL_VERSION(&info.version);
 
 	fprintf(
-		stderr, "sdl2_display_init gui_fullscreen=%d %d %d %d\n", gui_fullscreen, o->has_full_screen, o->full_screen,
-		xsettings.start_fullscreen);
+	    stderr, "sdl2_display_init gui_fullscreen=%d %d %d %d\n", gui_fullscreen, o->has_full_screen, o->full_screen,
+	    xsettings.start_fullscreen);
 	gui_fullscreen = (o->has_full_screen && o->full_screen) || xsettings.start_fullscreen;
 
 #if 1
@@ -828,12 +829,12 @@ static void sdl2_display_init(DisplayState* ds, DisplayOptions* o)
 		if (!qemu_console_is_graphic(con) && qemu_console_get_index(con) != 0)
 			sdl2_console[i].hidden = true;
 
-		sdl2_console[i].idx = i;
-		sdl2_console[i].opts = o;
-		sdl2_console[i].opengl = 1;
+		sdl2_console[i].idx     = i;
+		sdl2_console[i].opts    = o;
+		sdl2_console[i].opengl  = 1;
 		sdl2_console[i].dcl.ops = &dcl_gl_ops;
 		sdl2_console[i].dcl.con = con;
-		sdl2_console[i].kbd = qkbd_state_init(con);
+		sdl2_console[i].kbd     = qkbd_state_init(con);
 		register_displaychangelistener(&sdl2_console[i].dcl);
 
 #if defined(SDL_VIDEO_DRIVER_WINDOWS) || defined(SDL_VIDEO_DRIVER_X11)
@@ -849,7 +850,7 @@ static void sdl2_display_init(DisplayState* ds, DisplayOptions* o)
 	}
 
 	sdl2_console[0].real_window = m_window;
-	sdl2_console[0].winctx = m_context;
+	sdl2_console[0].winctx      = m_context;
 
 	mouse_mode_notifier.notify = sdl_mouse_mode_change;
 	qemu_add_mouse_mode_change_notifier(&mouse_mode_notifier);
@@ -863,9 +864,9 @@ static void sdl2_display_init(DisplayState* ds, DisplayOptions* o)
 }
 
 static QemuDisplay qemu_display_sdl2 = {
-	.type = DISPLAY_TYPE_XEMU,
+	.type       = DISPLAY_TYPE_XEMU,
 	.early_init = sdl2_display_early_init,
-	.init = sdl2_display_init,
+	.init       = sdl2_display_init,
 };
 
 static void register_sdl1()
@@ -884,16 +885,16 @@ void xb_surface_gl_create_texture(DisplaySurface* surface)
 	case PIXMAN_BE_b8g8r8x8:
 	case PIXMAN_BE_b8g8r8a8:
 		surface->glformat = GL_BGRA_EXT;
-		surface->gltype = GL_UNSIGNED_BYTE;
+		surface->gltype   = GL_UNSIGNED_BYTE;
 		break;
 	case PIXMAN_BE_x8r8g8b8:
 	case PIXMAN_BE_a8r8g8b8:
 		surface->glformat = GL_RGBA;
-		surface->gltype = GL_UNSIGNED_BYTE;
+		surface->gltype   = GL_UNSIGNED_BYTE;
 		break;
 	case PIXMAN_r5g6b5:
 		surface->glformat = GL_RGB;
-		surface->gltype = GL_UNSIGNED_SHORT_5_6_5;
+		surface->gltype   = GL_UNSIGNED_SHORT_5_6_5;
 		break;
 	default:
 		g_assert_not_reached();
@@ -905,8 +906,8 @@ void xb_surface_gl_create_texture(DisplaySurface* surface)
 	glBindTexture(GL_TEXTURE_2D, surface->texture);
 	glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, surface_stride(surface) / surface_bytes_per_pixel(surface));
 	glTexImage2D(
-		GL_TEXTURE_2D, 0, GL_RGB, surface_width(surface), surface_height(surface), 0, surface->glformat,
-		surface->gltype, surface_data(surface));
+	    GL_TEXTURE_2D, 0, GL_RGB, surface_width(surface), surface_height(surface), 0, surface->glformat,
+	    surface->gltype, surface_data(surface));
 	glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, 0);
 
 	// nearest not working?
@@ -944,7 +945,7 @@ void sdl2_gl_switch(DisplayChangeListener* dcl, DisplaySurface* new_surface)
 	if (!scon->real_window)
 	{
 		scon->real_window = m_window;
-		scon->winctx = m_context;
+		scon->winctx      = m_context;
 		SDL_GL_MakeCurrent(scon->real_window, scon->winctx);
 	}
 }
@@ -954,11 +955,11 @@ static float fps = 1.0f;
 static void update_fps()
 {
 	static int64_t last_update = 0;
-	const float r = 0.1f;
-	static float avg = 1.0f;
-	int64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
-	float ms = ((float)(now - last_update) / 1000000.0f);
-	last_update = now;
+	const float    r           = 0.1f;
+	static float   avg         = 1.0f;
+	int64_t        now         = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+	float          ms          = ((float)(now - last_update) / 1000000.0f);
+	last_update                = now;
 	if (fabs(avg - ms) > 0.25f * avg)
 		avg = ms;
 	else
@@ -975,12 +976,12 @@ static void calculateScale(double scale[2], int num, int den, int ww, int wh, in
 	if (xsettings.stretch)
 	{
 		bool isWider = (ww * den >= wh * num);
-		scale[0] = isWider ? (wh * num * 1.0) / (ww * den * 1.0) : 1.0;
-		scale[1] = isWider ? 1.0 : (ww * den * 1.0) / (wh * num * 1.0);
+		scale[0]     = isWider ? (wh * num * 1.0) / (ww * den * 1.0) : 1.0;
+		scale[1]     = isWider ? 1.0 : (ww * den * 1.0) / (wh * num * 1.0);
 
 		if (xsettings.integer_scaling && wh != th)
 		{
-			double vertical = (wh > th) ? floor(wh * 1.0 / th) : ceil(th * 1.0 / wh);
+			double vertical  = (wh > th) ? floor(wh * 1.0 / th) : ceil(th * 1.0 / wh);
 			double newScale1 = (wh > th) ? vertical * th / wh : (th * 1.0 / wh) / vertical;
 			scale[0] *= newScale1 / scale[1];
 			scale[1] = newScale1;
@@ -1017,7 +1018,7 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 	{
 		xb_surface_gl_create_texture(scon->surface);
 		scon->updates++;
-		tex = scon->surface->texture;
+		tex           = scon->surface->texture;
 		flip_required = true;
 	}
 
@@ -1069,30 +1070,30 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 
 	// update title
 	{
-		static str2k title;
+		static str2k       title;
 		static const char* renderers[] = { "OpenGL", "Vulkan", "Null" };
 		sprintf(
-			title, "FPS: %.2f | %s | %d x %d | %s | %s", fps, renderers[xsettings.renderer], textureDims[0],
-			textureDims[1], xemu_version, gameInfo.buffer);
+		    title, "FPS: %.2f | %s | %d x %d | %s | %s", fps, renderers[xsettings.renderer], textureDims[0],
+		    textureDims[1], xemu_version, gameInfo.buffer);
 		SDL_SetWindowTitle(m_window, title);
 	}
 
 	// Render framebuffer and GUI
-	struct decal_shader* s = blit;
-	s->flip = flip_required;
+	auto& s = blit;
+	s.flip  = flip_required;
 	glViewport(0, 0, ww, wh);
-	glUseProgram(s->prog);
-	glBindVertexArray(s->vao);
-	glUniform1i(s->FlipY_loc, s->flip);
-	glUniform4f(s->ScaleOffset_loc, scale[0], scale[1], 0, 0);
-	glUniform4f(s->TexScaleOffset_loc, 1.0, 1.0, 0, 0);
-	glUniform1i(s->tex_loc, 0);
+	glUseProgram(s.prog);
+	glBindVertexArray(s.vao);
+	glUniform1i(s.FlipY_loc, s.flip);
+	glUniform4f(s.ScaleOffset_loc, scale[0], scale[1], 0, 0);
+	glUniform4f(s.TexScaleOffset_loc, 1.0, 1.0, 0, 0);
+	glUniform1i(s.tex_loc, 0);
 
 	const uint8_t* palette = nv2a_get_dac_palette();
 	for (int i = 0; i < 256; i++)
 	{
 		uint32_t e = (palette[i * 3 + 2] << 16) | (palette[i * 3 + 1] << 8) | palette[i * 3];
-		glUniform1ui(s->palette_loc[i], e);
+		glUniform1ui(s.palette_loc[i], e);
 	}
 
 	glClearColor(0, 0, 0, 0);
@@ -1122,10 +1123,10 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 	 * Throttle to make sure swaps happen at 60Hz
 	 */
 	static int64_t last_update = 0;
-	int64_t deadline = last_update + 16666666;
+	int64_t        deadline    = last_update + 16666666;
 
 	int64_t sleep_acc = 0;
-	int64_t spin_acc = 0;
+	int64_t spin_acc  = 0;
 
 #ifndef _WIN32
 	const int64_t sleep_threshold = 2000000;
@@ -1135,7 +1136,7 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 
 	while (1)
 	{
-		int64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+		int64_t now            = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
 		int64_t time_remaining = deadline - now;
 		if (now < deadline)
 		{
@@ -1218,7 +1219,7 @@ void sdl2_gl_destroy_context(DisplayChangeListener* dcl, QEMUGLContext ctx)
 
 int sdl2_gl_make_context_current(DisplayChangeListener* dcl, QEMUGLContext ctx)
 {
-	SDL2_Console* scon = container_of(dcl, SDL2_Console, dcl);
+	SDL2_Console* scon   = container_of(dcl, SDL2_Console, dcl);
 	SDL_GLContext sdlctx = (SDL_GLContext)ctx;
 
 	assert(scon->opengl);
@@ -1237,8 +1238,8 @@ void sdl2_gl_scanout_disable(DisplayChangeListener* dcl)
 }
 
 void sdl2_gl_scanout_texture(
-	DisplayChangeListener* dcl, uint32_t backing_id, bool backing_y_0_top, uint32_t backing_width,
-	uint32_t backing_height, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+    DisplayChangeListener* dcl, uint32_t backing_id, bool backing_y_0_top, uint32_t backing_width,
+    uint32_t backing_height, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 {
 	assert(0);
 }
@@ -1251,7 +1252,7 @@ void sdl2_gl_scanout_flush(DisplayChangeListener* dcl, uint32_t x, uint32_t y, u
 // sdl2-input.c
 void sdl2_process_key(SDL2_Console* scon, SDL_KeyboardEvent* ev)
 {
-	int qcode;
+	int          qcode;
 	QemuConsole* con = scon->dcl.con;
 
 	if (ev->keysym.scancode >= qemu_input_map_usb_to_qcode_len)
@@ -1278,7 +1279,7 @@ void sdl2_process_key(SDL2_Console* scon, SDL_KeyboardEvent* ev)
 	}
 }
 
-int gArgc;
+int    gArgc;
 char** gArgv;
 
 // vl.c
@@ -1298,7 +1299,7 @@ static void sleep_ns(int64_t ns)
 {
 #ifndef _WIN32
 	struct timespec sleep_delay, rem_delay;
-	sleep_delay.tv_sec = ns / 1000000000LL;
+	sleep_delay.tv_sec  = ns / 1000000000LL;
 	sleep_delay.tv_nsec = ns % 1000000000LL;
 	nanosleep(&sleep_delay, &rem_delay);
 #else
@@ -1324,8 +1325,8 @@ int main(int argc, char** argv)
 	{
 		// Launched without a console. Redirect stdout and stderr to a log file.
 		HANDLE logfile = CreateFileA(
-			"xemu.log", GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL,
-			NULL);
+		    "xemu.log", GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL,
+		    NULL);
 		if (logfile != INVALID_HANDLE_VALUE)
 		{
 			freopen("xemu.log", "a", stdout);
@@ -1398,7 +1399,7 @@ void xemu_load_disc(const char* path)
 
 	Error* err = NULL;
 	qmp_blockdev_change_medium(
-		true, "ide0-cd1", false, NULL, path, false, "", false, (BlockdevChangeReadOnlyMode)0, &err);
+	    true, "ide0-cd1", false, NULL, path, false, "", false, (BlockdevChangeReadOnlyMode)0, &err);
 
 	xbox_smc_update_tray_state();
 }

@@ -22,7 +22,7 @@
 static uint32_t xbox_eeprom_crc(uint8_t* data, size_t len)
 {
 	uint32_t high = 0;
-	uint32_t low = 0;
+	uint32_t low  = 0;
 	for (size_t i = 0; i < len / 4; i++)
 	{
 		uint32_t val = le32_to_cpu(((uint32_t*)data)[i]);
@@ -36,8 +36,8 @@ static uint32_t xbox_eeprom_crc(uint8_t* data, size_t len)
 
 static void xbox_rc4_swap(RC4Context* ctx, int first, int second)
 {
-	uint8_t temp = ctx->s[first];
-	ctx->s[first] = ctx->s[second];
+	uint8_t temp   = ctx->s[first];
+	ctx->s[first]  = ctx->s[second];
 	ctx->s[second] = temp;
 }
 
@@ -81,8 +81,8 @@ static void xbox_sha1_fill(SHA1Context* ctx, uint32_t a, uint32_t b, uint32_t c,
 static void xbox_sha1_reset(SHA1Context* ctx, XboxEEPROMVersion ver, bool first)
 {
 	ctx->msg_blk_index = 0;
-	ctx->computed = false;
-	ctx->length = 512;
+	ctx->computed      = false;
+	ctx->length        = 512;
 
 	// https://web.archive.org/web/20040618164907/http://www.xbox-linux.org/down/The%20Middle%20Message-1a.pdf
 	switch (ver)
@@ -116,12 +116,12 @@ static void xbox_sha1_reset(SHA1Context* ctx, XboxEEPROMVersion ver, bool first)
 static void xbox_sha1_process(SHA1Context* ctx)
 {
 	const uint32_t k[] = { 0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xCA62C1D6 };
-	uint32_t w[80];
-	uint32_t a = ctx->intermediate[0];
-	uint32_t b = ctx->intermediate[1];
-	uint32_t c = ctx->intermediate[2];
-	uint32_t d = ctx->intermediate[3];
-	uint32_t e = ctx->intermediate[4];
+	uint32_t       w[80];
+	uint32_t       a = ctx->intermediate[0];
+	uint32_t       b = ctx->intermediate[1];
+	uint32_t       c = ctx->intermediate[2];
+	uint32_t       d = ctx->intermediate[3];
+	uint32_t       e = ctx->intermediate[4];
 
 	for (int i = 0; i < 16; i++)
 		*(uint32_t*)&w[i] = cpu_to_be32(((uint32_t*)ctx->msg_blk)[i]);
@@ -196,7 +196,7 @@ static void xbox_sha1_result(SHA1Context* ctx, uint8_t* data)
 	if (!ctx->computed)
 	{
 		xbox_sha1_pad(ctx);
-		ctx->length = 0;
+		ctx->length   = 0;
 		ctx->computed = true;
 	}
 	for (int i = 0; i < 20; ++i)
@@ -219,7 +219,7 @@ bool xbox_eeprom_generate(const char* file, XboxEEPROMVersion ver)
 	memset(&e, 0, sizeof(e));
 
 	// set default North American and NTSC-M region settings
-	e.region = cpu_to_le32(1);
+	e.region         = cpu_to_le32(1);
 	e.video_standard = cpu_to_le32(0x00400100);
 
 	// randomize hardware information
@@ -234,21 +234,21 @@ bool xbox_eeprom_generate(const char* file, XboxEEPROMVersion ver)
 
 	// FIXME: temporarily set default London (GMT+0) time zone and English language
 	memcpy(
-		e.user_section,
-		"\x00\x00\x00\x00\x47\x4D\x54\x00\x42\x53\x54\x00"
-		"\x00\x00\x00\x00\x00\x00\x00\x00\x0A\x05\x00\x02\x03\x05\x00\x01\x00\x00"
-		"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xC4\xFF\xFF\xFF",
-		44);
+	    e.user_section,
+	    "\x00\x00\x00\x00\x47\x4D\x54\x00\x42\x53\x54\x00"
+	    "\x00\x00\x00\x00\x00\x00\x00\x00\x0A\x05\x00\x02\x03\x05\x00\x01\x00\x00"
+	    "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xC4\xFF\xFF\xFF",
+	    44);
 	*(uint32_t*)(e.user_section + 0x2C) = cpu_to_le32(1);
 
 	// update checksums
-	e.checksum = cpu_to_le32(xbox_eeprom_crc(e.serial, 0x2C));
+	e.checksum      = cpu_to_le32(xbox_eeprom_crc(e.serial, 0x2C));
 	e.user_checksum = cpu_to_le32(xbox_eeprom_crc(e.user_section, 0x5C));
 
 	// encrypt security section
-	RC4Context rctx;
+	RC4Context  rctx;
 	SHA1Context sctx;
-	uint8_t seed[20];
+	uint8_t     seed[20];
 	xbox_sha1_compute(&sctx, ver, e.confounder, 0x1C, e.hash);
 	xbox_sha1_compute(&sctx, ver, e.hash, sizeof(e.hash), seed);
 	xbox_rc4_init(&rctx, seed, (int)sizeof(seed));

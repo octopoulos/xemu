@@ -67,11 +67,11 @@ typedef struct ShaderState
 	PshState psh;
 	uint16_t compressed_attrs;
 
-	bool texture_matrix_enable[4];
+	bool           texture_matrix_enable[4];
 	enum VshTexgen texgen[4][4];
 
-	bool fog_enable;
-	enum VshFoggen foggen;
+	bool            fog_enable;
+	enum VshFoggen  foggen;
 	enum VshFogMode fog_mode;
 
 	enum VshSkinning skinning;
@@ -83,23 +83,23 @@ typedef struct ShaderState
 	enum MaterialColorSource diffuse_src;
 	enum MaterialColorSource specular_src;
 
-	bool lighting;
+	bool          lighting;
 	enum VshLight light[NV2A_MAX_LIGHTS];
 
 	bool fixed_function;
 
 	/* vertex program */
-	bool vertex_program;
+	bool     vertex_program;
 	uint32_t program_data[NV2A_MAX_TRANSFORM_PROGRAM_LENGTH][VSH_TOKEN_SIZE];
-	int program_length;
-	bool z_perspective;
+	int      program_length;
+	bool     z_perspective;
 
 	/* primitive format for geometry shader */
-	enum ShaderPolygonMode polygon_front_mode;
-	enum ShaderPolygonMode polygon_back_mode;
+	enum ShaderPolygonMode   polygon_front_mode;
+	enum ShaderPolygonMode   polygon_back_mode;
 	enum ShaderPrimitiveMode primitive_mode;
 
-	bool point_params_enable;
+	bool  point_params_enable;
 	float point_size;
 	float point_params[8];
 } ShaderState;
@@ -120,7 +120,7 @@ typedef struct ShaderBinding
 	GLint surface_size_loc;
 	GLint clip_range_loc;
 
-	GLint vsh_constant_loc[NV2A_VERTEXSHADER_CONSTANTS];
+	GLint    vsh_constant_loc[NV2A_VERTEXSHADER_CONSTANTS];
 	uint32_t vsh_constants[NV2A_VERTEXSHADER_CONSTANTS][4];
 
 	GLint inv_viewport_loc;

@@ -36,41 +36,37 @@ typedef struct RC4Context
 typedef struct SHA1Context
 {
 	uint32_t intermediate[5];
-	uint8_t msg_blk[64];
+	uint8_t  msg_blk[64];
 	uint32_t msg_blk_index;
 	uint32_t length;
-	bool computed;
+	bool     computed;
 } SHA1Context;
 
 #pragma pack(push, 1)
 typedef struct XboxEEPROM
 {
-	uint8_t hash[20];
-	uint8_t confounder[8];
-	uint8_t hdd_key[16];
+	uint8_t  hash[20];
+	uint8_t  confounder[8];
+	uint8_t  hdd_key[16];
 	uint32_t region;
 	uint32_t checksum;
-	uint8_t serial[12];
-	uint8_t mac[6];
+	uint8_t  serial[12];
+	uint8_t  mac[6];
 	uint16_t padding;
-	uint8_t online_key[16];
+	uint8_t  online_key[16];
 	uint32_t video_standard;
 	uint32_t padding2;
 	uint32_t user_checksum;
-	uint8_t user_section[156];
+	uint8_t  user_section[156];
 } XboxEEPROM;
 #pragma pack(pop)
 
 typedef enum
 {
-	// debug kernels
-	XBOX_EEPROM_VERSION_D,
-	// retail v1.0 kernels
-	XBOX_EEPROM_VERSION_R1,
-	// retail v1.1-1.4 kernels
-	XBOX_EEPROM_VERSION_R2,
-	// retail v1.6 kernels
-	XBOX_EEPROM_VERSION_R3
+	XBOX_EEPROM_VERSION_D,  // debug kernels
+	XBOX_EEPROM_VERSION_R1, // retail v1.0 kernels
+	XBOX_EEPROM_VERSION_R2, // retail v1.1-1.4 kernels
+	XBOX_EEPROM_VERSION_R3  // retail v1.6 kernels
 } XboxEEPROMVersion;
 
 bool xbox_eeprom_generate(const char* file, XboxEEPROMVersion ver);

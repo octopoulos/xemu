@@ -53,17 +53,19 @@ typedef struct PshState
 	uint32_t final_inputs_0;
 	uint32_t final_inputs_1;
 
-	uint32_t rgb_inputs[8], rgb_outputs[8];
-	uint32_t alpha_inputs[8], alpha_outputs[8];
+	uint32_t rgb_inputs[8];
+	uint32_t rgb_outputs[8];
+	uint32_t alpha_inputs[8];
+	uint32_t alpha_outputs[8];
 
-	bool point_sprite;
-	bool rect_tex[4];
-	bool snorm_tex[4];
-	bool compare_mode[4][4];
-	bool alphakill[4];
+	bool                   point_sprite;
+	bool                   rect_tex[4];
+	bool                   snorm_tex[4];
+	bool                   compare_mode[4][4];
+	bool                   alphakill[4];
 	enum ConvolutionFilter conv_tex[4];
 
-	bool alpha_test;
+	bool              alpha_test;
 	enum PshAlphaFunc alpha_func;
 
 	bool window_clip_exclusive;

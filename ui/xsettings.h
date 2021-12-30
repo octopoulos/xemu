@@ -87,13 +87,13 @@ typedef struct _XSettings
 	str2k dvd_path;
 	str2k eeprom_path;
 	str2k flash_path;
-	int hard_fpu;
+	int   hard_fpu;
 	str2k hdd_path;
-	int memory;
+	int   memory;
 
 	// [network]
-	int net_backend;
-	int net_enabled;
+	int   net_backend;
+	int   net_enabled;
 	str2k net_local_addr;
 	str2k net_pcap_iface;
 	str2k net_remote_addr;
@@ -101,13 +101,13 @@ typedef struct _XSettings
 	// [advanced]
 
 	// [emulator]
-	int performance_overlay;
-	int resize_height;
-	int resize_on_boot;
-	int resize_width;
-	int short_animation;
-	int start_fullscreen;
-	int startup_game;
+	int   performance_overlay;
+	int   resize_height;
+	int   resize_on_boot;
+	int   resize_width;
+	int   short_animation;
+	int   start_fullscreen;
+	int   startup_game;
 	str2k window_title;
 
 	// [gui]
@@ -117,18 +117,18 @@ typedef struct _XSettings
 	str2k intercept_filter;
 
 	// [misc]
-	int check_for_update;
+	int   check_for_update;
 	str2k user_token;
 } XSettings;
 
-int xsettingsCompare(XSettings* previous);
-void xsettingsDefaults(const char* section);
-int xsettingsFailed(void);
-void* xsettingsFind(const char* name);
+int         xsettingsCompare(XSettings* previous);
+void        xsettingsDefaults(const char* section);
+int         xsettingsFailed(void);
+void*       xsettingsFind(const char* name);
 const char* xsettingsFolder(const char* newFolder);
-void xsettingsInit(void);
-void xsettingsLoad(void);
-int xsettingsSave(void);
+void        xsettingsInit(void);
+void        xsettingsLoad(void);
+int         xsettingsSave(void);
 
 extern XSettings xsettings;
 

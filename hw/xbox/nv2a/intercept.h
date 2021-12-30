@@ -8,12 +8,12 @@ extern "C" {
 
 #include <stdint.h>
 
-typedef int16_t s16;
-typedef uint8_t u8;
+typedef int16_t  s16;
+typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
-typedef size_t usz;
+typedef size_t   usz;
 
 bool NewDrawBegin(int drawMode_);
 void NewDrawEnd(void);

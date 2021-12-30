@@ -25,8 +25,7 @@
 #include "qemu/osdep.h"
 #include "s3tc.h"
 
-static inline void decode_bc1_colors(
-	uint16_t c0, uint16_t c1, uint8_t r[4], uint8_t g[4], uint8_t b[4], uint8_t a[16], bool transparent)
+static inline void decode_bc1_colors(uint16_t c0, uint16_t c1, uint8_t r[4], uint8_t g[4], uint8_t b[4], uint8_t a[16], bool transparent)
 {
 	r[0] = ((c0 & 0xF800) >> 8) * 0xFF / 0xF8, g[0] = ((c0 & 0x07E0) >> 3) * 0xFF / 0xFC,
 	b[0] = ((c0 & 0x001F) << 3) * 0xFF / 0xF8, a[0] = 255;
@@ -59,45 +58,43 @@ static inline void decode_bc1_colors(
 	}
 }
 
-static inline void write_block_to_texture(
-	uint8_t* converted_data, uint32_t indices, int i, int j, int width, int z_pos_factor, uint8_t r[4], uint8_t g[4],
-	uint8_t b[4], uint8_t a[16], bool separate_alpha)
+static inline void write_block_to_texture(uint8_t* converted_data, uint32_t indices, int i, int j, int width, int z_pos_factor, uint8_t r[4], uint8_t g[4], uint8_t b[4], uint8_t a[16], bool separate_alpha)
 {
-	int x0 = i * 4, y0 = j * 4;
-
-	int x1 = x0 + 4, y1 = y0 + 4;
+	int x0 = i * 4;
+	int y0 = j * 4;
+	int x1 = x0 + 4;
+	int y1 = y0 + 4;
 
 	for (int y = y0; y < y1; y++)
 	{
-		int y_index = 4 * (y - y0);
+		int y_index             = 4 * (y - y0);
 		int z_plus_y_pos_factor = z_pos_factor + y * width;
 		for (int x = x0; x < x1; x++)
 		{
-			int xy_index = y_index + x - x0;
-			uint8_t index = (indices >> 2 * xy_index) & 0x03;
-			uint8_t alpha_index = separate_alpha ? xy_index : index;
-			uint32_t color = (r[index] << 24) | (g[index] << 16) | (b[index] << 8) | a[alpha_index];
+			int      xy_index    = y_index + x - x0;
+			uint8_t  index       = (indices >> 2 * xy_index) & 0x03;
+			uint8_t  alpha_index = separate_alpha ? xy_index : index;
+			uint32_t color       = (r[index] << 24) | (g[index] << 16) | (b[index] << 8) | a[alpha_index];
+
 			*(uint32_t*)(converted_data + (z_plus_y_pos_factor + x) * 4) = color;
 		}
 	}
 }
 
-static inline void decompress_dxt1_block(
-	const uint8_t block_data[8], uint8_t* converted_data, int i, int j, int width, int z_pos_factor)
+static inline void decompress_dxt1_block(const uint8_t block_data[8], uint8_t* converted_data, int i, int j, int width, int z_pos_factor)
 {
 	uint16_t c0 = ((uint16_t*)block_data)[0], c1 = ((uint16_t*)block_data)[1];
-	uint8_t r[4], g[4], b[4], a[16];
+	uint8_t  r[4], g[4], b[4], a[16];
 	decode_bc1_colors(c0, c1, r, g, b, a, c0 <= c1);
 
 	uint32_t indices = ((uint32_t*)block_data)[1];
 	write_block_to_texture(converted_data, indices, i, j, width, z_pos_factor, r, g, b, a, false);
 }
 
-static inline void decompress_dxt3_block(
-	const uint8_t block_data[16], uint8_t* converted_data, int i, int j, int width, int z_pos_factor)
+static inline void decompress_dxt3_block(const uint8_t block_data[16], uint8_t* converted_data, int i, int j, int width, int z_pos_factor)
 {
 	uint16_t c0 = ((uint16_t*)block_data)[4], c1 = ((uint16_t*)block_data)[5];
-	uint8_t r[4], g[4], b[4], a[16];
+	uint8_t  r[4], g[4], b[4], a[16];
 	decode_bc1_colors(c0, c1, r, g, b, a, false);
 
 	uint64_t alpha = ((uint64_t*)block_data)[0];
@@ -110,17 +107,16 @@ static inline void decompress_dxt3_block(
 	write_block_to_texture(converted_data, indices, i, j, width, z_pos_factor, r, g, b, a, true);
 }
 
-static inline void decompress_dxt5_block(
-	const uint8_t block_data[16], uint8_t* converted_data, int i, int j, int width, int z_pos_factor)
+static inline void decompress_dxt5_block(const uint8_t block_data[16], uint8_t* converted_data, int i, int j, int width, int z_pos_factor)
 {
 	uint16_t c0 = ((uint16_t*)block_data)[4], c1 = ((uint16_t*)block_data)[5];
-	uint8_t r[4], g[4], b[4], a[16];
+	uint8_t  r[4], g[4], b[4], a[16];
 	decode_bc1_colors(c0, c1, r, g, b, a, false);
 
 	uint64_t alpha = ((uint64_t*)block_data)[0];
-	uint8_t a0 = block_data[0];
-	uint8_t a1 = block_data[1];
-	uint8_t a_palette[8];
+	uint8_t  a0    = block_data[0];
+	uint8_t  a1    = block_data[1];
+	uint8_t  a_palette[8];
 	a_palette[0] = a0;
 	a_palette[1] = a1;
 	if (a0 > a1)
@@ -150,15 +146,18 @@ static inline void decompress_dxt5_block(
 	write_block_to_texture(converted_data, indices, i, j, width, z_pos_factor, r, g, b, a, true);
 }
 
-uint8_t* decompress_3d_texture_data(
-	GLint color_format, const uint8_t* data, uint32_t width, uint32_t height, uint32_t depth)
+uint8_t* decompress_3d_texture_data(GLint color_format, const uint8_t* data, uint32_t width, uint32_t height, uint32_t depth)
 {
 	assert((width > 0) && (width % 4 == 0));
 	assert((height > 0) && (height % 4 == 0));
 	assert((depth > 0) && (depth < 4 || depth % 4 == 0));
-	int block_depth = MIN(depth, 4);
-	int num_blocks_x = width / 4, num_blocks_y = height / 4, num_blocks_z = depth / block_depth;
+
+	int      block_depth    = MIN(depth, 4);
+	int      num_blocks_x   = width / 4;
+	int      num_blocks_y   = height / 4;
+	int      num_blocks_z   = depth / block_depth;
 	uint8_t* converted_data = (uint8_t*)g_malloc(width * height * depth * 4);
+
 	for (int k = 0; k < num_blocks_z; k++)
 	{
 		for (int j = 0; j < num_blocks_y; j++)
@@ -167,26 +166,18 @@ uint8_t* decompress_3d_texture_data(
 			{
 				for (int slice = 0; slice < block_depth; slice++)
 				{
-					int block_index = k * num_blocks_y * num_blocks_x + j * num_blocks_x + i;
+					int block_index     = k * num_blocks_y * num_blocks_x + j * num_blocks_x + i;
 					int sub_block_index = block_index * block_depth + slice;
-					int z_pos_factor = (k * block_depth + slice) * width * height;
+					int z_pos_factor    = (k * block_depth + slice) * width * height;
 
 					if (color_format == GL_COMPRESSED_RGBA_S3TC_DXT1_EXT)
-					{
 						decompress_dxt1_block(data + 8 * sub_block_index, converted_data, i, j, width, z_pos_factor);
-					}
 					else if (color_format == GL_COMPRESSED_RGBA_S3TC_DXT3_EXT)
-					{
 						decompress_dxt3_block(data + 16 * sub_block_index, converted_data, i, j, width, z_pos_factor);
-					}
 					else if (color_format == GL_COMPRESSED_RGBA_S3TC_DXT5_EXT)
-					{
 						decompress_dxt5_block(data + 16 * sub_block_index, converted_data, i, j, width, z_pos_factor);
-					}
 					else
-					{
 						assert(false);
-					}
 				}
 			}
 		}

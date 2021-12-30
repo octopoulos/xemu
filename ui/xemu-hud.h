@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 // Implemented in xemu.c
-int xemu_is_fullscreen(void);
+int  xemu_is_fullscreen(void);
 void xemu_monitor_init(void);
 void xemu_toggle_fullscreen(void);
 void xemu_eject_disc(void);

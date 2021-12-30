@@ -24,21 +24,10 @@
 extern "C" {
 #endif
 
-void swizzle_box(
-	const uint8_t* src_buf, uint32_t width, uint32_t height, uint32_t depth, uint8_t* dst_buf, uint32_t row_pitch,
-	uint32_t slice_pitch, uint32_t bytes_per_pixel);
-
-void unswizzle_box(
-	const uint8_t* src_buf, uint32_t width, uint32_t height, uint32_t depth, uint8_t* dst_buf, uint32_t row_pitch,
-	uint32_t slice_pitch, uint32_t bytes_per_pixel);
-
-void unswizzle_rect(
-	const uint8_t* src_buf, uint32_t width, uint32_t height, uint8_t* dst_buf, uint32_t pitch,
-	uint32_t bytes_per_pixel);
-
-void swizzle_rect(
-	const uint8_t* src_buf, uint32_t width, uint32_t height, uint8_t* dst_buf, uint32_t pitch,
-	uint32_t bytes_per_pixel);
+void swizzle_box(const uint8_t* src_buf, uint32_t width, uint32_t height, uint32_t depth, uint8_t* dst_buf, uint32_t row_pitch, uint32_t slice_pitch, uint32_t bytes_per_pixel);
+void unswizzle_box(const uint8_t* src_buf, uint32_t width, uint32_t height, uint32_t depth, uint8_t* dst_buf, uint32_t row_pitch, uint32_t slice_pitch, uint32_t bytes_per_pixel);
+void unswizzle_rect(const uint8_t* src_buf, uint32_t width, uint32_t height, uint8_t* dst_buf, uint32_t pitch, uint32_t bytes_per_pixel);
+void swizzle_rect(const uint8_t* src_buf, uint32_t width, uint32_t height, uint8_t* dst_buf, uint32_t pitch, uint32_t bytes_per_pixel);
 
 #ifdef __cplusplus
 }

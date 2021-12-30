@@ -34,21 +34,21 @@
 
 #define TYPE_CHARDEV_XEMU_MONITOR "chardev-xemu-monitor"
 
-static Chardev* mon_chr;
-static char mon_buffer[8 * 4096];
+static Chardev*     mon_chr;
+static char         mon_buffer[8 * 4096];
 static const size_t mon_buffer_size = 8 * 4096;
-static size_t offset;
+static size_t       offset;
 
 static void char_xemu_class_init(ObjectClass* oc, void* data);
 static void xemu_monitor_open(Chardev* chr, ChardevBackend* backend, bool* be_opened, Error** errp);
-static int xemu_monitor_buffer_append(Chardev* chr, const uint8_t* buf, size_t len);
+static int  xemu_monitor_buffer_append(Chardev* chr, const uint8_t* buf, size_t len);
 
 static void char_xemu_class_init(ObjectClass* oc, void* data)
 {
 	ChardevClass* cc = CHARDEV_CLASS(oc);
 
-	cc->internal = true;
-	cc->open = xemu_monitor_open;
+	cc->internal  = true;
+	cc->open      = xemu_monitor_open;
 	cc->chr_write = xemu_monitor_buffer_append;
 }
 
@@ -106,8 +106,8 @@ void xemu_run_monitor_command(const char* cmd)
 }
 
 static const TypeInfo char_xemu_type_info = {
-	.name = TYPE_CHARDEV_XEMU_MONITOR,
-	.parent = TYPE_CHARDEV,
+	.name       = TYPE_CHARDEV_XEMU_MONITOR,
+	.parent     = TYPE_CHARDEV,
 	.class_init = char_xemu_class_init,
 };
 

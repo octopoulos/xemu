@@ -39,8 +39,8 @@ const char* xemu_get_resource_path(const char* filename)
 	// Allocate an arbitrarily long buffer for resource path storage FIXME: This
 	// could be done better with a growing printf. Keep it simple for now.
 	const size_t resource_path_buffer_len = 1024;
-	static char* sdl_base_path = NULL;
-	static char* resource_path = NULL;
+	static char* sdl_base_path            = NULL;
+	static char* resource_path            = NULL;
 
 	if (!sdl_base_path)
 		sdl_base_path = SDL_GetBasePath();
