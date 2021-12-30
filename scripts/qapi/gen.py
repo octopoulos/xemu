@@ -49,6 +49,10 @@ class QAPIGen:
         self._preamble += text
 
     def add(self, text: str) -> None:
+        # ugly hack to get the header to be C++ compliant
+        text = text.replace('char *export;', 'char *pexport;')
+        text = text.replace('&obj->export', '&obj->pexport')
+
         self._body += text
 
     def get_content(self) -> str:

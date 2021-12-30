@@ -1,5 +1,8 @@
-#ifndef INPUT_H
-#define INPUT_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "qapi/qapi-types-ui.h"
 #include "qemu/notify.h"
@@ -117,4 +120,6 @@ extern const guint16 qemu_input_map_xorgxwin_to_qcode[];
 extern const guint qemu_input_map_osx_to_qcode_len;
 extern const guint16 qemu_input_map_osx_to_qcode[];
 
-#endif /* INPUT_H */
+#ifdef __cplusplus
+}
+#endif

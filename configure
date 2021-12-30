@@ -159,7 +159,7 @@ update_cxxflags() {
     # options which some versions of GCC's C++ compiler complain about
     # because they only make sense for C programs.
     QEMU_CXXFLAGS="$QEMU_CXXFLAGS -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS"
-    CONFIGURE_CXXFLAGS=$(echo "$CONFIGURE_CFLAGS" | sed s/-std=gnu11/-std=gnu++11/)
+    CONFIGURE_CXXFLAGS=$(echo "$CONFIGURE_CFLAGS" | sed s/-std=gnu11/-std=gnu++20/)
     for arg in $QEMU_CFLAGS; do
         case $arg in
             -Wstrict-prototypes|-Wmissing-prototypes|-Wnested-externs|\
@@ -261,7 +261,7 @@ else
     git_submodules_action="ignore"
 fi
 
-git_submodules="ui/keycodemapdb ui/imgui ui/implot util/xxHash"
+git_submodules="ui/keycodemapdb ui/ImFileDialog ui/imgui ui/implot util/xxHash"
 git="git"
 
 # Don't accept a target_list environment variable.
@@ -3580,6 +3580,18 @@ else
 fi
 
 ##########################################
+# extra stuff
+if test "$mingw32" = "yes"; then
+    QEMU_CFLAGS="$QEMU_CFLAGS -I/mingw64/include"
+    QEMU_LDFLAGS="$QEMU_LDFLAGS -liphlpapi -lfmt"
+fi
+
+fmt_cflags=$($pkg_config --cflags fmt)
+fmt_libs=$($pkg_config --libs fmt)
+
+rapidjson_cflags=$($pkg_config --cflags rapidjson)
+
+##########################################
 # libnuma probe
 
 if test "$numa" != "no" ; then
@@ -4918,6 +4930,11 @@ echo "LIBPCAP_LIBS=$libpcap_libs" >> $config_host_mak
 
 echo "LIBSAMPLERATE_CFLAGS=$libsamplerate_cflags" >> $config_host_mak
 echo "LIBSAMPLERATE_LIBS=$libsamplerate_libs" >> $config_host_mak
+
+# extra
+echo "FMT_CFLAGS=$fmt_cflags" >> $config_host_mak
+echo "FMT_LIBS=$fmt_libs" >> $config_host_mak
+echo "RAPIDJSON_CFLAGS=$rapidjson_cflags" >> $config_host_mak
 
 if test "$replication" = "yes" ; then
   echo "CONFIG_REPLICATION=y" >> $config_host_mak

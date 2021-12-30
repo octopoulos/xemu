@@ -199,7 +199,7 @@ typedef struct SpaprDrcClass {
 
     /*< public >*/
     SpaprDrcTypeShift typeshift;
-    const char *typename; /* used in device tree, PAPR 13.5.2.6 & C.6.1 */
+    const char *typeName; /* used in device tree, PAPR 13.5.2.6 & C.6.1 */
     const char *drc_name_prefix; /* used other places in device tree */
 
     SpaprDREntitySense (*dr_entity_sense)(SpaprDrc *drc);

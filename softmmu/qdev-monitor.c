@@ -47,12 +47,12 @@
  */
 typedef struct QDevAlias
 {
-    const char *typename;
+    const char *typeName;
     const char *alias;
     uint32_t arch_mask;
 } QDevAlias;
 
-/* Please keep this table sorted by typename. */
+/* Please keep this table sorted by typeName. */
 static const QDevAlias qdev_alias_table[] = {
     { "AC97", "ac97" }, /* -soundhw name */
     { "e1000", "e1000-82540em" },
@@ -101,16 +101,16 @@ static const QDevAlias qdev_alias_table[] = {
 
 static const char *qdev_class_get_alias(DeviceClass *dc)
 {
-    const char *typename = object_class_get_name(OBJECT_CLASS(dc));
+    const char *typeName = object_class_get_name(OBJECT_CLASS(dc));
     int i;
 
-    for (i = 0; qdev_alias_table[i].typename; i++) {
+    for (i = 0; qdev_alias_table[i].typeName; i++) {
         if (qdev_alias_table[i].arch_mask &&
             !(qdev_alias_table[i].arch_mask & arch_type)) {
             continue;
         }
 
-        if (strcmp(qdev_alias_table[i].typename, typename) == 0) {
+        if (strcmp(qdev_alias_table[i].typeName, typeName) == 0) {
             return qdev_alias_table[i].alias;
         }
     }
@@ -212,7 +212,7 @@ static const char *find_typename_by_alias(const char *alias)
         }
 
         if (strcmp(qdev_alias_table[i].alias, alias) == 0) {
-            return qdev_alias_table[i].typename;
+            return qdev_alias_table[i].typeName;
         }
     }
 
@@ -227,10 +227,10 @@ static DeviceClass *qdev_get_device_class(const char **driver, Error **errp)
 
     oc = module_object_class_by_name(*driver);
     if (!oc) {
-        const char *typename = find_typename_by_alias(*driver);
+        const char *typeName = find_typename_by_alias(*driver);
 
-        if (typename) {
-            *driver = typename;
+        if (typeName) {
+            *driver = typeName;
             oc = module_object_class_by_name(*driver);
         }
     }
@@ -283,10 +283,10 @@ int qdev_device_help(QemuOpts *opts)
     }
 
     if (!object_class_by_name(driver)) {
-        const char *typename = find_typename_by_alias(driver);
+        const char *typeName = find_typename_by_alias(driver);
 
-        if (typename) {
-            driver = typename;
+        if (typeName) {
+            driver = typeName;
         }
     }
 

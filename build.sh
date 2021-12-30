@@ -96,7 +96,7 @@ package_linux() {
 postbuild=''
 debug_opts=''
 build_cflags='-O3'
-default_job_count='12'
+default_job_count='10'
 sys_ldflags=''
 
 get_job_count () {

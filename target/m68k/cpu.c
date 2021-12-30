@@ -88,11 +88,11 @@ static void m68k_cpu_disas_set_info(CPUState *s, disassemble_info *info)
 static ObjectClass *m68k_cpu_class_by_name(const char *cpu_model)
 {
     ObjectClass *oc;
-    char *typename;
+    char *typeName;
 
-    typename = g_strdup_printf(M68K_CPU_TYPE_NAME("%s"), cpu_model);
-    oc = object_class_by_name(typename);
-    g_free(typename);
+    typeName = g_strdup_printf(M68K_CPU_TYPE_NAME("%s"), cpu_model);
+    oc = object_class_by_name(typeName);
+    g_free(typeName);
     if (oc != NULL && (object_class_dynamic_cast(oc, TYPE_M68K_CPU) == NULL ||
                        object_class_is_abstract(oc))) {
         return NULL;

@@ -30,44 +30,44 @@
 
 #include "gloffscreen.h"
 
-
-void glo_readpixels(GLenum gl_format, GLenum gl_type,
-                    unsigned int bytes_per_pixel, unsigned int stride,
-                    unsigned int width, unsigned int height, bool vflip,
-                    void *data)
+void glo_readpixels(
+	GLenum gl_format, GLenum gl_type, uint32_t bytes_per_pixel, uint32_t stride, uint32_t width, uint32_t height,
+	bool vflip, void* data)
 {
-    /* TODO: weird strides */
-    assert(stride % bytes_per_pixel == 0);
+	/* TODO: weird strides */
+	assert(stride % bytes_per_pixel == 0);
 
-    /* Save guest processes GL state before we ReadPixels() */
-    int rl, pa;
-    glGetIntegerv(GL_PACK_ROW_LENGTH, &rl);
-    glGetIntegerv(GL_PACK_ALIGNMENT, &pa);
-    glPixelStorei(GL_PACK_ROW_LENGTH, stride / bytes_per_pixel);
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+	/* Save guest processes GL state before we ReadPixels() */
+	int rl, pa;
+	glGetIntegerv(GL_PACK_ROW_LENGTH, &rl);
+	glGetIntegerv(GL_PACK_ALIGNMENT, &pa);
+	glPixelStorei(GL_PACK_ROW_LENGTH, stride / bytes_per_pixel);
+	glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
-    glReadPixels(0, 0, width, height, gl_format, gl_type, data);
+	glReadPixels(0, 0, width, height, gl_format, gl_type, data);
 
-    if (vflip) {
-        GLubyte *b = (GLubyte *) data;
-        GLubyte *c = &((GLubyte *) data)[stride * (height - 1)];
-        GLubyte *tmp = (GLubyte *) malloc(width * bytes_per_pixel);
-            for (int irow = 0; irow < height / 2; irow++) {
-            memcpy(tmp, b, width * bytes_per_pixel);
-            memcpy(b, c, width * bytes_per_pixel);
-            memcpy(c, tmp, width * bytes_per_pixel);
-            b += stride;
-            c -= stride;
-        }
-        free(tmp);
-    }
+	if (vflip)
+	{
+		GLubyte* b = (GLubyte*)data;
+		GLubyte* c = &((GLubyte*)data)[stride * (height - 1)];
+		GLubyte* tmp = (GLubyte*)malloc(width * bytes_per_pixel);
+		for (uint32_t irow = 0; irow < height / 2; irow++)
+		{
+			memcpy(tmp, b, width * bytes_per_pixel);
+			memcpy(b, c, width * bytes_per_pixel);
+			memcpy(c, tmp, width * bytes_per_pixel);
+			b += stride;
+			c -= stride;
+		}
+		free(tmp);
+	}
 
-    /* Restore GL state */
-    glPixelStorei(GL_PACK_ROW_LENGTH, rl);
-    glPixelStorei(GL_PACK_ALIGNMENT, pa);
+	/* Restore GL state */
+	glPixelStorei(GL_PACK_ROW_LENGTH, rl);
+	glPixelStorei(GL_PACK_ALIGNMENT, pa);
 }
 
 bool glo_check_extension(const char* ext_name)
 {
-    return epoxy_has_gl_extension(ext_name);
+	return epoxy_has_gl_extension(ext_name);
 }

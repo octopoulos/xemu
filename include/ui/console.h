@@ -1,5 +1,8 @@
-#ifndef CONSOLE_H
-#define CONSOLE_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "ui/qemu-pixman.h"
 #include "qom/object.h"
@@ -474,4 +477,6 @@ int index_from_key(const char *key, size_t key_length);
 /* udmabuf.c */
 int udmabuf_fd(void);
 
+#ifdef __cplusplus
+}
 #endif

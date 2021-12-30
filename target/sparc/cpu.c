@@ -106,17 +106,17 @@ static void cpu_sparc_disas_set_info(CPUState *cpu, disassemble_info *info)
 }
 
 static void
-cpu_add_feat_as_prop(const char *typename, const char *name, const char *val)
+cpu_add_feat_as_prop(const char *typeName, const char *name, const char *val)
 {
     GlobalProperty *prop = g_new0(typeof(*prop), 1);
-    prop->driver = typename;
+    prop->driver = typeName;
     prop->property = g_strdup(name);
     prop->value = g_strdup(val);
     qdev_prop_register_global(prop);
 }
 
 /* Parse "+feature,-feature,feature=foo" CPU feature string */
-static void sparc_cpu_parse_features(const char *typename, char *features,
+static void sparc_cpu_parse_features(const char *typeName, char *features,
                                      Error **errp)
 {
     GList *l, *plus_features = NULL, *minus_features = NULL;
@@ -178,18 +178,18 @@ static void sparc_cpu_parse_features(const char *typename, char *features,
             error_setg(errp, "Unsupported property format: %s", name);
             return;
         }
-        cpu_add_feat_as_prop(typename, name, val);
+        cpu_add_feat_as_prop(typeName, name, val);
     }
 
     for (l = plus_features; l; l = l->next) {
         const char *name = l->data;
-        cpu_add_feat_as_prop(typename, name, "on");
+        cpu_add_feat_as_prop(typeName, name, "on");
     }
     g_list_free_full(plus_features, g_free);
 
     for (l = minus_features; l; l = l->next) {
         const char *name = l->data;
-        cpu_add_feat_as_prop(typename, name, "off");
+        cpu_add_feat_as_prop(typeName, name, "off");
     }
     g_list_free_full(minus_features, g_free);
 }
@@ -727,11 +727,11 @@ static char *sparc_cpu_type_name(const char *cpu_model)
 static ObjectClass *sparc_cpu_class_by_name(const char *cpu_model)
 {
     ObjectClass *oc;
-    char *typename;
+    char *typeName;
 
-    typename = sparc_cpu_type_name(cpu_model);
-    oc = object_class_by_name(typename);
-    g_free(typename);
+    typeName = sparc_cpu_type_name(cpu_model);
+    oc = object_class_by_name(typeName);
+    g_free(typeName);
     return oc;
 }
 
@@ -927,16 +927,16 @@ static void sparc_cpu_cpudef_class_init(ObjectClass *oc, void *data)
 
 static void sparc_register_cpudef_type(const struct sparc_def_t *def)
 {
-    char *typename = sparc_cpu_type_name(def->name);
+    char *typeName = sparc_cpu_type_name(def->name);
     TypeInfo ti = {
-        .name = typename,
+        .name = typeName,
         .parent = TYPE_SPARC_CPU,
         .class_init = sparc_cpu_cpudef_class_init,
         .class_data = (void *)def,
     };
 
     type_register(&ti);
-    g_free(typename);
+    g_free(typeName);
 }
 
 static void sparc_cpu_register_types(void)

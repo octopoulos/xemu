@@ -51,7 +51,7 @@ typedef struct PlatformBusFDTData {
 
 /* struct that allows to match a device and create its FDT node */
 typedef struct BindingEntry {
-    const char *typename;
+    const char *typeName;
     const char *compat;
     int  (*add_fn)(SysBusDevice *sbdev, void *opaque);
     bool (*match_fn)(SysBusDevice *sbdev, const struct BindingEntry *combo);
@@ -478,7 +478,7 @@ static int no_fdt_node(SysBusDevice *sbdev, void *opaque)
 /* Device type based matching */
 static bool type_match(SysBusDevice *sbdev, const BindingEntry *entry)
 {
-    return !strcmp(object_get_typename(OBJECT(sbdev)), entry->typename);
+    return !strcmp(object_get_typename(OBJECT(sbdev)), entry->typeName);
 }
 
 #define TYPE_BINDING(type, add_fn) {(type), NULL, (add_fn), NULL}

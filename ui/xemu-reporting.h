@@ -19,15 +19,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef XEMU_REPORTING_H
-#define XEMU_REPORTING_H
+#pragma once
 
 #include <string>
 #include <stdint.h>
 
 #include "xemu-xbe.h"
 
-class CompatibilityReport {
+class CompatibilityReport
+{
 public:
 	std::string token;
 	std::string xemu_version;
@@ -55,9 +55,7 @@ public:
 	~CompatibilityReport();
 	bool Send();
 	int GetResultCode() { return result_code; }
-	std::string &GetResultMessage() { return result_msg; }
-	const std::string &GetSerializedReport();
-	void SetXbeData(struct xbe *xbe);
+	std::string& GetResultMessage() { return result_msg; }
+	const std::string& GetSerializedReport();
+	void SetXbeData(struct xbe* xbe);
 };
-
-#endif

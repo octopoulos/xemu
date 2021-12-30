@@ -22,20 +22,15 @@
 #include "nv2a_int.h"
 
 #define DEFINE_STUB(name, region_id) \
-    uint64_t name ## _read(void *opaque, \
-                           hwaddr addr, \
-                           unsigned int size) \
-    { \
-        nv2a_reg_log_read(region_id, addr, 0); \
-        return 0; \
-    } \
-    void name ## _write(void *opaque, \
-                        hwaddr addr, \
-                        uint64_t val, \
-                        unsigned int size) \
-    { \
-        nv2a_reg_log_write(region_id, addr, val); \
-    } \
+	uint64_t name##_read(void* opaque, hwaddr addr, unsigned int size) \
+	{ \
+		nv2a_reg_log_read(region_id, addr, 0); \
+		return 0; \
+	} \
+	void name##_write(void* opaque, hwaddr addr, uint64_t val, unsigned int size) \
+	{ \
+		nv2a_reg_log_write(region_id, addr, val); \
+	}
 
 DEFINE_STUB(prma, NV_PRMA)
 DEFINE_STUB(pcounter, NV_PCOUNTER)

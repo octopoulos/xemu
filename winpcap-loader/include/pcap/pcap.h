@@ -38,7 +38,7 @@
 #define lib_pcap_pcap_h
 
 #if defined(WIN32)
-  #include <pcap-stdinc.h>
+  #include "../pcap-stdinc.h"
 #elif defined(MSDOS)
   #include <sys/types.h>
   #include <sys/socket.h>  /* u_int, u_char etc. */
@@ -48,7 +48,7 @@
 #endif /* WIN32/MSDOS/UN*X */
 
 #ifndef PCAP_DONT_INCLUDE_PCAP_BPF_H
-#include <pcap/bpf.h>
+#include "bpf.h"
 #endif
 
 #include <stdio.h>
@@ -138,7 +138,7 @@ struct pcap_file_header {
 
 /*
  * Macros for the value returned by pcap_datalink_ext().
- * 
+ *
  * If LT_FCS_LENGTH_PRESENT(x) is true, the LT_FCS_LENGTH(x) macro
  * gives the FCS length of packets in the capture.
  */

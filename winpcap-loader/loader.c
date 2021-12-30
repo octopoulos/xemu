@@ -18,7 +18,7 @@
  */
 
 #include "qemu/osdep.h"
-#include <pcap/pcap.h>
+#include "include/pcap/pcap.h"
 #include <string.h>
 
 const char *lib_not_loaded_err = "winpcap library is not loaded";

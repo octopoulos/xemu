@@ -1,6 +1,7 @@
 specific_ss.add(files(
+	'debug.cpp',
+	'intercept.cpp',
 	'nv2a.c',
-	'debug.c',
 	'pbus.c',
 	'pcrtc.c',
 	'pfb.c',
@@ -11,14 +12,14 @@ specific_ss.add(files(
 	'prmcio.c',
 	'prmdio.c',
 	'prmvio.c',
-	'psh.c',
+	'psh.cpp',
 	'ptimer.c',
 	'pvideo.c',
-	'shaders.c',
+	's3tc.cpp',
+	'shaders.cpp',
 	'stubs.c',
+	'swizzle.cpp',
 	'user.c',
-	'vsh.c',
-	'swizzle.c',
-	's3tc.c',
+	'vsh.cpp',
 	))
 subdir('gl')

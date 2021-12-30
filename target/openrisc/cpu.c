@@ -127,11 +127,11 @@ static void openrisc_cpu_initfn(Object *obj)
 static ObjectClass *openrisc_cpu_class_by_name(const char *cpu_model)
 {
     ObjectClass *oc;
-    char *typename;
+    char *typeName;
 
-    typename = g_strdup_printf(OPENRISC_CPU_TYPE_NAME("%s"), cpu_model);
-    oc = object_class_by_name(typename);
-    g_free(typename);
+    typeName = g_strdup_printf(OPENRISC_CPU_TYPE_NAME("%s"), cpu_model);
+    oc = object_class_by_name(typeName);
+    g_free(typeName);
     if (oc != NULL && (!object_class_dynamic_cast(oc, TYPE_OPENRISC_CPU) ||
                        object_class_is_abstract(oc))) {
         return NULL;
@@ -240,12 +240,12 @@ static gint openrisc_cpu_list_compare(gconstpointer a, gconstpointer b)
 static void openrisc_cpu_list_entry(gpointer data, gpointer user_data)
 {
     ObjectClass *oc = data;
-    const char *typename;
+    const char *typeName;
     char *name;
 
-    typename = object_class_get_name(oc);
-    name = g_strndup(typename,
-                     strlen(typename) - strlen("-" TYPE_OPENRISC_CPU));
+    typeName = object_class_get_name(oc);
+    name = g_strndup(typeName,
+                     strlen(typeName) - strlen("-" TYPE_OPENRISC_CPU));
     qemu_printf("  %s\n", name);
     g_free(name);
 }

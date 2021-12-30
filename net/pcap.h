@@ -20,7 +20,7 @@
 #ifndef NET_PCAP_H
 #define NET_PCAP_H
 
-#include <pcap/pcap.h>
+#include "../winpcap-loader/include/pcap.h"
 
 #if defined(_WIN32)
 #include "net/capture_win_ifnames.h"

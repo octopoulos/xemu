@@ -17,8 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef XEMU_UPDATE_H
-#define XEMU_UPDATE_H
+#pragma once
 
 #include <string>
 #include <stdint.h>
@@ -30,13 +29,15 @@ extern "C" {
 #include "qemu/thread.h"
 }
 
-typedef enum {
+typedef enum
+{
 	UPDATE_AVAILABILITY_UNKNOWN,
 	UPDATE_NOT_AVAILABLE,
 	UPDATE_AVAILABLE
 } UpdateAvailability;
 
-typedef enum {
+typedef enum
+{
 	UPDATER_IDLE,
 	UPDATER_ERROR,
 	UPDATER_CHECKING_FOR_UPDATE,
@@ -46,15 +47,16 @@ typedef enum {
 
 using UpdaterCallback = std::function<void(void)>;
 
-class Updater {
+class Updater
+{
 private:
-	UpdateAvailability  m_update_availability;
-	int                 m_update_percentage;
-	QemuThread          m_thread;
-	std::string         m_latest_version;
-	bool                m_should_cancel;
-	UpdateStatus        m_status;
-	UpdaterCallback     m_on_complete;
+	UpdateAvailability m_update_availability;
+	int m_update_percentage;
+	QemuThread m_thread;
+	std::string m_latest_version;
+	bool m_should_cancel;
+	UpdateStatus m_status;
+	UpdaterCallback m_on_complete;
 
 public:
 	Updater();
@@ -72,9 +74,7 @@ public:
 	void check_for_update(UpdaterCallback on_complete = nullptr);
 	void check_for_update_internal();
 	int get_update_progress_percentage() { return m_update_percentage; }
-	static void *update_thread_worker_func(void *updater);
-	static void *checker_thread_worker_func(void *updater);
+	static void* update_thread_worker_func(void* updater);
+	static void* checker_thread_worker_func(void* updater);
 	void restart_to_updated(void);
 };
-
-#endif

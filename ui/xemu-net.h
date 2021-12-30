@@ -19,8 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef XEMU_NETWORK_H
-#define XEMU_NETWORK_H
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,6 +31,4 @@ int xemu_net_is_enabled(void);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

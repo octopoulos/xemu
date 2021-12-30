@@ -1,5 +1,5 @@
 project('qemu', ['c'], meson_version: '>=0.55.0',
-        default_options: ['warning_level=1', 'c_std=gnu11', 'cpp_std=gnu++11', 'b_colorout=auto'] +
+        default_options: ['warning_level=1', 'c_std=gnu11', 'cpp_std=gnu++20', 'b_colorout=auto'] +
                          (meson.version().version_compare('>=0.56.0') ? [ 'b_staticpic=false' ] : []),
         version: run_command('head', meson.source_root() / 'VERSION').stdout().strip())
 
@@ -848,6 +848,11 @@ libpcap = declare_dependency(compile_args: config_host['LIBPCAP_CFLAGS'].split()
 
 libsamplerate = declare_dependency(compile_args: config_host['LIBSAMPLERATE_CFLAGS'].split(),
                                    link_args: config_host['LIBSAMPLERATE_LIBS'].split())
+
+# extra
+fmt = declare_dependency(compile_args: config_host['FMT_CFLAGS'].split(),
+                         link_args: config_host['FMT_LIBS'].split())
+rapidjson = declare_dependency(compile_args: config_host['RAPIDJSON_CFLAGS'].split())
 
 gnutls = not_found
 gnutls_crypto = not_found

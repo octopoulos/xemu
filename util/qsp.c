@@ -661,7 +661,7 @@ static char *qsp_at(const QSPCallSite *callsite)
 struct QSPReportEntry {
     const void *obj;
     char *callsite_at;
-    const char *typename;
+    const char *typeName;
     double time_s;
     double ns_avg;
     uint64_t n_acqs;
@@ -691,7 +691,7 @@ static gboolean qsp_tree_report(gpointer key, gpointer value, gpointer udata)
     entry->obj = e->callsite->obj;
     entry->n_objs = e->n_objs;
     entry->callsite_at = qsp_at(e->callsite);
-    entry->typename = qsp_typenames[e->callsite->type];
+    entry->typeName = qsp_typenames[e->callsite->type];
     entry->time_s = e->ns * 1e-9;
     entry->n_acqs = e->n_acqs;
     entry->ns_avg = e->n_acqs ? e->ns / e->n_acqs : 0;
@@ -735,7 +735,7 @@ static void pr_report(const QSPReport *rep)
         const QSPReportEntry *e = &rep->entries[i];
         GString *s = g_string_new(NULL);
 
-        g_string_append_printf(s, "%-9s  ", e->typename);
+        g_string_append_printf(s, "%-9s  ", e->typeName);
         if (e->n_objs > 1) {
             g_string_append_printf(s, "[%12u]", e->n_objs);
         } else {

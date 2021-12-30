@@ -1,5 +1,9 @@
-#ifndef MONITOR_QDEV_H
-#define MONITOR_QDEV_H
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*** monitor commands ***/
 
@@ -11,4 +15,6 @@ int qdev_device_help(QemuOpts *opts);
 DeviceState *qdev_device_add(QemuOpts *opts, Error **errp);
 void qdev_set_id(DeviceState *dev, const char *id);
 
+#ifdef __cplusplus
+}
 #endif

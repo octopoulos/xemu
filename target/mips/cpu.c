@@ -506,11 +506,11 @@ static char *mips_cpu_type_name(const char *cpu_model)
 static ObjectClass *mips_cpu_class_by_name(const char *cpu_model)
 {
     ObjectClass *oc;
-    char *typename;
+    char *typeName;
 
-    typename = mips_cpu_type_name(cpu_model);
-    oc = object_class_by_name(typename);
-    g_free(typename);
+    typeName = mips_cpu_type_name(cpu_model);
+    oc = object_class_by_name(typeName);
+    g_free(typeName);
     return oc;
 }
 
@@ -597,16 +597,16 @@ static void mips_cpu_cpudef_class_init(ObjectClass *oc, void *data)
 
 static void mips_register_cpudef_type(const struct mips_def_t *def)
 {
-    char *typename = mips_cpu_type_name(def->name);
+    char *typeName = mips_cpu_type_name(def->name);
     TypeInfo ti = {
-        .name = typename,
+        .name = typeName,
         .parent = TYPE_MIPS_CPU,
         .class_init = mips_cpu_cpudef_class_init,
         .class_data = (void *)def,
     };
 
     type_register(&ti);
-    g_free(typename);
+    g_free(typeName);
 }
 
 static void mips_cpu_register_types(void)
@@ -626,13 +626,13 @@ static void mips_cpu_add_definition(gpointer data, gpointer user_data)
     ObjectClass *oc = data;
     CpuDefinitionInfoList **cpu_list = user_data;
     CpuDefinitionInfo *info;
-    const char *typename;
+    const char *typeName;
 
-    typename = object_class_get_name(oc);
+    typeName = object_class_get_name(oc);
     info = g_malloc0(sizeof(*info));
-    info->name = g_strndup(typename,
-                           strlen(typename) - strlen("-" TYPE_MIPS_CPU));
-    info->q_typename = g_strdup(typename);
+    info->name = g_strndup(typeName,
+                           strlen(typeName) - strlen("-" TYPE_MIPS_CPU));
+    info->q_typename = g_strdup(typeName);
 
     QAPI_LIST_PREPEND(*cpu_list, info);
 }

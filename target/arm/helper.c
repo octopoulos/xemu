@@ -8730,11 +8730,11 @@ static gint arm_cpu_list_compare(gconstpointer a, gconstpointer b)
 static void arm_cpu_list_entry(gpointer data, gpointer user_data)
 {
     ObjectClass *oc = data;
-    const char *typename;
+    const char *typeName;
     char *name;
 
-    typename = object_class_get_name(oc);
-    name = g_strndup(typename, strlen(typename) - strlen("-" TYPE_ARM_CPU));
+    typeName = object_class_get_name(oc);
+    name = g_strndup(typeName, strlen(typeName) - strlen("-" TYPE_ARM_CPU));
     qemu_printf("  %s\n", name);
     g_free(name);
 }
@@ -8755,13 +8755,13 @@ static void arm_cpu_add_definition(gpointer data, gpointer user_data)
     ObjectClass *oc = data;
     CpuDefinitionInfoList **cpu_list = user_data;
     CpuDefinitionInfo *info;
-    const char *typename;
+    const char *typeName;
 
-    typename = object_class_get_name(oc);
+    typeName = object_class_get_name(oc);
     info = g_malloc0(sizeof(*info));
-    info->name = g_strndup(typename,
-                           strlen(typename) - strlen("-" TYPE_ARM_CPU));
-    info->q_typename = g_strdup(typename);
+    info->name = g_strndup(typeName,
+                           strlen(typeName) - strlen("-" TYPE_ARM_CPU));
+    info->q_typename = g_strdup(typeName);
 
     QAPI_LIST_PREPEND(*cpu_list, info);
 }

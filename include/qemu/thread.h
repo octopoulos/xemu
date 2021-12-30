@@ -1,5 +1,8 @@
-#ifndef QEMU_THREAD_H
-#define QEMU_THREAD_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "qemu/processor.h"
 #include "qemu/atomic.h"
@@ -397,4 +400,6 @@ void qemu_lockcnt_inc_and_unlock(QemuLockCnt *lockcnt);
  */
 unsigned qemu_lockcnt_count(QemuLockCnt *lockcnt);
 
+#ifdef __cplusplus
+}
 #endif

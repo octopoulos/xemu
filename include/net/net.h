@@ -1,5 +1,8 @@
-#ifndef QEMU_NET_H
-#define QEMU_NET_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "qemu/queue.h"
 #include "qapi/qapi-types-net.h"
@@ -248,4 +251,6 @@ static inline bool net_peer_needs_padding(NetClientState *nc)
   return nc->peer && !nc->peer->do_not_pad;
 }
 
+#ifdef __cplusplus
+}
 #endif

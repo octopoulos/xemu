@@ -49,7 +49,7 @@ DECLARE_INSTANCE_CHECKER(UdpChardev, UDP_CHARDEV,
                          TYPE_CHARDEV_UDP)
 
 /* Called with chr_write_lock held.  */
-static int udp_chr_write(Chardev *chr, const uint8_t *buf, int len)
+static int udp_chr_write(Chardev *chr, const uint8_t *buf, size_t len)
 {
     UdpChardev *s = UDP_CHARDEV(chr);
 

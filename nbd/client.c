@@ -646,11 +646,11 @@ static QIOChannel *nbd_receive_starttls(QIOChannel *ioc,
  * Return 0 on success, -1 with errp set for any error
  */
 static int nbd_send_meta_query(QIOChannel *ioc, uint32_t opt,
-                               const char *export, const char *query,
+                               const char *pexport, const char *query,
                                Error **errp)
 {
     int ret;
-    uint32_t export_len = strlen(export);
+    uint32_t export_len = strlen(pexport);
     uint32_t queries = !!query;
     uint32_t query_len = 0;
     uint32_t data_len;
@@ -668,9 +668,9 @@ static int nbd_send_meta_query(QIOChannel *ioc, uint32_t opt,
     }
     p = data = g_malloc(data_len);
 
-    trace_nbd_opt_meta_request(nbd_opt_lookup(opt), query ?: "(all)", export);
+    trace_nbd_opt_meta_request(nbd_opt_lookup(opt), query ?: "(all)", pexport);
     stl_be_p(p, export_len);
-    memcpy(p += sizeof(export_len), export, export_len);
+    memcpy(p += sizeof(export_len), pexport, export_len);
     stl_be_p(p += export_len, queries);
     if (query) {
         stl_be_p(p += sizeof(queries), query_len);

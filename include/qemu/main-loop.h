@@ -22,8 +22,11 @@
  * THE SOFTWARE.
  */
 
-#ifndef QEMU_MAIN_LOOP_H
-#define QEMU_MAIN_LOOP_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "block/aio.h"
 
@@ -320,4 +323,6 @@ void qemu_mutex_lock_main_loop(void);
 void qemu_mutex_unlock_main_loop(void);
 #endif
 
+#ifdef __cplusplus
+}
 #endif

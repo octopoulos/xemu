@@ -41,7 +41,7 @@ typedef struct TypeImpl TypeImpl;
 
 struct InterfaceImpl
 {
-    const char *typename;
+    const char *typeName;
 };
 
 struct TypeImpl
@@ -129,7 +129,7 @@ static TypeImpl *type_new(const TypeInfo *info)
     ti->abstract = info->abstract;
 
     for (i = 0; info->interfaces && info->interfaces[i].type; i++) {
-        ti->interfaces[i].typename = g_strdup(info->interfaces[i].type);
+        ti->interfaces[i].typeName = g_strdup(info->interfaces[i].type);
     }
     ti->num_interfaces = i;
 
@@ -219,9 +219,9 @@ static size_t type_object_get_size(TypeImpl *ti)
     return 0;
 }
 
-size_t object_type_get_instance_size(const char *typename)
+size_t object_type_get_instance_size(const char *typeName)
 {
-    TypeImpl *type = type_get_by_name(typename);
+    TypeImpl *type = type_get_by_name(typeName);
 
     g_assert(type != NULL);
     return type_object_get_size(type);
@@ -327,10 +327,10 @@ static void type_initialize(TypeImpl *ti)
         }
 
         for (i = 0; i < ti->num_interfaces; i++) {
-            TypeImpl *t = type_get_by_name(ti->interfaces[i].typename);
+            TypeImpl *t = type_get_by_name(ti->interfaces[i].typeName);
             if (!t) {
                 error_report("missing interface '%s' for object '%s'",
-                             ti->interfaces[i].typename, parent->name);
+                             ti->interfaces[i].typeName, parent->name);
                 abort();
             }
             for (e = ti->class->interfaces; e; e = e->next) {
@@ -519,18 +519,18 @@ static void object_initialize_with_type(Object *obj, size_t size, TypeImpl *type
     object_post_init_with_type(obj, type);
 }
 
-void object_initialize(void *data, size_t size, const char *typename)
+void object_initialize(void *data, size_t size, const char *typeName)
 {
-    TypeImpl *type = type_get_by_name(typename);
+    TypeImpl *type = type_get_by_name(typeName);
 
 #ifdef CONFIG_MODULES
     if (!type) {
-        module_load_qom_one(typename);
-        type = type_get_by_name(typename);
+        module_load_qom_one(typeName);
+        type = type_get_by_name(typeName);
     }
 #endif
     if (!type) {
-        error_report("missing object type '%s'", typename);
+        error_report("missing object type '%s'", typeName);
         abort();
     }
 
@@ -741,15 +741,15 @@ Object *object_new_with_class(ObjectClass *klass)
     return object_new_with_type(klass->type);
 }
 
-Object *object_new(const char *typename)
+Object *object_new(const char *typeName)
 {
-    TypeImpl *ti = type_get_by_name(typename);
+    TypeImpl *ti = type_get_by_name(typeName);
 
     return object_new_with_type(ti);
 }
 
 
-Object *object_new_with_props(const char *typename,
+Object *object_new_with_props(const char *typeName,
                               Object *parent,
                               const char *id,
                               Error **errp,
@@ -759,14 +759,14 @@ Object *object_new_with_props(const char *typename,
     Object *obj;
 
     va_start(vargs, errp);
-    obj = object_new_with_propv(typename, parent, id, errp, vargs);
+    obj = object_new_with_propv(typeName, parent, id, errp, vargs);
     va_end(vargs);
 
     return obj;
 }
 
 
-Object *object_new_with_propv(const char *typename,
+Object *object_new_with_propv(const char *typeName,
                               Object *parent,
                               const char *id,
                               Error **errp,
@@ -776,14 +776,14 @@ Object *object_new_with_propv(const char *typename,
     ObjectClass *klass;
     UserCreatable *uc;
 
-    klass = object_class_by_name(typename);
+    klass = object_class_by_name(typeName);
     if (!klass) {
-        error_setg(errp, "invalid object type: %s", typename);
+        error_setg(errp, "invalid object type: %s", typeName);
         return NULL;
     }
 
     if (object_class_is_abstract(klass)) {
-        error_setg(errp, "object type '%s' is abstract", typename);
+        error_setg(errp, "object type '%s' is abstract", typeName);
         return NULL;
     }
     obj = object_new_with_type(klass->type);
@@ -851,36 +851,36 @@ bool object_set_propv(Object *obj,
 }
 
 
-Object *object_dynamic_cast(Object *obj, const char *typename)
+Object *object_dynamic_cast(Object *obj, const char *typeName)
 {
-    if (obj && object_class_dynamic_cast(object_get_class(obj), typename)) {
+    if (obj && object_class_dynamic_cast(object_get_class(obj), typeName)) {
         return obj;
     }
 
     return NULL;
 }
 
-Object *object_dynamic_cast_assert(Object *obj, const char *typename,
+Object *object_dynamic_cast_assert(Object *obj, const char *typeName,
                                    const char *file, int line, const char *func)
 {
     trace_object_dynamic_cast_assert(obj ? obj->class->type->name : "(null)",
-                                     typename, file, line, func);
+                                     typeName, file, line, func);
 
 #ifdef CONFIG_QOM_CAST_DEBUG
     int i;
     Object *inst;
 
     for (i = 0; obj && i < OBJECT_CLASS_CAST_CACHE; i++) {
-        if (qatomic_read(&obj->class->object_cast_cache[i]) == typename) {
+        if (qatomic_read(&obj->class->object_cast_cache[i]) == typeName) {
             goto out;
         }
     }
 
-    inst = object_dynamic_cast(obj, typename);
+    inst = object_dynamic_cast(obj, typeName);
 
     if (!inst && obj) {
         fprintf(stderr, "%s:%d:%s: Object %p is not an instance of type %s\n",
-                file, line, func, obj, typename);
+                file, line, func, obj, typeName);
         abort();
     }
 
@@ -891,7 +891,7 @@ Object *object_dynamic_cast_assert(Object *obj, const char *typename,
             qatomic_set(&obj->class->object_cast_cache[i - 1],
                        qatomic_read(&obj->class->object_cast_cache[i]));
         }
-        qatomic_set(&obj->class->object_cast_cache[i - 1], typename);
+        qatomic_set(&obj->class->object_cast_cache[i - 1], typeName);
     }
 
 out:
@@ -900,7 +900,7 @@ out:
 }
 
 ObjectClass *object_class_dynamic_cast(ObjectClass *class,
-                                       const char *typename)
+                                       const char *typeName)
 {
     ObjectClass *ret = NULL;
     TypeImpl *target_type;
@@ -912,11 +912,11 @@ ObjectClass *object_class_dynamic_cast(ObjectClass *class,
 
     /* A simple fast path that can trigger a lot for leaf classes.  */
     type = class->type;
-    if (type->name == typename) {
+    if (type->name == typeName) {
         return class;
     }
 
-    target_type = type_get_by_name(typename);
+    target_type = type_get_by_name(typeName);
     if (!target_type) {
         /* target class type unknown, so fail the cast */
         return NULL;
@@ -948,20 +948,20 @@ ObjectClass *object_class_dynamic_cast(ObjectClass *class,
 }
 
 ObjectClass *object_class_dynamic_cast_assert(ObjectClass *class,
-                                              const char *typename,
+                                              const char *typeName,
                                               const char *file, int line,
                                               const char *func)
 {
     ObjectClass *ret;
 
     trace_object_class_dynamic_cast_assert(class ? class->type->name : "(null)",
-                                           typename, file, line, func);
+                                           typeName, file, line, func);
 
 #ifdef CONFIG_QOM_CAST_DEBUG
     int i;
 
     for (i = 0; class && i < OBJECT_CLASS_CAST_CACHE; i++) {
-        if (qatomic_read(&class->class_cast_cache[i]) == typename) {
+        if (qatomic_read(&class->class_cast_cache[i]) == typeName) {
             ret = class;
             goto out;
         }
@@ -972,10 +972,10 @@ ObjectClass *object_class_dynamic_cast_assert(ObjectClass *class,
     }
 #endif
 
-    ret = object_class_dynamic_cast(class, typename);
+    ret = object_class_dynamic_cast(class, typeName);
     if (!ret && class) {
         fprintf(stderr, "%s:%d:%s: Object %p is not an instance of type %s\n",
-                file, line, func, class, typename);
+                file, line, func, class, typeName);
         abort();
     }
 
@@ -985,7 +985,7 @@ ObjectClass *object_class_dynamic_cast_assert(ObjectClass *class,
             qatomic_set(&class->class_cast_cache[i - 1],
                        qatomic_read(&class->class_cast_cache[i]));
         }
-        qatomic_set(&class->class_cast_cache[i - 1], typename);
+        qatomic_set(&class->class_cast_cache[i - 1], typeName);
     }
 out:
 #endif
@@ -1012,9 +1012,9 @@ const char *object_class_get_name(ObjectClass *klass)
     return klass->type->name;
 }
 
-ObjectClass *object_class_by_name(const char *typename)
+ObjectClass *object_class_by_name(const char *typeName)
 {
-    TypeImpl *type = type_get_by_name(typename);
+    TypeImpl *type = type_get_by_name(typeName);
 
     if (!type) {
         return NULL;
@@ -1025,15 +1025,15 @@ ObjectClass *object_class_by_name(const char *typename)
     return type->class;
 }
 
-ObjectClass *module_object_class_by_name(const char *typename)
+ObjectClass *module_object_class_by_name(const char *typeName)
 {
     ObjectClass *oc;
 
-    oc = object_class_by_name(typename);
+    oc = object_class_by_name(typeName);
 #ifdef CONFIG_MODULES
     if (!oc) {
-        module_load_qom_one(typename);
-        oc = object_class_by_name(typename);
+        module_load_qom_one(typeName);
+        oc = object_class_by_name(typeName);
     }
 #endif
     return oc;
@@ -1074,7 +1074,7 @@ static void object_class_foreach_tramp(gpointer key, gpointer value,
         return;
     }
 
-    if (data->implements_type && 
+    if (data->implements_type &&
         !object_class_dynamic_cast(k, data->implements_type)) {
         return;
     }
@@ -1605,7 +1605,7 @@ typedef struct EnumProperty {
 } EnumProperty;
 
 int object_property_get_enum(Object *obj, const char *name,
-                             const char *typename, Error **errp)
+                             const char *typeName, Error **errp)
 {
     char *str;
     int ret;
@@ -1616,10 +1616,10 @@ int object_property_get_enum(Object *obj, const char *name,
         return -1;
     }
 
-    if (!g_str_equal(prop->type, typename)) {
+    if (!g_str_equal(prop->type, typeName)) {
         error_setg(errp, "Property %s on %s is not '%s' enum type",
                    name, object_class_get_name(
-                       object_get_class(obj)), typename);
+                       object_get_class(obj)), typeName);
         return -1;
     }
 
@@ -2058,16 +2058,16 @@ Object *object_resolve_path_component(Object *parent, const char *part)
 
 static Object *object_resolve_abs_path(Object *parent,
                                           char **parts,
-                                          const char *typename)
+                                          const char *typeName)
 {
     Object *child;
 
     if (*parts == NULL) {
-        return object_dynamic_cast(parent, typename);
+        return object_dynamic_cast(parent, typeName);
     }
 
     if (strcmp(*parts, "") == 0) {
-        return object_resolve_abs_path(parent, parts + 1, typename);
+        return object_resolve_abs_path(parent, parts + 1, typeName);
     }
 
     child = object_resolve_path_component(parent, *parts);
@@ -2075,19 +2075,19 @@ static Object *object_resolve_abs_path(Object *parent,
         return NULL;
     }
 
-    return object_resolve_abs_path(child, parts + 1, typename);
+    return object_resolve_abs_path(child, parts + 1, typeName);
 }
 
 static Object *object_resolve_partial_path(Object *parent,
                                            char **parts,
-                                           const char *typename,
+                                           const char *typeName,
                                            bool *ambiguous)
 {
     Object *obj;
     GHashTableIter iter;
     ObjectProperty *prop;
 
-    obj = object_resolve_abs_path(parent, parts, typename);
+    obj = object_resolve_abs_path(parent, parts, typeName);
 
     g_hash_table_iter_init(&iter, parent->properties);
     while (g_hash_table_iter_next(&iter, NULL, (gpointer *)&prop)) {
@@ -2098,7 +2098,7 @@ static Object *object_resolve_partial_path(Object *parent,
         }
 
         found = object_resolve_partial_path(prop->opaque, parts,
-                                            typename, ambiguous);
+                                            typeName, ambiguous);
         if (found) {
             if (obj) {
                 *ambiguous = true;
@@ -2115,7 +2115,7 @@ static Object *object_resolve_partial_path(Object *parent,
     return obj;
 }
 
-Object *object_resolve_path_type(const char *path, const char *typename,
+Object *object_resolve_path_type(const char *path, const char *typeName,
                                  bool *ambiguousp)
 {
     Object *obj;
@@ -2127,12 +2127,12 @@ Object *object_resolve_path_type(const char *path, const char *typename,
     if (parts[0] == NULL || strcmp(parts[0], "") != 0) {
         bool ambiguous = false;
         obj = object_resolve_partial_path(object_get_root(), parts,
-                                          typename, &ambiguous);
+                                          typeName, &ambiguous);
         if (ambiguousp) {
             *ambiguousp = ambiguous;
         }
     } else {
-        obj = object_resolve_abs_path(object_get_root(), parts + 1, typename);
+        obj = object_resolve_abs_path(object_get_root(), parts + 1, typeName);
     }
 
     g_strfreev(parts);
@@ -2322,7 +2322,7 @@ static void property_set_enum(Object *obj, Visitor *v, const char *name,
 
 ObjectProperty *
 object_property_add_enum(Object *obj, const char *name,
-                         const char *typename,
+                         const char *typeName,
                          const QEnumLookup *lookup,
                          int (*get)(Object *, Error **),
                          void (*set)(Object *, int, Error **))
@@ -2333,7 +2333,7 @@ object_property_add_enum(Object *obj, const char *name,
     prop->get = get;
     prop->set = set;
 
-    return object_property_add(obj, name, typename,
+    return object_property_add(obj, name, typeName,
                                get ? property_get_enum : NULL,
                                set ? property_set_enum : NULL,
                                property_release_data,
@@ -2342,7 +2342,7 @@ object_property_add_enum(Object *obj, const char *name,
 
 ObjectProperty *
 object_class_property_add_enum(ObjectClass *klass, const char *name,
-                                    const char *typename,
+                                    const char *typeName,
                                     const QEnumLookup *lookup,
                                     int (*get)(Object *, Error **),
                                     void (*set)(Object *, int, Error **))
@@ -2353,7 +2353,7 @@ object_class_property_add_enum(ObjectClass *klass, const char *name,
     prop->get = get;
     prop->set = set;
 
-    return object_class_property_add(klass, name, typename,
+    return object_class_property_add(klass, name, typeName,
                                      get ? property_get_enum : NULL,
                                      set ? property_set_enum : NULL,
                                      NULL,

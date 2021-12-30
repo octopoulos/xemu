@@ -17,52 +17,58 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HW_NV2A_PSH_H
-#define HW_NV2A_PSH_H
+#pragma once
 
 #include "shaders_common.h"
 
-enum PshAlphaFunc {
-    ALPHA_FUNC_NEVER,
-    ALPHA_FUNC_LESS,
-    ALPHA_FUNC_EQUAL,
-    ALPHA_FUNC_LEQUAL,
-    ALPHA_FUNC_GREATER,
-    ALPHA_FUNC_NOTEQUAL,
-    ALPHA_FUNC_GEQUAL,
-    ALPHA_FUNC_ALWAYS,
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+enum PshAlphaFunc
+{
+	ALPHA_FUNC_NEVER,
+	ALPHA_FUNC_LESS,
+	ALPHA_FUNC_EQUAL,
+	ALPHA_FUNC_LEQUAL,
+	ALPHA_FUNC_GREATER,
+	ALPHA_FUNC_NOTEQUAL,
+	ALPHA_FUNC_GEQUAL,
+	ALPHA_FUNC_ALWAYS,
 };
 
-enum ConvolutionFilter {
-    CONVOLUTION_FILTER_DISABLED,
-    CONVOLUTION_FILTER_QUINCUNX,
-    CONVOLUTION_FILTER_GAUSSIAN,
+enum ConvolutionFilter
+{
+	CONVOLUTION_FILTER_DISABLED,
+	CONVOLUTION_FILTER_QUINCUNX,
+	CONVOLUTION_FILTER_GAUSSIAN,
 };
 
-typedef struct PshState {
-    /* fragment shader - register combiner stuff */
-    uint32_t combiner_control;
-    uint32_t shader_stage_program;
-    uint32_t other_stage_input;
-    uint32_t final_inputs_0;
-    uint32_t final_inputs_1;
+typedef struct PshState
+{
+	/* fragment shader - register combiner stuff */
+	uint32_t combiner_control;
+	uint32_t shader_stage_program;
+	uint32_t other_stage_input;
+	uint32_t final_inputs_0;
+	uint32_t final_inputs_1;
 
-    uint32_t rgb_inputs[8], rgb_outputs[8];
-    uint32_t alpha_inputs[8], alpha_outputs[8];
+	uint32_t rgb_inputs[8], rgb_outputs[8];
+	uint32_t alpha_inputs[8], alpha_outputs[8];
 
-    bool point_sprite;
-    bool rect_tex[4];
-    bool snorm_tex[4];
-    bool compare_mode[4][4];
-    bool alphakill[4];
-    enum ConvolutionFilter conv_tex[4];
+	bool point_sprite;
+	bool rect_tex[4];
+	bool snorm_tex[4];
+	bool compare_mode[4][4];
+	bool alphakill[4];
+	enum ConvolutionFilter conv_tex[4];
 
-    bool alpha_test;
-    enum PshAlphaFunc alpha_func;
+	bool alpha_test;
+	enum PshAlphaFunc alpha_func;
 
-    bool window_clip_exclusive;
+	bool window_clip_exclusive;
 } PshState;
 
-MString *psh_translate(const PshState state);
-
+#ifdef __cplusplus
+}
 #endif

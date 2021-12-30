@@ -1130,7 +1130,7 @@ typedef struct VCChardev VCChardev;
 DECLARE_INSTANCE_CHECKER(VCChardev, VC_CHARDEV,
                          TYPE_CHARDEV_VC)
 
-static int vc_chr_write(Chardev *chr, const uint8_t *buf, int len)
+static int vc_chr_write(Chardev *chr, const uint8_t *buf, size_t len)
 {
     VCChardev *drv = VC_CHARDEV(chr);
     QemuConsole *s = drv->console;

@@ -25,34 +25,32 @@
 
 #define MAX_IDE_BUS 2
 
-void xbox_init_common(MachineState *machine,
-                      PCIBus **pci_bus_out,
-                      ISABus **isa_bus_out);
+void xbox_init_common(MachineState* machine, PCIBus** pci_bus_out, ISABus** isa_bus_out);
 
 #define TYPE_XBOX_MACHINE MACHINE_TYPE_NAME("xbox")
 
-#define XBOX_MACHINE(obj) \
-    OBJECT_CHECK(XboxMachineState, (obj), TYPE_XBOX_MACHINE)
+#define XBOX_MACHINE(obj) OBJECT_CHECK(XboxMachineState, (obj), TYPE_XBOX_MACHINE)
 
-#define XBOX_MACHINE_CLASS(klass) \
-    OBJECT_CLASS_CHECK(XboxMachineClass, (klass), TYPE_XBOX_MACHINE)
+#define XBOX_MACHINE_CLASS(klass) OBJECT_CLASS_CHECK(XboxMachineClass, (klass), TYPE_XBOX_MACHINE)
 
-typedef struct XboxMachineState {
-    /*< private >*/
-    PCMachineState parent_obj;
+typedef struct XboxMachineState
+{
+	/*< private >*/
+	PCMachineState parent_obj;
 
-    /*< public >*/
-    char *bootrom;
-    char *avpack;
-    bool short_animation;
-    char *smc_version;
+	/*< public >*/
+	char* bootrom;
+	char* avpack;
+	bool short_animation;
+	char* smc_version;
 } XboxMachineState;
 
-typedef struct XboxMachineClass {
-    /*< private >*/
-    PCMachineClass parent_class;
+typedef struct XboxMachineClass
+{
+	/*< private >*/
+	PCMachineClass parent_class;
 
-    /*< public >*/
+	/*< public >*/
 } XboxMachineClass;
 
 #endif

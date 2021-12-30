@@ -98,10 +98,10 @@ static void superh_cpu_disas_set_info(CPUState *cpu, disassemble_info *info)
 
 static void superh_cpu_list_entry(gpointer data, gpointer user_data)
 {
-    const char *typename = object_class_get_name(OBJECT_CLASS(data));
-    int len = strlen(typename) - strlen(SUPERH_CPU_TYPE_SUFFIX);
+    const char *typeName = object_class_get_name(OBJECT_CLASS(data));
+    int len = strlen(typeName) - strlen(SUPERH_CPU_TYPE_SUFFIX);
 
-    qemu_printf("%.*s\n", len, typename);
+    qemu_printf("%.*s\n", len, typeName);
 }
 
 void sh4_cpu_list(void)
@@ -116,7 +116,7 @@ void sh4_cpu_list(void)
 static ObjectClass *superh_cpu_class_by_name(const char *cpu_model)
 {
     ObjectClass *oc;
-    char *s, *typename = NULL;
+    char *s, *typeName = NULL;
 
     s = g_ascii_strdown(cpu_model, -1);
     if (strcmp(s, "any") == 0) {
@@ -124,15 +124,15 @@ static ObjectClass *superh_cpu_class_by_name(const char *cpu_model)
         goto out;
     }
 
-    typename = g_strdup_printf(SUPERH_CPU_TYPE_NAME("%s"), s);
-    oc = object_class_by_name(typename);
+    typeName = g_strdup_printf(SUPERH_CPU_TYPE_NAME("%s"), s);
+    oc = object_class_by_name(typeName);
     if (oc != NULL && object_class_is_abstract(oc)) {
         oc = NULL;
     }
 
 out:
     g_free(s);
-    g_free(typename);
+    g_free(typeName);
     return oc;
 }
 

@@ -1,5 +1,8 @@
-#ifndef SYSEMU_RUNSTATE_H
-#define SYSEMU_RUNSTATE_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "qapi/qapi-types-run-state.h"
 #include "qemu/notify.h"
@@ -70,5 +73,6 @@ void qemu_system_reset(ShutdownCause reason);
 void qemu_system_guest_panicked(GuestPanicInformation *info);
 void qemu_system_guest_crashloaded(GuestPanicInformation *info);
 
+#ifdef __cplusplus
+}
 #endif
-

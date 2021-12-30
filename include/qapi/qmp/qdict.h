@@ -10,8 +10,11 @@
  * See the COPYING.LIB file in the top-level directory.
  */
 
-#ifndef QDICT_H
-#define QDICT_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "qapi/qmp/qobject.h"
 #include "qemu/queue.h"
@@ -67,4 +70,6 @@ QDict *qdict_clone_shallow(const QDict *src);
 QObject *qdict_crumple(const QDict *src, Error **errp);
 void qdict_flatten(QDict *qdict);
 
-#endif /* QDICT_H */
+#ifdef __cplusplus
+}
+#endif

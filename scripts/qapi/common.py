@@ -178,20 +178,23 @@ def c_fname(filename: str) -> str:
 
 
 def guardstart(name: str) -> str:
-    return mcgen('''
-#ifndef %(name)s
-#define %(name)s
+    return '''
+#pragma once
 
-''',
-                 name=c_fname(name).upper())
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+'''
 
 
 def guardend(name: str) -> str:
-    return mcgen('''
+    return '''
 
-#endif /* %(name)s */
-''',
-                 name=c_fname(name).upper())
+#ifdef __cplusplus
+}
+#endif
+'''
 
 
 def gen_if(ifcond: Sequence[str]) -> str:

@@ -35,7 +35,7 @@
 static int g_use_hard_fpu;
 
 #if defined(XBOX) && defined(__x86_64__)
-#include "ui/xemu-settings.h"
+#include "ui/xsettings.h"
 #define MAP_GEN_HELPER_SOFT_HARD(name) \
     (g_use_hard_fpu ? gen_helper_##name##__hard : gen_helper_##name##__soft)
 #define gen_helper_flds_FT0       MAP_GEN_HELPER_SOFT_HARD(flds_FT0)
@@ -2209,7 +2209,7 @@ static void gen_rot_rm_T1(DisasContext *s, MemOp ot, int op1, int is_right)
     tcg_temp_free_i32(t0);
     tcg_temp_free_i32(t1);
 
-    /* The CC_OP value is no longer predictable.  */ 
+    /* The CC_OP value is no longer predictable.  */
     set_cc_op(s, CC_OP_DYNAMIC);
 }
 
@@ -2302,7 +2302,7 @@ static void gen_rotc_rm_T1(DisasContext *s, MemOp ot, int op1,
         gen_op_ld_v(s, ot, s->T0, s->A0);
     else
         gen_op_mov_v_reg(s, ot, s->T0, op1);
-    
+
     if (is_right) {
         switch (ot) {
         case MO_8:
@@ -5910,7 +5910,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 set_cc_op(s, CC_OP_EFLAGS);
                 break;
             }
-#endif        
+#endif
             if (!(s->cpuid_features & CPUID_CX8)) {
                 goto illegal_op;
             }
@@ -9046,7 +9046,7 @@ void tcg_x86_init(void)
                                    offsetof(CPUX86State, fpstt), "fpstt");
 
 #if defined(XBOX) && defined(__x86_64__)
-    xemu_settings_get_bool(XEMU_SETTINGS_SYSTEM_HARD_FPU, &g_use_hard_fpu);
+    g_use_hard_fpu = xsettings.hard_fpu;
 #endif
 }
 

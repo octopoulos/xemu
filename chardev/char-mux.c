@@ -40,7 +40,7 @@
 static bool muxes_opened = true;
 
 /* Called with chr_write_lock held.  */
-static int mux_chr_write(Chardev *chr, const uint8_t *buf, int len)
+static int mux_chr_write(Chardev *chr, const uint8_t *buf, size_t len)
 {
     MuxChardev *d = MUX_CHARDEV(chr);
     int ret;

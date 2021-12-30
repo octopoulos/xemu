@@ -129,7 +129,7 @@ struct CPUClass {
     /*< public >*/
 
     ObjectClass *(*class_by_name)(const char *cpu_model);
-    void (*parse_features)(const char *typename, char *str, Error **errp);
+    void (*parse_features)(const char *typeName, char *str, Error **errp);
 
     int reset_dump_flags;
     bool (*has_work)(CPUState *cpu);
@@ -621,24 +621,24 @@ void cpu_reset(CPUState *cpu);
 
 /**
  * cpu_class_by_name:
- * @typename: The CPU base type.
+ * @typeName: The CPU base type.
  * @cpu_model: The model string without any parameters.
  *
  * Looks up a CPU #ObjectClass matching name @cpu_model.
  *
  * Returns: A #CPUClass or %NULL if not matching class is found.
  */
-ObjectClass *cpu_class_by_name(const char *typename, const char *cpu_model);
+ObjectClass *cpu_class_by_name(const char *typeName, const char *cpu_model);
 
 /**
  * cpu_create:
- * @typename: The CPU type.
+ * @typeName: The CPU type.
  *
  * Instantiates a CPU and realizes the CPU.
  *
  * Returns: A #CPUState or %NULL if an error occurred.
  */
-CPUState *cpu_create(const char *typename);
+CPUState *cpu_create(const char *typeName);
 
 /**
  * parse_cpu_option:

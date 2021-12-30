@@ -22,6 +22,6 @@
 #ifndef HW_MCPX_APU_H
 #define HW_MCPX_APU_H
 
-void mcpx_apu_init(PCIBus *bus, int devfn, MemoryRegion *ram);
+void mcpx_apu_init(PCIBus* bus, int devfn, MemoryRegion* ram);
 
 #endif

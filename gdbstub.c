@@ -3386,7 +3386,7 @@ static void gdb_chr_event(void *opaque, QEMUChrEvent event)
     }
 }
 
-static int gdb_monitor_write(Chardev *chr, const uint8_t *buf, int len)
+static int gdb_monitor_write(Chardev *chr, const uint8_t *buf, size_t len)
 {
     g_autoptr(GString) hex_buf = g_string_new("O");
     memtohex(hex_buf, buf, len);

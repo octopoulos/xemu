@@ -22,16 +22,17 @@
 
 #include "hw/acpi/acpi.h"
 
-typedef struct XBOX_PMRegs {
-    ACPIREGS acpi_regs;
+typedef struct XBOX_PMRegs
+{
+	ACPIREGS acpi_regs;
 
-    MemoryRegion io;
-    MemoryRegion io_gpe;
-    MemoryRegion io_gpio;
+	MemoryRegion io;
+	MemoryRegion io_gpe;
+	MemoryRegion io_gpio;
 
-    qemu_irq irq;
+	qemu_irq irq;
 } XBOX_PMRegs;
 
-void xbox_pm_init(PCIDevice *dev, XBOX_PMRegs *pm, qemu_irq sci_irq);
+void xbox_pm_init(PCIDevice* dev, XBOX_PMRegs* pm, qemu_irq sci_irq);
 
 #endif

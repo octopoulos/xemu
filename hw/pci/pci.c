@@ -464,9 +464,9 @@ void pci_root_bus_new_inplace(PCIBus *bus, size_t bus_size, DeviceState *parent,
                               const char *name,
                               MemoryRegion *address_space_mem,
                               MemoryRegion *address_space_io,
-                              uint8_t devfn_min, const char *typename)
+                              uint8_t devfn_min, const char *typeName)
 {
-    qbus_create_inplace(bus, bus_size, typename, parent, name);
+    qbus_create_inplace(bus, bus_size, typeName, parent, name);
     pci_root_bus_init(bus, parent, address_space_mem, address_space_io,
                       devfn_min);
 }
@@ -474,11 +474,11 @@ void pci_root_bus_new_inplace(PCIBus *bus, size_t bus_size, DeviceState *parent,
 PCIBus *pci_root_bus_new(DeviceState *parent, const char *name,
                          MemoryRegion *address_space_mem,
                          MemoryRegion *address_space_io,
-                         uint8_t devfn_min, const char *typename)
+                         uint8_t devfn_min, const char *typeName)
 {
     PCIBus *bus;
 
-    bus = PCI_BUS(qbus_create(typename, parent, name));
+    bus = PCI_BUS(qbus_create(typeName, parent, name));
     pci_root_bus_init(bus, parent, address_space_mem, address_space_io,
                       devfn_min);
     return bus;
@@ -516,12 +516,12 @@ PCIBus *pci_register_root_bus(DeviceState *parent, const char *name,
                               MemoryRegion *address_space_mem,
                               MemoryRegion *address_space_io,
                               uint8_t devfn_min, int nirq,
-                              const char *typename)
+                              const char *typeName)
 {
     PCIBus *bus;
 
     bus = pci_root_bus_new(parent, name, address_space_mem,
-                           address_space_io, devfn_min, typename);
+                           address_space_io, devfn_min, typeName);
     pci_bus_irqs(bus, set_irq, map_irq, irq_opaque, nirq);
     return bus;
 }

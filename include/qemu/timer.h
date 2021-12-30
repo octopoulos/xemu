@@ -1,5 +1,8 @@
-#ifndef QEMU_TIMER_H
-#define QEMU_TIMER_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "qemu/bitops.h"
 #include "qemu/notify.h"
@@ -998,4 +1001,6 @@ static inline int64_t profile_getclock(void)
 extern int64_t dev_time;
 #endif
 
+#ifdef __cplusplus
+}
 #endif

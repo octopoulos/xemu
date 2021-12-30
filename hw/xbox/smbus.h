@@ -22,18 +22,23 @@
  * THE SOFTWARE.
  */
 
-#ifndef HW_SMBUS_H
-#define HW_SMBUS_H
+#pragma once
 
-void smbus_xbox_smc_init(I2CBus *smbus, int address);
-void smbus_cx25871_init(I2CBus *smbus, int address);
-void smbus_adm1032_init(I2CBus *smbus, int address);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-bool xbox_smc_avpack_to_reg(const char *avpack, uint8_t *value);
-void xbox_smc_append_avpack_hint(Error **errp);
-void xbox_smc_append_smc_version_hint(Error **errp);
+void smbus_xbox_smc_init(I2CBus* smbus, int address);
+void smbus_cx25871_init(I2CBus* smbus, int address);
+void smbus_adm1032_init(I2CBus* smbus, int address);
+
+bool xbox_smc_avpack_to_reg(const char* avpack, uint8_t* value);
+void xbox_smc_append_avpack_hint(Error** errp);
+void xbox_smc_append_smc_version_hint(Error** errp);
 void xbox_smc_power_button(void);
 void xbox_smc_eject_button(void);
 void xbox_smc_update_tray_state(void);
 
+#ifdef __cplusplus
+}
 #endif

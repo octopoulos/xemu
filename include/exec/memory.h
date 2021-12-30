@@ -819,7 +819,7 @@ struct MemoryListener {
      * the current transaction.
      */
     void (*log_start)(MemoryListener *listener, MemoryRegionSection *section,
-                      int old, int new);
+                      int old, int newBitmap);
 
     /**
      * @log_stop:
@@ -838,7 +838,7 @@ struct MemoryListener {
      * the current transaction.
      */
     void (*log_stop)(MemoryListener *listener, MemoryRegionSection *section,
-                     int old, int new);
+                     int old, int newBitmap);
 
     /**
      * @log_sync:

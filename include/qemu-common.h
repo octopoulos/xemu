@@ -7,8 +7,11 @@
  * must be moved to a separate header file, and the header that uses it
  * must include that header.
  */
-#ifndef QEMU_COMMON_H
-#define QEMU_COMMON_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define TFR(expr) do { if ((expr) != -1) break; } while (errno == EINTR)
 
@@ -23,7 +26,11 @@
 
 /* main function, renamed */
 #if defined(CONFIG_COCOA)
-int qemu_main(int argc, char **argv, char **envp);
+int qemu_main(int argc, char** argv, char** envp);
+#endif
+
+#ifdef XBOX
+int qemu_main(int argc, char** argv, char** envp);
 #endif
 
 void qemu_get_timedate(struct tm *tm, int offset);
@@ -139,4 +146,6 @@ void page_size_init(void);
  * returned. */
 bool dump_in_progress(void);
 
+#ifdef __cplusplus
+}
 #endif

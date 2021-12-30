@@ -1,5 +1,8 @@
-#ifndef QEMU_CHAR_H
-#define QEMU_CHAR_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "qapi/qapi-types-char.h"
 #include "qemu/bitmap.h"
@@ -259,7 +262,7 @@ struct ChardevClass {
     void (*open)(Chardev *chr, ChardevBackend *backend,
                  bool *be_opened, Error **errp);
 
-    int (*chr_write)(Chardev *s, const uint8_t *buf, int len);
+    int (*chr_write)(Chardev *s, const uint8_t *buf, size_t len);
     int (*chr_sync_read)(Chardev *s, const uint8_t *buf, int len);
     GSource *(*chr_add_watch)(Chardev *s, GIOCondition cond);
     void (*chr_update_read_handler)(Chardev *s);
@@ -276,14 +279,14 @@ struct ChardevClass {
     void (*chr_options_parsed)(Chardev *chr);
 };
 
-Chardev *qemu_chardev_new(const char *id, const char *typename,
+Chardev *qemu_chardev_new(const char *id, const char *typeName,
                           ChardevBackend *backend, GMainContext *context,
                           Error **errp);
 
 extern int term_escape_char;
 
 GSource *qemu_chr_timeout_add_ms(Chardev *chr, guint ms,
-                                 GSourceFunc func, void *private);
+                                 GSourceFunc func, void *privater);
 
 void suspend_mux_open(void);
 void resume_mux_open(void);
@@ -291,4 +294,6 @@ void resume_mux_open(void);
 /* console.c */
 void qemu_chr_parse_vc(QemuOpts *opts, ChardevBackend *backend, Error **errp);
 
+#ifdef __cplusplus
+}
 #endif

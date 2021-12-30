@@ -10,8 +10,7 @@
  *
  */
 
-#ifndef QEMU_LOCKABLE_H
-#define QEMU_LOCKABLE_H
+#pragma once
 
 #include "qemu/coroutine.h"
 #include "qemu/thread.h"
@@ -49,7 +48,7 @@ qemu_null_lockable(void *x)
  * either...
  */
 #define QML_OBJ_(x, name) (&(QemuLockable) {                            \
-        .object = (x),                                                  \
+        .object = (void*)(x),                                           \
         .lock = (QemuLockUnlockFunc *) qemu_ ## name ## _lock,          \
         .unlock = (QemuLockUnlockFunc *) qemu_ ## name ## _unlock       \
     })
@@ -68,11 +67,11 @@ qemu_null_lockable(void *x)
  */
 #define QEMU_MAKE_LOCKABLE(x)                                           \
     _Generic((x), QemuLockable *: (x),                                  \
-             void *: qemu_null_lockable(x),                             \
-             QemuMutex *: qemu_make_lockable(x, QML_OBJ_(x, mutex)),    \
-             QemuRecMutex *: qemu_make_lockable(x, QML_OBJ_(x, rec_mutex)), \
-             CoMutex *: qemu_make_lockable(x, QML_OBJ_(x, co_mutex)),   \
-             QemuSpin *: qemu_make_lockable(x, QML_OBJ_(x, spin)))
+            void *: qemu_null_lockable(x),                             \
+            QemuMutex *: qemu_make_lockable(x, QML_OBJ_(x, mutex)),    \
+            QemuRecMutex *: qemu_make_lockable(x, QML_OBJ_(x, rec_mutex)), \
+            CoMutex *: qemu_make_lockable(x, QML_OBJ_(x, co_mutex)),   \
+            QemuSpin *: qemu_make_lockable(x, QML_OBJ_(x, spin)))
 
 /**
  * QEMU_MAKE_LOCKABLE_NONNULL - Make a polymorphic QemuLockable
@@ -165,5 +164,3 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC(QemuLockable, qemu_lockable_auto_unlock)
     g_autoptr(QemuLockable)                                      \
     glue(qemu_lockable_auto, __COUNTER__) G_GNUC_UNUSED =        \
             qemu_lockable_auto_lock(QEMU_MAKE_LOCKABLE((x)))
-
-#endif

@@ -4,12 +4,13 @@
  * top-level directory.
  */
 
-#ifndef QEMU_UI_KBD_STATE_H
-#define QEMU_UI_KBD_STATE_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "qapi/qapi-types-ui.h"
-
-typedef enum QKbdModifier QKbdModifier;
 
 enum QKbdModifier {
     QKBD_MOD_NONE = 0,
@@ -24,6 +25,8 @@ enum QKbdModifier {
 
     QKBD_MOD__MAX
 };
+
+typedef enum QKbdModifier QKbdModifier;
 
 typedef struct QKbdState QKbdState;
 
@@ -99,4 +102,6 @@ bool qkbd_state_modifier_get(QKbdState *kbd, QKbdModifier mod);
  */
 void qkbd_state_lift_all_keys(QKbdState *kbd);
 
-#endif /* QEMU_UI_KBD_STATE_H */
+#ifdef __cplusplus
+}
+#endif

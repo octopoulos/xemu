@@ -22,8 +22,11 @@
  * THE SOFTWARE.
  */
 
-#ifndef TCG_H
-#define TCG_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "cpu.h"
 #include "exec/memop.h"
@@ -1545,4 +1548,6 @@ bool tcg_can_emit_vecop_list(const TCGOpcode *, TCGType, unsigned);
 
 void gen_bb_epilogue(void); /* translate.c */
 
-#endif /* TCG_H */
+#ifdef __cplusplus
+}
+#endif

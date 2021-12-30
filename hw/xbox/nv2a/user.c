@@ -22,99 +22,107 @@
 #include "nv2a_int.h"
 
 /* USER - PFIFO MMIO and DMA submission area */
-uint64_t user_read(void *opaque, hwaddr addr, unsigned int size)
+uint64_t user_read(void* opaque, hwaddr addr, unsigned int size)
 {
-    NV2AState *d = (NV2AState *)opaque;
+	NV2AState* d = (NV2AState*)opaque;
 
-    unsigned int channel_id = addr >> 16;
-    assert(channel_id < NV2A_NUM_CHANNELS);
+	unsigned int channel_id = addr >> 16;
+	assert(channel_id < NV2A_NUM_CHANNELS);
 
-    qemu_mutex_lock(&d->pfifo.lock);
+	qemu_mutex_lock(&d->pfifo.lock);
 
-    uint32_t channel_modes = d->pfifo.regs[NV_PFIFO_MODE];
+	uint32_t channel_modes = d->pfifo.regs[NV_PFIFO_MODE];
 
-    uint64_t r = 0;
-    if (channel_modes & (1 << channel_id)) {
-        /* DMA Mode */
+	uint64_t r = 0;
+	if (channel_modes & (1 << channel_id))
+	{
+		/* DMA Mode */
 
-        unsigned int cur_channel_id =
-            GET_MASK(d->pfifo.regs[NV_PFIFO_CACHE1_PUSH1],
-                     NV_PFIFO_CACHE1_PUSH1_CHID);
+		unsigned int cur_channel_id = GET_MASK(d->pfifo.regs[NV_PFIFO_CACHE1_PUSH1], NV_PFIFO_CACHE1_PUSH1_CHID);
 
-        if (channel_id == cur_channel_id) {
-            switch (addr & 0xFFFF) {
-            case NV_USER_DMA_PUT:
-                r = d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT];
-                break;
-            case NV_USER_DMA_GET:
-                r = d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET];
-                break;
-            case NV_USER_REF:
-                r = d->pfifo.regs[NV_PFIFO_CACHE1_REF];
-                break;
-            default:
-                break;
-            }
-        } else {
-            /* ramfc */
-            assert(false);
-        }
-    } else {
-        /* PIO Mode */
-        assert(false);
-    }
+		if (channel_id == cur_channel_id)
+		{
+			switch (addr & 0xFFFF)
+			{
+			case NV_USER_DMA_PUT:
+				r = d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT];
+				break;
+			case NV_USER_DMA_GET:
+				r = d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET];
+				break;
+			case NV_USER_REF:
+				r = d->pfifo.regs[NV_PFIFO_CACHE1_REF];
+				break;
+			default:
+				break;
+			}
+		}
+		else
+		{
+			/* ramfc */
+			assert(false);
+		}
+	}
+	else
+	{
+		/* PIO Mode */
+		assert(false);
+	}
 
-    qemu_mutex_unlock(&d->pfifo.lock);
+	qemu_mutex_unlock(&d->pfifo.lock);
 
-    nv2a_reg_log_read(NV_USER, addr, r);
-    return r;
+	nv2a_reg_log_read(NV_USER, addr, r);
+	return r;
 }
 
-void user_write(void *opaque, hwaddr addr, uint64_t val, unsigned int size)
+void user_write(void* opaque, hwaddr addr, uint64_t val, unsigned int size)
 {
-    NV2AState *d = (NV2AState *)opaque;
+	NV2AState* d = (NV2AState*)opaque;
 
-    nv2a_reg_log_write(NV_USER, addr, val);
+	nv2a_reg_log_write(NV_USER, addr, val);
 
-    unsigned int channel_id = addr >> 16;
-    assert(channel_id < NV2A_NUM_CHANNELS);
+	unsigned int channel_id = addr >> 16;
+	assert(channel_id < NV2A_NUM_CHANNELS);
 
-    qemu_mutex_lock(&d->pfifo.lock);
+	qemu_mutex_lock(&d->pfifo.lock);
 
-    uint32_t channel_modes = d->pfifo.regs[NV_PFIFO_MODE];
-    if (channel_modes & (1 << channel_id)) {
-        /* DMA Mode */
-        unsigned int cur_channel_id =
-            GET_MASK(d->pfifo.regs[NV_PFIFO_CACHE1_PUSH1],
-                     NV_PFIFO_CACHE1_PUSH1_CHID);
+	uint32_t channel_modes = d->pfifo.regs[NV_PFIFO_MODE];
+	if (channel_modes & (1 << channel_id))
+	{
+		/* DMA Mode */
+		unsigned int cur_channel_id = GET_MASK(d->pfifo.regs[NV_PFIFO_CACHE1_PUSH1], NV_PFIFO_CACHE1_PUSH1_CHID);
 
-        if (channel_id == cur_channel_id) {
-            switch (addr & 0xFFFF) {
-            case NV_USER_DMA_PUT:
-                d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT] = val;
-                break;
-            case NV_USER_DMA_GET:
-                d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET] = val;
-                break;
-            case NV_USER_REF:
-                d->pfifo.regs[NV_PFIFO_CACHE1_REF] = val;
-                break;
-            default:
-                assert(false);
-                break;
-            }
+		if (channel_id == cur_channel_id)
+		{
+			switch (addr & 0xFFFF)
+			{
+			case NV_USER_DMA_PUT:
+				d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT] = val;
+				break;
+			case NV_USER_DMA_GET:
+				d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET] = val;
+				break;
+			case NV_USER_REF:
+				d->pfifo.regs[NV_PFIFO_CACHE1_REF] = val;
+				break;
+			default:
+				assert(false);
+				break;
+			}
 
-            pfifo_kick(d);
+			pfifo_kick(d);
+		}
+		else
+		{
+			/* ramfc */
+			assert(false);
+		}
+	}
+	else
+	{
+		/* PIO Mode */
+		assert(false);
+	}
 
-        } else {
-            /* ramfc */
-            assert(false);
-        }
-    } else {
-        /* PIO Mode */
-        assert(false);
-    }
-
-    qemu_mutex_unlock(&d->pfifo.lock);
-
+	qemu_mutex_unlock(&d->pfifo.lock);
 }

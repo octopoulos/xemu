@@ -5,9 +5,9 @@ softmmu_ss.add(files(
   'clipboard.c',
   'console.c',
   'cursor.c',
+  'input-barrier.c',
   'input-keymap.c',
   'input-legacy.c',
-  'input-barrier.c',
   'input.c',
   'kbd-state.c',
   'keymaps.c',
@@ -28,18 +28,18 @@ xemu_ss.add(files(
   'implot/implot_demo.cpp',
   'implot/implot_items.cpp',
 
-  'xemu.c',
-  'xemu-custom-widgets.c',
-  'xemu-data.c',
-  'xemu-input.c',
+  'xemu-custom-widgets.cpp',
+  'xemu-data.cpp',
+  'xemu-hud.cpp',
+  'xemu-input.cpp',
   'xemu-monitor.c',
-  'xemu-net.c',
-  'xemu-settings.c',
-  'xemu-shaders.c',
-  'xemu-hud.cc',
-  'xemu-reporting.cc',
+  'xemu-net.cpp',
+  'xemu-reporting.cpp',
+  'xemu-shaders.cpp',
+  'xemu.cpp',
+  'xsettings.cpp',
 ))
-xemu_ss.add(when: 'CONFIG_WIN32', if_true: files('xemu-update.cc'))
+xemu_ss.add(when: 'CONFIG_WIN32', if_true: files('xemu-update.cpp'))
 
 imgui_flags = ['-DIMGUI_IMPL_OPENGL_LOADER_CUSTOM="epoxy/gl.h"']
 
@@ -59,8 +59,8 @@ endif
 
 imgui = declare_dependency(compile_args: imgui_flags, include_directories: 'imgui')
 xemu_ss.add(sdl, opengl, openssl, imgui)
-xemu_ss.add(when: 'CONFIG_LINUX', if_true: [xemu_gtk, files('xemu-os-utils-linux.c', 'noc_file_dialog_gtk.c')])
-xemu_ss.add(when: 'CONFIG_WIN32', if_true: files('xemu-os-utils-windows.c', 'noc_file_dialog_win32.c'))
+xemu_ss.add(when: 'CONFIG_LINUX', if_true: [xemu_gtk, files('xemu-os-utils-linux.cpp', 'noc_file_dialog_gtk.c')])
+xemu_ss.add(when: 'CONFIG_WIN32', if_true: files('xemu-os-utils-windows.cpp', 'noc_file_dialog_win32.c'))
 xemu_ss.add(when: 'CONFIG_DARWIN', if_true: files('xemu-os-utils-macos.m', 'noc_file_dialog_macos.m'))
 softmmu_ss.add_all(xemu_ss)
 
@@ -72,16 +72,16 @@ softmmu_ss.add(when: cocoa, if_true: files('cocoa.m'))
 
 vnc_ss = ss.source_set()
 vnc_ss.add(files(
-  'vnc.c',
-  'vnc-enc-zlib.c',
+  'vnc-auth-vencrypt.c',
+  'vnc-clipboard.c',
   'vnc-enc-hextile.c',
   'vnc-enc-tight.c',
-  'vnc-palette.c',
+  'vnc-enc-zlib.c',
   'vnc-enc-zrle.c',
-  'vnc-auth-vencrypt.c',
-  'vnc-ws.c',
   'vnc-jobs.c',
-  'vnc-clipboard.c',
+  'vnc-palette.c',
+  'vnc-ws.c',
+  'vnc.c',
 ))
 vnc_ss.add(zlib, png, jpeg, gnutls)
 vnc_ss.add(when: sasl, if_true: files('vnc-auth-sasl.c'))
@@ -105,7 +105,7 @@ if config_host.has_key('CONFIG_OPENGL')
   opengl_ss = ss.source_set()
   opengl_ss.add(gbm)
   opengl_ss.add(when: [opengl, pixman, 'CONFIG_OPENGL'],
-               if_true: files('shader.c', 'console-gl.c', 'egl-helpers.c', 'egl-context.c'))
+               if_true: files('shader.cpp', 'console-gl.c', 'egl-helpers.c', 'egl-context.c'))
   ui_modules += {'opengl' : opengl_ss}
 endif
 

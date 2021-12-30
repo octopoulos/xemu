@@ -407,11 +407,11 @@ void pci_root_bus_new_inplace(PCIBus *bus, size_t bus_size, DeviceState *parent,
                               const char *name,
                               MemoryRegion *address_space_mem,
                               MemoryRegion *address_space_io,
-                              uint8_t devfn_min, const char *typename);
+                              uint8_t devfn_min, const char *typeName);
 PCIBus *pci_root_bus_new(DeviceState *parent, const char *name,
                          MemoryRegion *address_space_mem,
                          MemoryRegion *address_space_io,
-                         uint8_t devfn_min, const char *typename);
+                         uint8_t devfn_min, const char *typeName);
 void pci_root_bus_cleanup(PCIBus *bus);
 void pci_bus_irqs(PCIBus *bus, pci_set_irq_fn set_irq, pci_map_irq_fn map_irq,
                   void *irq_opaque, int nirq);
@@ -429,7 +429,7 @@ PCIBus *pci_register_root_bus(DeviceState *parent, const char *name,
                               MemoryRegion *address_space_mem,
                               MemoryRegion *address_space_io,
                               uint8_t devfn_min, int nirq,
-                              const char *typename);
+                              const char *typeName);
 void pci_unregister_root_bus(PCIBus *bus);
 void pci_bus_set_route_irq_fn(PCIBus *, pci_route_irq_fn);
 PCIINTxRoute pci_device_route_intx_to_irq(PCIDevice *dev, int pin);

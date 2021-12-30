@@ -29,9 +29,10 @@
 #include <stdint.h>
 #include "qemu/queue.h"
 
-#define LRU_NUM_BINS (1<<16)
+#define LRU_NUM_BINS (1 << 16)
 
-typedef struct LruNode {
+typedef struct LruNode
+{
 	QTAILQ_ENTRY(LruNode) next_global;
 	QTAILQ_ENTRY(LruNode) next_bin;
 	uint64_t hash;
@@ -39,28 +40,29 @@ typedef struct LruNode {
 
 typedef struct Lru Lru;
 
-struct Lru {
+struct Lru
+{
 	QTAILQ_HEAD(, LruNode) global;
 	QTAILQ_HEAD(, LruNode) bins[LRU_NUM_BINS];
 
 	/* Initialize a node. */
-	void (*init_node)(Lru *lru, LruNode *node, void *key);
+	void (*init_node)(Lru* lru, LruNode* node, void* key);
 
 	/* In case of hash collision. Return `true` if nodes differ. */
-	bool (*compare_nodes)(Lru *lru, LruNode *node, void *key);
+	bool (*compare_nodes)(Lru* lru, LruNode* node, void* key);
 
 	/* Optional. Called before eviction. Return `false` to prevent eviction. */
-	bool (*pre_node_evict)(Lru *lru, LruNode *node);
+	bool (*pre_node_evict)(Lru* lru, LruNode* node);
 
 	/* Optional. Called after eviction. Reclaim any associated resources. */
-	void (*post_node_evict)(Lru *lru, LruNode *node);
+	void (*post_node_evict)(Lru* lru, LruNode* node);
 };
 
-static inline
-void lru_init(Lru *lru)
+static inline void lru_init(Lru* lru)
 {
 	QTAILQ_INIT(&lru->global);
-	for (unsigned int i = 0; i < LRU_NUM_BINS; i++) {
+	for (unsigned int i = 0; i < LRU_NUM_BINS; i++)
+	{
 		QTAILQ_INIT(&lru->bins[i]);
 	}
 	lru->init_node = NULL;
@@ -69,56 +71,55 @@ void lru_init(Lru *lru)
 	lru->post_node_evict = NULL;
 }
 
-static inline
-void lru_add_free(Lru *lru, LruNode *node)
+static inline void lru_add_free(Lru* lru, LruNode* node)
 {
 	node->next_bin.tqe_circ.tql_prev = NULL;
 	QTAILQ_INSERT_TAIL(&lru->global, node, next_global);
 }
 
-static inline
-unsigned int lru_hash_to_bin(Lru *lru, uint64_t hash)
+static inline unsigned int lru_hash_to_bin(Lru* lru, uint64_t hash)
 {
 	return hash % LRU_NUM_BINS;
 }
 
-static inline
-unsigned int lru_get_node_bin(Lru *lru, LruNode *node)
+static inline unsigned int lru_get_node_bin(Lru* lru, LruNode* node)
 {
 	return lru_hash_to_bin(lru, node->hash);
 }
 
-static inline
-bool lru_is_node_in_use(Lru *lru, LruNode *node)
+static inline bool lru_is_node_in_use(Lru* lru, LruNode* node)
 {
 	return QTAILQ_IN_USE(node, next_bin);
 }
 
-static inline
-void lru_evict_node(Lru *lru, LruNode *node)
+static inline void lru_evict_node(Lru* lru, LruNode* node)
 {
-	if (!lru_is_node_in_use(lru, node)) {
+	if (!lru_is_node_in_use(lru, node))
+	{
 		return;
 	}
 
 	unsigned int bin = lru_get_node_bin(lru, node);
 	QTAILQ_REMOVE(&lru->bins[bin], node, next_bin);
-	if (lru->post_node_evict) {
+	if (lru->post_node_evict)
+	{
 		lru->post_node_evict(lru, node);
 	}
 }
 
-static inline
-LruNode *lru_evict_one(Lru *lru)
+static inline LruNode* lru_evict_one(Lru* lru)
 {
-	LruNode *found;
+	LruNode* found;
 
-	QTAILQ_FOREACH_REVERSE(found, &lru->global, next_global) {
+	QTAILQ_FOREACH_REVERSE(found, &lru->global, next_global)
+	{
 		bool can_evict = true;
-		if (lru_is_node_in_use(lru, found) && lru->pre_node_evict) {
+		if (lru_is_node_in_use(lru, found) && lru->pre_node_evict)
+		{
 			can_evict = lru->pre_node_evict(lru, found);
 		}
-		if (can_evict) {
+		if (can_evict)
+		{
 			break;
 		}
 	}
@@ -129,25 +130,30 @@ LruNode *lru_evict_one(Lru *lru)
 	return found;
 }
 
-static inline
-LruNode *lru_lookup(Lru *lru, uint64_t hash, void *key)
+static inline LruNode* lru_lookup(Lru* lru, uint64_t hash, void* key)
 {
 	unsigned int bin = lru_hash_to_bin(lru, hash);
 	LruNode *iter, *found = NULL;
 
-	QTAILQ_FOREACH(iter, &lru->bins[bin], next_bin) {
-        if ((iter->hash == hash) && !lru->compare_nodes(lru, iter, key)) {
-            found = iter;
-            break;
-        }
-    }
+	QTAILQ_FOREACH(iter, &lru->bins[bin], next_bin)
+	{
+		if ((iter->hash == hash) && !lru->compare_nodes(lru, iter, key))
+		{
+			found = iter;
+			break;
+		}
+	}
 
-	if (found) {
+	if (found)
+	{
 		QTAILQ_REMOVE(&lru->bins[bin], found, next_bin);
-	} else {
+	}
+	else
+	{
 		found = lru_evict_one(lru);
 		found->hash = hash;
-		if (lru->init_node) {
+		if (lru->init_node)
+		{
 			lru->init_node(lru, found, key);
 		}
 		assert(found->hash == hash);
@@ -160,18 +166,21 @@ LruNode *lru_lookup(Lru *lru, uint64_t hash, void *key)
 	return found;
 }
 
-static inline
-void lru_flush(Lru *lru)
+static inline void lru_flush(Lru* lru)
 {
 	LruNode *iter, *iter_next;
 
-	for (unsigned int bin = 0; bin < LRU_NUM_BINS; bin++) {
-		QTAILQ_FOREACH_SAFE(iter, &lru->bins[bin], next_bin, iter_next) {
+	for (unsigned int bin = 0; bin < LRU_NUM_BINS; bin++)
+	{
+		QTAILQ_FOREACH_SAFE(iter, &lru->bins[bin], next_bin, iter_next)
+		{
 			bool can_evict = true;
-			if (lru->pre_node_evict) {
+			if (lru->pre_node_evict)
+			{
 				can_evict = lru->pre_node_evict(lru, iter);
 			}
-			if (can_evict) {
+			if (can_evict)
+			{
 				lru_evict_node(lru, iter);
 				QTAILQ_REMOVE(&lru->global, iter, next_global);
 				QTAILQ_INSERT_TAIL(&lru->global, iter, next_global);
@@ -180,17 +189,15 @@ void lru_flush(Lru *lru)
 	}
 }
 
-typedef void (*LruNodeVisitorFunc)(Lru *lru, LruNode *node, void *opaque);
+typedef void (*LruNodeVisitorFunc)(Lru* lru, LruNode* node, void* opaque);
 
-static inline
-void lru_visit_active(Lru *lru, LruNodeVisitorFunc visitor_func, void *opaque)
+static inline void lru_visit_active(Lru* lru, LruNodeVisitorFunc visitor_func, void* opaque)
 {
 	LruNode *iter, *iter_next;
 
-	for (unsigned int bin = 0; bin < LRU_NUM_BINS; bin++) {
-		QTAILQ_FOREACH_SAFE(iter, &lru->bins[bin], next_bin, iter_next) {
-			visitor_func(lru, iter, opaque);
-		}
+	for (unsigned int bin = 0; bin < LRU_NUM_BINS; bin++)
+	{
+		QTAILQ_FOREACH_SAFE(iter, &lru->bins[bin], next_bin, iter_next) { visitor_func(lru, iter, opaque); }
 	}
 }
 

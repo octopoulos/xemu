@@ -89,16 +89,16 @@ void rx_cpu_list(void)
 static ObjectClass *rx_cpu_class_by_name(const char *cpu_model)
 {
     ObjectClass *oc;
-    char *typename;
+    char *typeName;
 
     oc = object_class_by_name(cpu_model);
     if (oc != NULL && object_class_dynamic_cast(oc, TYPE_RX_CPU) != NULL &&
         !object_class_is_abstract(oc)) {
         return oc;
     }
-    typename = g_strdup_printf(RX_CPU_TYPE_NAME("%s"), cpu_model);
-    oc = object_class_by_name(typename);
-    g_free(typename);
+    typeName = g_strdup_printf(RX_CPU_TYPE_NAME("%s"), cpu_model);
+    oc = object_class_by_name(typeName);
+    g_free(typeName);
     if (oc != NULL && object_class_is_abstract(oc)) {
         oc = NULL;
     }

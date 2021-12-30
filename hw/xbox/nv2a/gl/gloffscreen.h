@@ -26,20 +26,23 @@
  * THE SOFTWARE.
  */
 
-#ifndef GLOFFSCREEN_H_
-#define GLOFFSCREEN_H_
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stdbool.h>
 
 #include <epoxy/gl.h>
 
-#if defined(__APPLE__)                 /* macOS-Specific GL Includes */
-#include <OpenGL/OpenGL.h>
-#include <OpenGL/glext.h>
-#elif defined(_WIN32)                  /* Windows-Specific GL Includes */
-#include <epoxy/wgl.h>
-#else                                  /* Assume GLX */
-#include <epoxy/glx.h>
+#if defined(__APPLE__) /* macOS-Specific GL Includes */
+#	include <OpenGL/OpenGL.h>
+#	include <OpenGL/glext.h>
+#elif defined(_WIN32) /* Windows-Specific GL Includes */
+#	include <epoxy/wgl.h>
+#else /* Assume GLX */
+#	include <epoxy/glx.h>
 #endif
 
 /* Used to hold data for the OpenGL context */
@@ -47,20 +50,21 @@ struct _GloContext;
 typedef struct _GloContext GloContext;
 
 /* Change current context */
-void glo_set_current(GloContext *context);
+void glo_set_current(GloContext* context);
 
 /* Check GL Extensions */
 bool glo_check_extension(const char* ext_name);
 
 /* Create an OpenGL context */
-GloContext *glo_context_create(void);
+GloContext* glo_context_create(void);
 
 /* Destroy a previously created OpenGL context */
-void glo_context_destroy(GloContext *context);
+void glo_context_destroy(GloContext* context);
 
-void glo_readpixels(GLenum gl_format, GLenum gl_type,
-                    unsigned int bytes_per_pixel, unsigned int stride,
-                    unsigned int width, unsigned int height, bool vflip,
-                    void *data);
- 
-#endif /* GLOFFSCREEN_H_ */
+void glo_readpixels(
+	GLenum gl_format, GLenum gl_type, uint32_t bytes_per_pixel, uint32_t stride, uint32_t width, uint32_t height,
+	bool vflip, void* data);
+
+#ifdef __cplusplus
+}
+#endif

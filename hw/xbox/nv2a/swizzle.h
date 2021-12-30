@@ -18,43 +18,28 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HW_XBOX_SWIZZLE_H
-#define HW_XBOX_SWIZZLE_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void swizzle_box(
-    const uint8_t *src_buf,
-    unsigned int width,
-    unsigned int height,
-    unsigned int depth,
-    uint8_t *dst_buf,
-    unsigned int row_pitch,
-    unsigned int slice_pitch,
-    unsigned int bytes_per_pixel);
+	const uint8_t* src_buf, uint32_t width, uint32_t height, uint32_t depth, uint8_t* dst_buf, uint32_t row_pitch,
+	uint32_t slice_pitch, uint32_t bytes_per_pixel);
 
 void unswizzle_box(
-    const uint8_t *src_buf,
-    unsigned int width,
-    unsigned int height,
-    unsigned int depth,
-    uint8_t *dst_buf,
-    unsigned int row_pitch,
-    unsigned int slice_pitch,
-    unsigned int bytes_per_pixel);
+	const uint8_t* src_buf, uint32_t width, uint32_t height, uint32_t depth, uint8_t* dst_buf, uint32_t row_pitch,
+	uint32_t slice_pitch, uint32_t bytes_per_pixel);
 
 void unswizzle_rect(
-    const uint8_t *src_buf,
-    unsigned int width,
-    unsigned int height,
-    uint8_t *dst_buf,
-    unsigned int pitch,
-    unsigned int bytes_per_pixel);
+	const uint8_t* src_buf, uint32_t width, uint32_t height, uint8_t* dst_buf, uint32_t pitch,
+	uint32_t bytes_per_pixel);
 
 void swizzle_rect(
-    const uint8_t *src_buf,
-    unsigned int width,
-    unsigned int height,
-    uint8_t *dst_buf,
-    unsigned int pitch,
-    unsigned int bytes_per_pixel);
+	const uint8_t* src_buf, uint32_t width, uint32_t height, uint8_t* dst_buf, uint32_t pitch,
+	uint32_t bytes_per_pixel);
 
+#ifdef __cplusplus
+}
 #endif

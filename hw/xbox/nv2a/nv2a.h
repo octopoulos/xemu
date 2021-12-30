@@ -18,14 +18,19 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HW_NV2A_H
-#define HW_NV2A_H
+#pragma once
 
-void nv2a_init(PCIBus *bus, int devfn, MemoryRegion *ram);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void nv2a_init(PCIBus* bus, int devfn, MemoryRegion* ram);
 void nv2a_gl_context_init(void);
 int nv2a_get_framebuffer_surface(void);
 void nv2a_set_surface_scale_factor(unsigned int scale);
 unsigned int nv2a_get_surface_scale_factor(void);
-const uint8_t *nv2a_get_dac_palette(void);
+const uint8_t* nv2a_get_dac_palette(void);
 
+#ifdef __cplusplus
+}
 #endif

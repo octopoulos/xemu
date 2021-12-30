@@ -27,34 +27,34 @@
 #include "sysemu/sysemu.h"
 
 #ifdef XBOX
-#undef main
-int qemu_main(int argc, char **argv, char **envp)
+#	undef main
+int qemu_main(int argc, char** argv, char** envp)
 #else
 
-#ifdef CONFIG_SDL
-#if defined(__APPLE__) || defined(main)
-#include <SDL.h>
-static int qemu_main(int argc, char **argv, char **envp);
-int main(int argc, char **argv)
+#	ifdef CONFIG_SDL
+#		if defined(__APPLE__) || defined(main)
+#			include <SDL.h>
+static int qemu_main(int argc, char** argv, char** envp);
+int main(int argc, char** argv)
 {
-    return qemu_main(argc, argv, NULL);
+	return qemu_main(argc, argv, NULL);
 }
-#undef main
-#define main qemu_main
-#endif
-#endif /* CONFIG_SDL */
+#			undef main
+#			define main qemu_main
+#		endif
+#	endif /* CONFIG_SDL */
 
-#ifdef CONFIG_COCOA
-#undef main
-#define main qemu_main
-#endif /* CONFIG_COCOA */
+#	ifdef CONFIG_COCOA
+#		undef main
+#		define main qemu_main
+#	endif /* CONFIG_COCOA */
 
-int main(int argc, char **argv, char **envp)
-#endif // ifdef XBOX
+int main(int argc, char** argv, char** envp)
+#endif	   // ifdef XBOX
 {
-    qemu_init(argc, argv, envp);
-    qemu_main_loop();
-    qemu_cleanup();
+	qemu_init(argc, argv, envp);
+	qemu_main_loop();
+	qemu_cleanup();
 
-    return 0;
+	return 0;
 }

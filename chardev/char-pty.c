@@ -106,7 +106,7 @@ static void pty_chr_update_read_handler(Chardev *chr)
     }
 }
 
-static int char_pty_chr_write(Chardev *chr, const uint8_t *buf, int len)
+static int char_pty_chr_write(Chardev *chr, const uint8_t *buf, size_t len)
 {
     PtyChardev *s = PTY_CHARDEV(chr);
 

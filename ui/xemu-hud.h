@@ -20,8 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef XEMU_HUD_H
-#define XEMU_HUD_H
+#pragma once
 
 #include <SDL.h>
 
@@ -30,22 +29,19 @@ extern "C" {
 #endif
 
 // Implemented in xemu.c
-extern int scaling_mode;
 int xemu_is_fullscreen(void);
 void xemu_monitor_init(void);
 void xemu_toggle_fullscreen(void);
 void xemu_eject_disc(void);
-void xemu_load_disc(const char *path);
+void xemu_load_disc(const char* path);
 
 // Implemented in xemu_hud.cc
-void xemu_hud_init(SDL_Window *window, void *sdl_gl_context);
+void xemu_hud_init(SDL_Window* window, void* sdl_gl_context);
 void xemu_hud_cleanup(void);
 void xemu_hud_render(void);
-void xemu_hud_process_sdl_events(SDL_Event *event);
-void xemu_hud_should_capture_kbd_mouse(int *kbd, int *mouse);
+void xemu_hud_process_sdl_events(SDL_Event* event);
+void xemu_hud_should_capture_kbd_mouse(int* kbd, int* mouse);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

@@ -11,9 +11,11 @@
  *
  */
 
-#ifndef QEMU_MODULE_H
-#define QEMU_MODULE_H
+#pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define DSO_STAMP_FUN         glue(qemu_stamp, CONFIG_STAMP)
 #define DSO_STAMP_FUN_STR     stringify(DSO_STAMP_FUN)
@@ -152,4 +154,6 @@ struct QemuModinfo {
 extern const QemuModinfo qemu_modinfo[];
 void module_init_info(const QemuModinfo *info);
 
+#ifdef __cplusplus
+}
 #endif

@@ -28,14 +28,15 @@
 #include "dsp_cpu.h"
 #include "dsp_dma.h"
 
-struct DSPState {
-    dsp_core_t core;
-    DSPDMAState dma;
-    int save_cycles;
+struct DSPState
+{
+	dsp_core_t core;
+	DSPDMAState dma;
+	int save_cycles;
 
-    uint32_t interrupts;
+	uint32_t interrupts;
 
-    bool is_gp;
+	bool is_gp;
 };
 
 #endif /* DSP_STATE_H */

@@ -23,57 +23,58 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-enum McpxApuDebugMon {
-    MCPX_APU_DEBUG_MON_AC97,
-    MCPX_APU_DEBUG_MON_VP,
-    MCPX_APU_DEBUG_MON_GP,
-    MCPX_APU_DEBUG_MON_EP,
-    MCPX_APU_DEBUG_MON_GP_OR_EP
+enum McpxApuDebugMon
+{
+	MCPX_APU_DEBUG_MON_AC97,
+	MCPX_APU_DEBUG_MON_VP,
+	MCPX_APU_DEBUG_MON_GP,
+	MCPX_APU_DEBUG_MON_EP,
+	MCPX_APU_DEBUG_MON_GP_OR_EP
 };
 
 struct McpxApuDebugVoice
 {
-    bool active;
-    bool paused;
-    bool stereo;
-    uint8_t bin[8];
-    uint16_t vol[8];
+	bool active;
+	bool paused;
+	bool stereo;
+	uint8_t bin[8];
+	uint16_t vol[8];
 
-    bool stream;
-    bool loop;
-    bool persist;
-    bool multipass;
-    bool linked;
-    int container_size, sample_size;
-    unsigned int samples_per_block;
-    uint32_t ebo, cbo, lbo, ba;
-    float rate;
+	bool stream;
+	bool loop;
+	bool persist;
+	bool multipass;
+	bool linked;
+	int container_size, sample_size;
+	unsigned int samples_per_block;
+	uint32_t ebo, cbo, lbo, ba;
+	float rate;
 };
 
 struct McpxApuDebugVp
 {
-    struct McpxApuDebugVoice v[256];
+	struct McpxApuDebugVoice v[256];
 };
 
 struct McpxApuDebugDsp
 {
-    int cycles;
+	int cycles;
 };
 
 struct McpxApuDebug
 {
-    struct McpxApuDebugVp vp;
-    struct McpxApuDebugDsp gp, ep;
-    int frames_processed;
-    float utilization;
-    bool gp_realtime, ep_realtime;
+	struct McpxApuDebugVp vp;
+	struct McpxApuDebugDsp gp, ep;
+	int frames_processed;
+	float utilization;
+	bool gp_realtime, ep_realtime;
 };
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-const struct McpxApuDebug *mcpx_apu_get_debug_info(void);
+const struct McpxApuDebug* mcpx_apu_get_debug_info(void);
 int mcpx_apu_debug_get_monitor(void);
 void mcpx_apu_debug_set_monitor(int mon);
 void mcpx_apu_debug_isolate_voice(uint16_t v);

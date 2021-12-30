@@ -66,7 +66,7 @@ static void cris_cpu_reset(DeviceState *dev)
 static ObjectClass *cris_cpu_class_by_name(const char *cpu_model)
 {
     ObjectClass *oc;
-    char *typename;
+    char *typeName;
 
 #if defined(CONFIG_USER_ONLY)
     if (strcasecmp(cpu_model, "any") == 0) {
@@ -74,9 +74,9 @@ static ObjectClass *cris_cpu_class_by_name(const char *cpu_model)
     }
 #endif
 
-    typename = g_strdup_printf(CRIS_CPU_TYPE_NAME("%s"), cpu_model);
-    oc = object_class_by_name(typename);
-    g_free(typename);
+    typeName = g_strdup_printf(CRIS_CPU_TYPE_NAME("%s"), cpu_model);
+    oc = object_class_by_name(typeName);
+    g_free(typeName);
     if (oc != NULL && (!object_class_dynamic_cast(oc, TYPE_CRIS_CPU) ||
                        object_class_is_abstract(oc))) {
         oc = NULL;
@@ -103,10 +103,10 @@ static gint cris_cpu_list_compare(gconstpointer a, gconstpointer b)
 static void cris_cpu_list_entry(gpointer data, gpointer user_data)
 {
     ObjectClass *oc = data;
-    const char *typename = object_class_get_name(oc);
+    const char *typeName = object_class_get_name(oc);
     char *name;
 
-    name = g_strndup(typename, strlen(typename) - strlen(CRIS_CPU_TYPE_SUFFIX));
+    name = g_strndup(typeName, strlen(typeName) - strlen(CRIS_CPU_TYPE_SUFFIX));
     qemu_printf("  %s\n", name);
     g_free(name);
 }

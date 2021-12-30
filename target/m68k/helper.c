@@ -49,11 +49,11 @@ static gint m68k_cpu_list_compare(gconstpointer a, gconstpointer b)
 static void m68k_cpu_list_entry(gpointer data, gpointer user_data)
 {
     ObjectClass *c = data;
-    const char *typename;
+    const char *typeName;
     char *name;
 
-    typename = object_class_get_name(c);
-    name = g_strndup(typename, strlen(typename) - strlen("-" TYPE_M68K_CPU));
+    typeName = object_class_get_name(c);
+    name = g_strndup(typeName, strlen(typeName) - strlen("-" TYPE_M68K_CPU));
     qemu_printf("%s\n", name);
     g_free(name);
 }

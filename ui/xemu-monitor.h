@@ -21,8 +21,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef XEMU_MONITOR_H
-#define XEMU_MONITOR_H
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,6 +33,4 @@ void xemu_run_monitor_command(const char *cmd);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

@@ -227,14 +227,14 @@ static void rv32_imafcu_nommu_cpu_init(Object *obj)
 static ObjectClass *riscv_cpu_class_by_name(const char *cpu_model)
 {
     ObjectClass *oc;
-    char *typename;
+    char *typeName;
     char **cpuname;
 
     cpuname = g_strsplit(cpu_model, ",", 1);
-    typename = g_strdup_printf(RISCV_CPU_TYPE_NAME("%s"), cpuname[0]);
-    oc = object_class_by_name(typename);
+    typeName = g_strdup_printf(RISCV_CPU_TYPE_NAME("%s"), cpuname[0]);
+    oc = object_class_by_name(typeName);
     g_strfreev(cpuname);
-    g_free(typename);
+    g_free(typeName);
     if (!oc || !object_class_dynamic_cast(oc, TYPE_RISCV_CPU) ||
         object_class_is_abstract(oc)) {
         return NULL;
@@ -715,10 +715,10 @@ static gint riscv_cpu_list_compare(gconstpointer a, gconstpointer b)
 
 static void riscv_cpu_list_entry(gpointer data, gpointer user_data)
 {
-    const char *typename = object_class_get_name(OBJECT_CLASS(data));
-    int len = strlen(typename) - strlen(RISCV_CPU_TYPE_SUFFIX);
+    const char *typeName = object_class_get_name(OBJECT_CLASS(data));
+    int len = strlen(typeName) - strlen(RISCV_CPU_TYPE_SUFFIX);
 
-    qemu_printf("%.*s\n", len, typename);
+    qemu_printf("%.*s\n", len, typeName);
 }
 
 void riscv_cpu_list(void)

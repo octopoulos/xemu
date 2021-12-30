@@ -91,7 +91,7 @@ typedef struct BDRVNBDState {
     /* Connection parameters */
     uint32_t reconnect_delay;
     SocketAddress *saddr;
-    char *export, *tlscredsid;
+    char *pexport, *tlscredsid;
     QCryptoTLSCreds *tlscreds;
     const char *hostname;
     char *x_dirty_bitmap;
@@ -114,8 +114,8 @@ static void nbd_clear_bdrvstate(BlockDriverState *bs)
     object_unref(OBJECT(s->tlscreds));
     qapi_free_SocketAddress(s->saddr);
     s->saddr = NULL;
-    g_free(s->export);
-    s->export = NULL;
+    g_free(s->pexport);
+    s->pexport = NULL;
     g_free(s->tlscredsid);
     s->tlscredsid = NULL;
     g_free(s->x_dirty_bitmap);
@@ -353,7 +353,7 @@ static int nbd_handle_updated_info(BlockDriverState *bs, Error **errp)
         }
     }
 
-    trace_nbd_client_handshake_success(s->export);
+    trace_nbd_client_handshake_success(s->pexport);
 
     return 0;
 }
@@ -1924,8 +1924,8 @@ static int nbd_process_options(BlockDriverState *bs, QDict *options,
         goto error;
     }
 
-    s->export = g_strdup(qemu_opt_get(opts, "export"));
-    if (s->export && strlen(s->export) > NBD_MAX_STRING_SIZE) {
+    s->pexport = g_strdup(qemu_opt_get(opts, "export"));
+    if (s->pexport && strlen(s->pexport) > NBD_MAX_STRING_SIZE) {
         error_setg(errp, "export name too long to send to server");
         goto error;
     }
@@ -1979,7 +1979,7 @@ static int nbd_open(BlockDriverState *bs, QDict *options, int flags,
         goto fail;
     }
 
-    s->conn = nbd_client_connection_new(s->saddr, true, s->export,
+    s->conn = nbd_client_connection_new(s->saddr, true, s->pexport,
                                         s->x_dirty_bitmap, s->tlscreds);
 
     /* TODO: Configurable retry-until-timeout behaviour. */
@@ -2094,16 +2094,16 @@ static void nbd_refresh_filename(BlockDriverState *bs)
         path = s->saddr->u.q_unix.path;
     } /* else can't represent as pseudo-filename */
 
-    if (path && s->export) {
+    if (path && s->pexport) {
         len = snprintf(bs->exact_filename, sizeof(bs->exact_filename),
-                       "nbd+unix:///%s?socket=%s", s->export, path);
-    } else if (path && !s->export) {
+                       "nbd+unix:///%s?socket=%s", s->pexport, path);
+    } else if (path && !s->pexport) {
         len = snprintf(bs->exact_filename, sizeof(bs->exact_filename),
                        "nbd+unix://?socket=%s", path);
-    } else if (host && s->export) {
+    } else if (host && s->pexport) {
         len = snprintf(bs->exact_filename, sizeof(bs->exact_filename),
-                       "nbd://%s:%s/%s", host, port, s->export);
-    } else if (host && !s->export) {
+                       "nbd://%s:%s/%s", host, port, s->pexport);
+    } else if (host && !s->pexport) {
         len = snprintf(bs->exact_filename, sizeof(bs->exact_filename),
                        "nbd://%s:%s", host, port);
     }

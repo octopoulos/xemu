@@ -114,11 +114,11 @@ static void xtensa_cpu_reset(DeviceState *dev)
 static ObjectClass *xtensa_cpu_class_by_name(const char *cpu_model)
 {
     ObjectClass *oc;
-    char *typename;
+    char *typeName;
 
-    typename = g_strdup_printf(XTENSA_CPU_TYPE_NAME("%s"), cpu_model);
-    oc = object_class_by_name(typename);
-    g_free(typename);
+    typeName = g_strdup_printf(XTENSA_CPU_TYPE_NAME("%s"), cpu_model);
+    oc = object_class_by_name(typeName);
+    g_free(typeName);
     if (oc == NULL || !object_class_dynamic_cast(oc, TYPE_XTENSA_CPU) ||
         object_class_is_abstract(oc)) {
         return NULL;

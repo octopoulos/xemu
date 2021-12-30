@@ -119,7 +119,7 @@ static void aspeed_soc_ast2600_init(Object *obj)
     AspeedSoCClass *sc = ASPEED_SOC_GET_CLASS(s);
     int i;
     char socname[8];
-    char typename[64];
+    char typeName[64];
 
     if (sscanf(sc->name, "%7s", socname) != 1) {
         g_assert_not_reached();
@@ -129,8 +129,8 @@ static void aspeed_soc_ast2600_init(Object *obj)
         object_initialize_child(obj, "cpu[*]", &s->cpu[i], sc->cpu_type);
     }
 
-    snprintf(typename, sizeof(typename), "aspeed.scu-%s", socname);
-    object_initialize_child(obj, "scu", &s->scu, typename);
+    snprintf(typeName, sizeof(typeName), "aspeed.scu-%s", socname);
+    object_initialize_child(obj, "scu", &s->scu, typeName);
     qdev_prop_set_uint32(DEVICE(&s->scu), "silicon-rev",
                          sc->silicon_rev);
     object_property_add_alias(obj, "hw-strap1", OBJECT(&s->scu),
@@ -145,19 +145,19 @@ static void aspeed_soc_ast2600_init(Object *obj)
 
     object_initialize_child(obj, "rtc", &s->rtc, TYPE_ASPEED_RTC);
 
-    snprintf(typename, sizeof(typename), "aspeed.timer-%s", socname);
-    object_initialize_child(obj, "timerctrl", &s->timerctrl, typename);
+    snprintf(typeName, sizeof(typeName), "aspeed.timer-%s", socname);
+    object_initialize_child(obj, "timerctrl", &s->timerctrl, typeName);
 
-    snprintf(typename, sizeof(typename), "aspeed.i2c-%s", socname);
-    object_initialize_child(obj, "i2c", &s->i2c, typename);
+    snprintf(typeName, sizeof(typeName), "aspeed.i2c-%s", socname);
+    object_initialize_child(obj, "i2c", &s->i2c, typeName);
 
-    snprintf(typename, sizeof(typename), "aspeed.fmc-%s", socname);
-    object_initialize_child(obj, "fmc", &s->fmc, typename);
+    snprintf(typeName, sizeof(typeName), "aspeed.fmc-%s", socname);
+    object_initialize_child(obj, "fmc", &s->fmc, typeName);
     object_property_add_alias(obj, "num-cs", OBJECT(&s->fmc), "num-cs");
 
     for (i = 0; i < sc->spis_num; i++) {
-        snprintf(typename, sizeof(typename), "aspeed.spi%d-%s", i + 1, socname);
-        object_initialize_child(obj, "spi[*]", &s->spi[i], typename);
+        snprintf(typeName, sizeof(typeName), "aspeed.spi%d-%s", i + 1, socname);
+        object_initialize_child(obj, "spi[*]", &s->spi[i], typeName);
     }
 
     for (i = 0; i < sc->ehcis_num; i++) {
@@ -165,16 +165,16 @@ static void aspeed_soc_ast2600_init(Object *obj)
                                 TYPE_PLATFORM_EHCI);
     }
 
-    snprintf(typename, sizeof(typename), "aspeed.sdmc-%s", socname);
-    object_initialize_child(obj, "sdmc", &s->sdmc, typename);
+    snprintf(typeName, sizeof(typeName), "aspeed.sdmc-%s", socname);
+    object_initialize_child(obj, "sdmc", &s->sdmc, typeName);
     object_property_add_alias(obj, "ram-size", OBJECT(&s->sdmc),
                               "ram-size");
     object_property_add_alias(obj, "max-ram-size", OBJECT(&s->sdmc),
                               "max-ram-size");
 
     for (i = 0; i < sc->wdts_num; i++) {
-        snprintf(typename, sizeof(typename), "aspeed.wdt-%s", socname);
-        object_initialize_child(obj, "wdt[*]", &s->wdt[i], typename);
+        snprintf(typeName, sizeof(typeName), "aspeed.wdt-%s", socname);
+        object_initialize_child(obj, "wdt[*]", &s->wdt[i], typeName);
     }
 
     for (i = 0; i < sc->macs_num; i++) {
@@ -184,14 +184,14 @@ static void aspeed_soc_ast2600_init(Object *obj)
         object_initialize_child(obj, "mii[*]", &s->mii[i], TYPE_ASPEED_MII);
     }
 
-    snprintf(typename, sizeof(typename), TYPE_ASPEED_XDMA "-%s", socname);
-    object_initialize_child(obj, "xdma", &s->xdma, typename);
+    snprintf(typeName, sizeof(typeName), TYPE_ASPEED_XDMA "-%s", socname);
+    object_initialize_child(obj, "xdma", &s->xdma, typeName);
 
-    snprintf(typename, sizeof(typename), "aspeed.gpio-%s", socname);
-    object_initialize_child(obj, "gpio", &s->gpio, typename);
+    snprintf(typeName, sizeof(typeName), "aspeed.gpio-%s", socname);
+    object_initialize_child(obj, "gpio", &s->gpio, typeName);
 
-    snprintf(typename, sizeof(typename), "aspeed.gpio-%s-1_8v", socname);
-    object_initialize_child(obj, "gpio_1_8v", &s->gpio_1_8v, typename);
+    snprintf(typeName, sizeof(typeName), "aspeed.gpio-%s-1_8v", socname);
+    object_initialize_child(obj, "gpio_1_8v", &s->gpio_1_8v, typeName);
 
     object_initialize_child(obj, "sd-controller", &s->sdhci,
                             TYPE_ASPEED_SDHCI);
@@ -214,8 +214,8 @@ static void aspeed_soc_ast2600_init(Object *obj)
 
     object_initialize_child(obj, "lpc", &s->lpc, TYPE_ASPEED_LPC);
 
-    snprintf(typename, sizeof(typename), "aspeed.hace-%s", socname);
-    object_initialize_child(obj, "hace", &s->hace, typename);
+    snprintf(typeName, sizeof(typeName), "aspeed.hace-%s", socname);
+    object_initialize_child(obj, "hace", &s->hace, typeName);
 }
 
 /*

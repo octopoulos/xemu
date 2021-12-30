@@ -33,7 +33,7 @@
 struct soundhw {
     const char *name;
     const char *descr;
-    const char *typename;
+    const char *typeName;
     int enabled;
     int isa;
     union {
@@ -68,13 +68,13 @@ void pci_register_soundhw(const char *name, const char *descr,
 }
 
 void deprecated_register_soundhw(const char *name, const char *descr,
-                                 int isa, const char *typename)
+                                 int isa, const char *typeName)
 {
     assert(soundhw_count < ARRAY_SIZE(soundhw) - 1);
     soundhw[soundhw_count].name = name;
     soundhw[soundhw_count].descr = descr;
     soundhw[soundhw_count].isa = isa;
-    soundhw[soundhw_count].typename = typename;
+    soundhw[soundhw_count].typeName = typeName;
     soundhw_count++;
 }
 
@@ -149,14 +149,14 @@ void soundhw_init(void)
 
     for (c = soundhw; c->name; ++c) {
         if (c->enabled) {
-            if (c->typename) {
+            if (c->typeName) {
                 warn_report("'-soundhw %s' is deprecated, "
                             "please use '-device %s' instead",
-                            c->name, c->typename);
+                            c->name, c->typeName);
                 if (c->isa) {
-                    isa_create_simple(isa_bus, c->typename);
+                    isa_create_simple(isa_bus, c->typeName);
                 } else {
-                    pci_create_simple(pci_bus, -1, c->typename);
+                    pci_create_simple(pci_bus, -1, c->typeName);
                 }
             } else if (c->isa) {
                 if (!isa_bus) {

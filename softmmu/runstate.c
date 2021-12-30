@@ -747,8 +747,6 @@ static void qemu_run_exit_notifiers(void)
 
 void qemu_init_subsystems(void)
 {
-    Error *err = NULL;
-
     os_set_line_buffering();
 
     module_call_init(MODULE_INIT_TRACE);
@@ -774,6 +772,7 @@ void qemu_init_subsystems(void)
     monitor_init_globals();
 
 #ifndef XBOX
+    Error *err = NULL;
     if (qcrypto_init(&err) < 0) {
         error_reportf_err(err, "cannot initialize crypto: ");
         exit(1);

@@ -91,7 +91,7 @@ void alpha_cpu_list(void)
 /* Models */
 typedef struct AlphaCPUAlias {
     const char *alias;
-    const char *typename;
+    const char *typeName;
 } AlphaCPUAlias;
 
 static const AlphaCPUAlias alpha_cpu_aliases[] = {
@@ -106,7 +106,7 @@ static const AlphaCPUAlias alpha_cpu_aliases[] = {
 static ObjectClass *alpha_cpu_class_by_name(const char *cpu_model)
 {
     ObjectClass *oc;
-    char *typename;
+    char *typeName;
     int i;
 
     oc = object_class_by_name(cpu_model);
@@ -117,15 +117,15 @@ static ObjectClass *alpha_cpu_class_by_name(const char *cpu_model)
 
     for (i = 0; i < ARRAY_SIZE(alpha_cpu_aliases); i++) {
         if (strcmp(cpu_model, alpha_cpu_aliases[i].alias) == 0) {
-            oc = object_class_by_name(alpha_cpu_aliases[i].typename);
+            oc = object_class_by_name(alpha_cpu_aliases[i].typeName);
             assert(oc != NULL && !object_class_is_abstract(oc));
             return oc;
         }
     }
 
-    typename = g_strdup_printf(ALPHA_CPU_TYPE_NAME("%s"), cpu_model);
-    oc = object_class_by_name(typename);
-    g_free(typename);
+    typeName = g_strdup_printf(ALPHA_CPU_TYPE_NAME("%s"), cpu_model);
+    oc = object_class_by_name(typeName);
+    g_free(typeName);
     if (oc != NULL && object_class_is_abstract(oc)) {
         oc = NULL;
     }

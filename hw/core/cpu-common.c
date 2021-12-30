@@ -54,10 +54,10 @@ bool cpu_exists(int64_t id)
     return !!cpu_by_arch_id(id);
 }
 
-CPUState *cpu_create(const char *typename)
+CPUState *cpu_create(const char *typeName)
 {
     Error *err = NULL;
-    CPUState *cpu = CPU(object_new(typename));
+    CPUState *cpu = CPU(object_new(typeName));
     if (!qdev_realize(DEVICE(cpu), NULL, &err)) {
         error_report_err(err);
         object_unref(OBJECT(cpu));
@@ -148,15 +148,15 @@ static bool cpu_common_has_work(CPUState *cs)
     return false;
 }
 
-ObjectClass *cpu_class_by_name(const char *typename, const char *cpu_model)
+ObjectClass *cpu_class_by_name(const char *typeName, const char *cpu_model)
 {
-    CPUClass *cc = CPU_CLASS(object_class_by_name(typename));
+    CPUClass *cc = CPU_CLASS(object_class_by_name(typeName));
 
     assert(cpu_model && cc->class_by_name);
     return cc->class_by_name(cpu_model);
 }
 
-static void cpu_common_parse_features(const char *typename, char *features,
+static void cpu_common_parse_features(const char *typeName, char *features,
                                       Error **errp)
 {
     char *val;
@@ -174,7 +174,7 @@ static void cpu_common_parse_features(const char *typename, char *features,
             GlobalProperty *prop = g_new0(typeof(*prop), 1);
             *val = 0;
             val++;
-            prop->driver = typename;
+            prop->driver = typeName;
             prop->property = g_strdup(featurestr);
             prop->value = g_strdup(val);
             qdev_prop_register_global(prop);

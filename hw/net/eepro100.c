@@ -2018,7 +2018,7 @@ static E100PCIDeviceInfo e100_devices[] = {
     }
 };
 
-static E100PCIDeviceInfo *eepro100_get_class_by_name(const char *typename)
+static E100PCIDeviceInfo *eepro100_get_class_by_name(const char *typeName)
 {
     E100PCIDeviceInfo *info = NULL;
     int i;
@@ -2031,7 +2031,7 @@ static E100PCIDeviceInfo *eepro100_get_class_by_name(const char *typename)
      * do this in a much more elegant fashion.
      */
     for (i = 0; i < ARRAY_SIZE(e100_devices); i++) {
-        if (strcmp(e100_devices[i].name, typename) == 0) {
+        if (strcmp(e100_devices[i].name, typeName) == 0) {
             info = &e100_devices[i];
             break;
         }

@@ -17,8 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef XEMU_DATA
-#define XEMU_DATA
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,6 +28,4 @@ const char *xemu_get_resource_path(const char *filename);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

@@ -20,19 +20,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef XEMU_NOTIFICATION
-#define XEMU_NOTIFICATION
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // Simple API to show a message on the screen when some event happens
-void xemu_queue_notification(const char *msg);
+void xemu_queue_notification(const char *msg, bool instant);
 void xemu_queue_error_message(const char *msg);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

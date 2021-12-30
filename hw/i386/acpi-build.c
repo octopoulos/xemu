@@ -193,10 +193,10 @@ static void init_common_fadt_data(MachineState *ms, Object *o,
     *data = fadt;
 }
 
-static Object *object_resolve_type_unambiguous(const char *typename)
+static Object *object_resolve_type_unambiguous(const char *typeName)
 {
     bool ambig;
-    Object *o = object_resolve_path_type("", typename, &ambig);
+    Object *o = object_resolve_path_type("", typeName, &ambig);
 
     if (ambig || !o) {
         return NULL;
