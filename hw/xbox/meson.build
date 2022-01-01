@@ -4,7 +4,6 @@ specific_ss.add(files(
 	# 'chihiro-usb.c',
 	# 'chihiro.c',
 	'eeprom_generation.cpp',
-	'extract-iso.cpp',
 	'lpc47m157.c',
 	'nvnet.c',
 	'smbus_adm1032.c',

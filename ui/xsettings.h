@@ -118,6 +118,7 @@ typedef struct _XSettings
 
 	// [misc]
 	int   check_for_update;
+	str2k recent_files[6];
 	str2k user_token;
 } XSettings;
 

@@ -1,20 +1,21 @@
 specific_ss.add(when: 'CONFIG_SOFTMMU', if_true: [files(
   'arch_init.c',
   'balloon.c',
-  'cpus.c',
   'cpu-throttle.c',
+  'cpu-timers.c',
+  'cpus.c',
   'datadir.c',
   'globals.c',
-  'physmem.c',
   'ioport.c',
-  'rtc.c',
-  'runstate.c',
-  'memory.c',
   'memory_mapping.c',
+  'memory.c',
+  'physmem.c',
   'qtest.c',
-  'vl.c',
-  'cpu-timers.c',
+  'rtc.c',
+  'run-extra.cpp',
   'runstate-action.c',
+  'runstate.c',
+  'vl.c',
 )])
 
 specific_ss.add(when: ['CONFIG_SOFTMMU', 'CONFIG_TCG'], if_true: [files(

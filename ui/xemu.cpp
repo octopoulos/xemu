@@ -52,11 +52,12 @@
 
 #include "data/xemu_64x64.png.h"
 
-#include "hw/xbox/extract-xiso.h"
+#include "gamestats.h"
 #include "hw/xbox/smbus.h" // For eject, drive tray
 #include "hw/xbox/nv2a/nv2a.h"
 
 #include <fstream>
+#include <map>
 
 #ifdef _WIN32
 // Provide hint to prefer high-performance graphics for hybrid systems
@@ -76,44 +77,22 @@ extern "C" void tcg_register_init_ctx(void); // tcg.c
 #	define DPRINTF(...)
 #endif
 
-static bool xb_console_gl_check_format(DisplayChangeListener* dcl, pixman_format_code_t format)
-{
-	switch (format)
-	{
-	case PIXMAN_BE_b8g8r8x8:
-	case PIXMAN_BE_b8g8r8a8:
-	case PIXMAN_r5g6b5:
-		return true;
-	default:
-		return false;
-	}
-}
+static int             sdl2_num_outputs;
+static SDL2_Console*   sdl2_console;
+static exiso::GameInfo gameInfo;
+static int             gui_grab; // if true, all keyboard/mouse events are grabbed
+static int             gui_fullscreen;
+static SDL_Cursor*     sdl_cursor_normal;
+static SDL_Cursor*     sdl_cursor_hidden;
+static int             absolute_enabled;
+static int             guest_cursor;
+static int             guest_x;
+static int             guest_y;
+static SDL_Cursor*     guest_sprite;
+static SDL_GLContext   m_context;
 
-void xb_surface_gl_create_texture(DisplaySurface* surface);
-void xb_surface_gl_update_texture(DisplaySurface* surface, int x, int y, int w, int h);
-void xb_surface_gl_destroy_texture(DisplaySurface* surface);
-
-static void sleep_ns(int64_t ns);
-
-static int                   sdl2_num_outputs;
-static SDL2_Console*         sdl2_console;
-static extract_iso::GameInfo gameInfo;
-static SDL_Surface*          guest_sprite_surface;
-static int                   gui_grab; /* if true, all keyboard/mouse events are grabbed */
-static int                   gui_saved_grab;
-static int                   gui_fullscreen;
-static int                   gui_grab_code = KMOD_LALT; // | KMOD_LCTRL;
-static SDL_Cursor*           sdl_cursor_normal;
-static SDL_Cursor*           sdl_cursor_hidden;
-static int                   absolute_enabled;
-static int                   guest_cursor;
-static int                   guest_x, guest_y;
-static SDL_Cursor*           guest_sprite;
-static Notifier              mouse_mode_notifier;
-SDL_Window*                  m_window = NULL;
-static SDL_GLContext         m_context;
-static int                   textureDims[] = { 0, 0 };
-DecalShader                  blit;
+SDL_Window* m_window = NULL;
+DecalShader blit;
 
 static QemuSemaphore display_init_sem;
 
@@ -269,6 +248,7 @@ static void sdl_send_mouse_event(SDL2_Console* scon, int dx, int dy, int x, int 
 
 static void set_full_screen(SDL2_Console* scon, bool set)
 {
+	static int gui_saved_grab;
 	gui_fullscreen = set;
 
 	if (gui_fullscreen)
@@ -292,6 +272,7 @@ static void toggle_full_screen(SDL2_Console* scon)
 
 static int get_mod_state()
 {
+    static int gui_grab_code = KMOD_LALT; // | KMOD_LCTRL;
 	SDL_Keymod mod = SDL_GetModState();
 
 	if (alt_grab)
@@ -395,8 +376,7 @@ static void handle_mousemotion(SDL_Event* ev)
 		max_x = scr_w - 1;
 		max_y = scr_h - 1;
 
-		if (gui_grab && !gui_fullscreen
-		    && (ev->motion.x == 0 || ev->motion.y == 0 || ev->motion.x == max_x || ev->motion.y == max_y))
+		if (gui_grab && !gui_fullscreen && (ev->motion.x == 0 || ev->motion.y == 0 || ev->motion.x == max_x || ev->motion.y == max_y))
 			sdl_grab_end(scon);
 
 		if (!gui_grab && (ev->motion.x > 0 && ev->motion.x < max_x && ev->motion.y > 0 && ev->motion.y < max_y))
@@ -565,6 +545,7 @@ void sdl2_poll_events(SDL2_Console* scon)
 			handle_textinput(ev);
 			break;
 		case SDL_QUIT:
+            ui::LoadedGame("");
 			if (scon->opts->has_window_close && !scon->opts->window_close)
 				allow_close = false;
 			if (allow_close)
@@ -631,15 +612,15 @@ static void sdl_mouse_warp(DisplayChangeListener* dcl, int x, int y, int on)
 
 static void sdl_mouse_define(DisplayChangeListener* dcl, QEMUCursor* c)
 {
+	static SDL_Surface* guest_sprite_surface;
+
 	if (guest_sprite)
 		SDL_FreeCursor(guest_sprite);
 
 	if (guest_sprite_surface)
 		SDL_FreeSurface(guest_sprite_surface);
 
-	guest_sprite_surface =
-	    SDL_CreateRGBSurfaceFrom(c->data, c->width, c->height, 32, c->width * 4, 0xff0000, 0x00ff00, 0xff, 0xff000000);
-
+	guest_sprite_surface = SDL_CreateRGBSurfaceFrom(c->data, c->width, c->height, 32, c->width * 4, 0xff0000, 0x00ff00, 0xff, 0xff000000);
 	if (!guest_sprite_surface)
 	{
 		fprintf(stderr, "Failed to make rgb surface from %p\n", c);
@@ -655,15 +636,27 @@ static void sdl_mouse_define(DisplayChangeListener* dcl, QEMUCursor* c)
 		SDL_SetCursor(guest_sprite);
 }
 
-static const DisplayChangeListenerOps dcl_gl_ops = {
-	.dpy_name             = "sdl2-gl",
-	.dpy_gfx_update       = sdl2_gl_update,
-	.dpy_gfx_switch       = sdl2_gl_switch,
-	.dpy_gfx_check_format = xb_console_gl_check_format,
-	// .dpy_refresh = sdl2_gl_refresh,
-	.dpy_mouse_set     = sdl_mouse_warp,
-	.dpy_cursor_define = sdl_mouse_define,
+static bool xb_console_gl_check_format(DisplayChangeListener* dcl, pixman_format_code_t format)
+{
+	switch (format)
+	{
+	case PIXMAN_BE_b8g8r8x8:
+	case PIXMAN_BE_b8g8r8a8:
+	case PIXMAN_r5g6b5:
+		return true;
+	default:
+		return false;
+	}
+}
 
+static const DisplayChangeListenerOps dcl_gl_ops = {
+	.dpy_name                = "sdl2-gl",
+	.dpy_gfx_update          = sdl2_gl_update,
+	.dpy_gfx_switch          = sdl2_gl_switch,
+	.dpy_gfx_check_format    = xb_console_gl_check_format,
+	// .dpy_refresh             = sdl2_gl_refresh,
+	.dpy_mouse_set           = sdl_mouse_warp,
+	.dpy_cursor_define       = sdl_mouse_define,
 	.dpy_gl_ctx_create       = sdl2_gl_create_context,
 	.dpy_gl_ctx_destroy      = sdl2_gl_destroy_context,
 	.dpy_gl_ctx_make_current = sdl2_gl_make_context_current,
@@ -756,8 +749,7 @@ static void sdl2_display_very_early_init(DisplayOptions* o)
 	unsigned char* icon_data = stbi_load_from_memory(xemu_64x64_data, xemu_64x64_size, &width, &height, &channels, 4);
 	if (icon_data)
 	{
-		SDL_Surface* icon = SDL_CreateRGBSurfaceFrom(
-		    icon_data, width, height, 32, width * 4, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
+		SDL_Surface* icon = SDL_CreateRGBSurfaceFrom(icon_data, width, height, 32, width * 4, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
 		if (icon)
 			SDL_SetWindowIcon(m_window, icon);
 		// Note: Retaining the memory allocated by stbi_load. It's used in place by the SDL surface.
@@ -800,9 +792,7 @@ static void sdl2_display_init(DisplayState* ds, DisplayOptions* o)
 	memset(&info, 0, sizeof(info));
 	SDL_VERSION(&info.version);
 
-	fprintf(
-	    stderr, "sdl2_display_init gui_fullscreen=%d %d %d %d\n", gui_fullscreen, o->has_full_screen, o->full_screen,
-	    xsettings.start_fullscreen);
+	fprintf(stderr, "sdl2_display_init gui_fullscreen=%d %d %d %d\n", gui_fullscreen, o->has_full_screen, o->full_screen, xsettings.start_fullscreen);
 	gui_fullscreen = (o->has_full_screen && o->full_screen) || xsettings.start_fullscreen;
 
 #if 1
@@ -852,6 +842,7 @@ static void sdl2_display_init(DisplayState* ds, DisplayOptions* o)
 	sdl2_console[0].real_window = m_window;
 	sdl2_console[0].winctx      = m_context;
 
+    static Notifier mouse_mode_notifier;
 	mouse_mode_notifier.notify = sdl_mouse_mode_change;
 	qemu_add_mouse_mode_change_notifier(&mouse_mode_notifier);
 
@@ -905,9 +896,7 @@ void xb_surface_gl_create_texture(DisplaySurface* surface)
 
 	glBindTexture(GL_TEXTURE_2D, surface->texture);
 	glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, surface_stride(surface) / surface_bytes_per_pixel(surface));
-	glTexImage2D(
-	    GL_TEXTURE_2D, 0, GL_RGB, surface_width(surface), surface_height(surface), 0, surface->glformat,
-	    surface->gltype, surface_data(surface));
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, surface_width(surface), surface_height(surface), 0, surface->glformat, surface->gltype, surface_data(surface));
 	glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, 0);
 
 	// nearest not working?
@@ -994,6 +983,19 @@ static void calculateScale(double scale[2], int num, int den, int ww, int wh, in
 	}
 }
 
+// Note: only supports millisecond resolution on Windows
+static void sleep_ns(int64_t ns)
+{
+#ifndef _WIN32
+	struct timespec sleep_delay, rem_delay;
+	sleep_delay.tv_sec  = ns / 1000000000LL;
+	sleep_delay.tv_nsec = ns % 1000000000LL;
+	nanosleep(&sleep_delay, &rem_delay);
+#else
+	Sleep(ns / SCALE_MS);
+#endif
+}
+
 void sdl2_gl_refresh(DisplayChangeListener* dcl)
 {
 	SDL2_Console* scon = container_of(dcl, SDL2_Console, dcl);
@@ -1038,8 +1040,6 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 	int tw, th;
 	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &tw);
 	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &th);
-	textureDims[0] = tw;
-	textureDims[1] = th;
 
 	// Get window dimensions
 	int ww, wh;
@@ -1050,18 +1050,10 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 
 	switch (xsettings.aspect_ratio)
 	{
-	case ASPECT_RATIO_169:
-		calculateScale(scale, 16, 9, ww, wh, tw, th);
-		break;
-	case ASPECT_RATIO_43:
-		calculateScale(scale, 4, 3, ww, wh, tw, th);
-		break;
-	case ASPECT_RATIO_NATIVE:
-		calculateScale(scale, tw, th, ww, wh, tw, th);
-		break;
-	case ASPECT_RATIO_WINDOW:
-		calculateScale(scale, ww, wh, ww, wh, tw, th);
-		break;
+	case ASPECT_RATIO_169: calculateScale(scale, 16, 9, ww, wh, tw, th); break;
+	case ASPECT_RATIO_43: calculateScale(scale, 4, 3, ww, wh, tw, th); break;
+	case ASPECT_RATIO_NATIVE: calculateScale(scale, tw, th, ww, wh, tw, th); break;
+	case ASPECT_RATIO_WINDOW: calculateScale(scale, ww, wh, ww, wh, tw, th); break;
 	default:
 		scale[0] = 1.0;
 		scale[1] = 1.0;
@@ -1070,12 +1062,23 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 
 	// update title
 	{
-		static str2k       title;
+		static int         frame       = 0;
 		static const char* renderers[] = { "OpenGL", "Vulkan", "Null" };
-		sprintf(
-		    title, "FPS: %.2f | %s | %d x %d | %s | %s", fps, renderers[xsettings.renderer], textureDims[0],
-		    textureDims[1], xemu_version, gameInfo.buffer);
+		static str2k       title;
+        static std::string uid;
+		sprintf(title, "FPS: %.2f | %s | %d x %d | %s | %s", fps, renderers[xsettings.renderer], tw, th, xemu_version, gameInfo.buffer);
 		SDL_SetWindowTitle(m_window, title);
+
+        // new game is loaded at 600 frames
+        if (uid != gameInfo.uid)
+        {
+            uid = gameInfo.uid;
+            frame = 0;
+        }
+        else if (frame == 600)
+            ui::LoadedGame(uid);
+
+        ++ frame;
 	}
 
 	// Render framebuffer and GUI
@@ -1237,9 +1240,7 @@ void sdl2_gl_scanout_disable(DisplayChangeListener* dcl)
 	assert(0);
 }
 
-void sdl2_gl_scanout_texture(
-    DisplayChangeListener* dcl, uint32_t backing_id, bool backing_y_0_top, uint32_t backing_width,
-    uint32_t backing_height, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+void sdl2_gl_scanout_texture(DisplayChangeListener* dcl, uint32_t backing_id, bool backing_y_0_top, uint32_t backing_width, uint32_t backing_height, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 {
 	assert(0);
 }
@@ -1279,11 +1280,14 @@ void sdl2_process_key(SDL2_Console* scon, SDL_KeyboardEvent* ev)
 	}
 }
 
+void LoadingGame(std::string path)
+{
+    exiso::ExtractGameInfo(path, &gameInfo, true);
+    ui::LoadedGame("");
+}
+
 int    gArgc;
 char** gArgv;
-
-// vl.c
-// extern "C" int qemu_main(int argc, char** argv, char** envp);
 
 static void* call_qemu_main(void* opaque)
 {
@@ -1292,19 +1296,6 @@ static void* call_qemu_main(void* opaque)
 	status = qemu_main(gArgc, gArgv, NULL);
 	DPRINTF("Second thread: qemu_main() returned, exiting\n");
 	exit(status);
-}
-
-/* Note: only supports millisecond resolution on Windows */
-static void sleep_ns(int64_t ns)
-{
-#ifndef _WIN32
-	struct timespec sleep_delay, rem_delay;
-	sleep_delay.tv_sec  = ns / 1000000000LL;
-	sleep_delay.tv_nsec = ns % 1000000000LL;
-	nanosleep(&sleep_delay, &rem_delay);
-#else
-	Sleep(ns / SCALE_MS);
-#endif
 }
 
 int main(int argc, char** argv)
@@ -1316,17 +1307,13 @@ int main(int argc, char** argv)
 	{
 		// Launched with a console. If stdout and stderr are not associated with
 		// an output stream, redirect to parent console.
-		if (_fileno(stdout) == -2)
-			freopen("CONOUT$", "w+", stdout);
-		if (_fileno(stderr) == -2)
-			freopen("CONOUT$", "w+", stderr);
+		if (_fileno(stdout) == -2) freopen("CONOUT$", "w+", stdout);
+		if (_fileno(stderr) == -2) freopen("CONOUT$", "w+", stderr);
 	}
 	else
 	{
 		// Launched without a console. Redirect stdout and stderr to a log file.
-		HANDLE logfile = CreateFileA(
-		    "xemu.log", GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL,
-		    NULL);
+		HANDLE logfile = CreateFileA("xemu.log", GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (logfile != INVALID_HANDLE_VALUE)
 		{
 			freopen("xemu.log", "a", stdout);
@@ -1346,7 +1333,7 @@ int main(int argc, char** argv)
 
 	xsettingsInit();
 	xsettingsLoad();
-	extract_iso::ExtractGameInfo(xsettings.dvd_path, &gameInfo, true);
+	LoadingGame(xsettings.dvd_path);
 
 	sdl2_display_very_early_init(NULL);
 
@@ -1382,24 +1369,44 @@ int main(int argc, char** argv)
 void xemu_eject_disc()
 {
 	xbox_smc_eject_button();
+    ui::LoadedGame("");
 
 	// Xbox software may request that the drive open, but do it now anyway
 	Error* err = NULL;
 	qmp_eject(true, "ide0-cd1", false, NULL, true, false, &err);
-
 	xbox_smc_update_tray_state();
 }
 
-void xemu_load_disc(const char* path)
+void xemu_load_disc(const char* path, bool saveSetting)
 {
-	extract_iso::ExtractGameInfo(path, &gameInfo, true);
+	if (!path || !*path)
+		return;
+
+    str2k temp;
+    strcpy(temp, path);
+	LoadingGame(temp);
+
+	// add to recent list
+	auto files = xsettings.recent_files;
+	int  id    = 0;
+	while (id < 6 && strcmp(files[id], temp))
+		++id;
+
+	if (id > 0)
+	{
+		for (int i = std::min(5, id); i > 0; --i)
+			strcpy(files[i], files[i - 1]);
+		strcpy(files[0], temp);
+	}
+
+	strcpy(xsettings.dvd_path, temp);
+	if (saveSetting)
+		xsettingsSave();
 
 	// Ensure an eject sequence is always triggered so Xbox software reloads
 	xbox_smc_eject_button();
 
 	Error* err = NULL;
-	qmp_blockdev_change_medium(
-	    true, "ide0-cd1", false, NULL, path, false, "", false, (BlockdevChangeReadOnlyMode)0, &err);
-
+	qmp_blockdev_change_medium(true, "ide0-cd1", false, NULL, temp, false, "", false, (BlockdevChangeReadOnlyMode)0, &err);
 	xbox_smc_update_tray_state();
 }

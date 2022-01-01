@@ -27,6 +27,7 @@ xemu_ss.add(files(
   'implot/implot.cpp',
   'implot/implot_demo.cpp',
   'implot/implot_items.cpp',
+  # 'ImFileDialog/ImFileDialog.cpp',
 
   'xemu-custom-widgets.cpp',
   'xemu-data.cpp',
@@ -37,6 +38,9 @@ xemu_ss.add(files(
   'xemu-reporting.cpp',
   'xemu-shaders.cpp',
   'xemu.cpp',
+
+  'extract-xiso.cpp',
+  'gamestats.cpp',
   'xsettings.cpp',
 ))
 xemu_ss.add(when: 'CONFIG_WIN32', if_true: files('xemu-update.cpp'))

@@ -146,8 +146,7 @@ struct Config
 		assert(ptr && enumMap);
 		int val   = *(int*)ptr;
 		int count = 0;
-		for (int i = 0; enumMap[i].text; ++i, ++count)
-			;
+		for (int i = 0; enumMap[i].text; ++i, ++count) {}
 		val = std::clamp(val, 0, count - 1);
 		return enumMap[val].text;
 	}
@@ -157,8 +156,7 @@ struct Config
 		assert(ptr && enumMap);
 		CHECK_TYPE('e');
 		int count = 0;
-		for (int i = 0; enumMap[i].text; ++i, ++count)
-			;
+		for (int i = 0; enumMap[i].text; ++i, ++count) {}
 		val        = std::clamp(val, 0, count - 1);
 		*(int*)ptr = val;
 	}
@@ -306,6 +304,7 @@ static std::vector<Config> configs = {
 
 	// [misc]
 	X_BOOL(misc, 1, check_for_update, 1),
+	X_ARRAY(misc, 0, recent_files, "", 6),
 	X_STRING(misc, 0, user_token, ""),
 };
 
@@ -403,7 +402,7 @@ void xsettingsInit()
 	configs.back().size = sizeof(XSettings) - prev->offset;
 
 	// for (auto& config : configs)
-	// 	std::cerr << "config " << config.offset << ' ' << config.size << ' ' << config.name << '\n';
+	// 	std::cerr << "config " << config.offset << ' ' << config.size << ' ' << config.type << ' ' << config.name << '\n';
 
 	// portable mode?
 	bool isPortable = false;
@@ -452,7 +451,7 @@ void xsettingsLoad()
 	for (const auto& [section, data] : doc)
 	{
 		data.visit([](auto& node) noexcept
-		           {
+		{
 			if constexpr (toml::is_table<decltype(node)>)
 			{
 				for (const auto& [key, value] : node)
@@ -494,7 +493,8 @@ void xsettingsLoad()
 						}
 					});
 				}
-			} });
+			}
+		});
 	}
 
 	failedLoad = 0;

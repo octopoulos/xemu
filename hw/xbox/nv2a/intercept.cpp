@@ -478,8 +478,7 @@ void GLTF_Accessor(int bufferView, int byteOffset, int byteStride, int component
 	rapidjson::Value accessor(rapidjson::kObjectType);
 	accessor.AddMember("bufferView", bufferView, allocator);
 	accessor.AddMember("byteOffset", byteOffset, allocator);
-	if (byteStride)
-		accessor.AddMember("byteStride", byteStride, allocator);
+	if (byteStride) accessor.AddMember("byteStride", byteStride, allocator);
 	accessor.AddMember("componentType", componentType, allocator);
 	accessor.AddMember("count", count, allocator);
 	accessor.AddMember("min", accessorMin, allocator);
@@ -538,8 +537,7 @@ void GLTF_Buffer(int target, void* data, usz length, std::string suffix, int str
 	bufferView.AddMember("buffer", COMBINE_BUFFERS ? 0 : buffers.Size() - 1, allocator);
 	bufferView.AddMember("byteLength", length, allocator);
 	bufferView.AddMember("byteOffset", offset, allocator);
-	if (stride)
-		bufferView.AddMember("byteStride", stride, allocator);
+	if (stride) bufferView.AddMember("byteStride", stride, allocator);
 	bufferView.AddMember("target", target, allocator);
 	bufferViews.PushBack(bufferView, allocator);
 }
@@ -579,24 +577,18 @@ void GLTF_End()
 	scene.AddMember("nodes", sceneNodes, allocator);
 	scenes.PushBack(scene, allocator);
 
-	doc.AddMember("asset", asset, allocator);
-	if (extensionsUsed.Size())
-		doc.AddMember("extensionsUsed", extensionsUsed, allocator);
-	doc.AddMember("scenes", scenes, allocator);
-	doc.AddMember("nodes", nodes, allocator);
-	doc.AddMember("meshes", meshes, allocator);
-	if (accessors.Size())
-		doc.AddMember("accessors", accessors, allocator);
-	doc.AddMember("bufferViews", bufferViews, allocator);
-	doc.AddMember("buffers", buffers, allocator);
-	if (materials.Size())
-		doc.AddMember("materials", materials, allocator);
-	if (textures.Size())
-		doc.AddMember("textures", textures, allocator);
-	if (samplers.Size())
-		doc.AddMember("samplers", samplers, allocator);
-	if (images.Size())
-		doc.AddMember("images", images, allocator);
+								doc.AddMember("asset", asset, allocator);
+	if (extensionsUsed.Size()) 	doc.AddMember("extensionsUsed", extensionsUsed, allocator);
+								doc.AddMember("scenes", scenes, allocator);
+								doc.AddMember("nodes", nodes, allocator);
+								doc.AddMember("meshes", meshes, allocator);
+	if (accessors.Size()) 		doc.AddMember("accessors", accessors, allocator);
+								doc.AddMember("bufferViews", bufferViews, allocator);
+								doc.AddMember("buffers", buffers, allocator);
+	if (materials.Size()) 		doc.AddMember("materials", materials, allocator);
+	if (textures.Size()) 		doc.AddMember("textures", textures, allocator);
+	if (samplers.Size()) 		doc.AddMember("samplers", samplers, allocator);
+	if (images.Size()) 			doc.AddMember("images", images, allocator);
 
 	std::ofstream                                      ofs(fmt::format("{}{}.gltf", BASE_PREFIX, frameId));
 	rapidjson::OStreamWrapper                          osw(ofs);
@@ -1022,12 +1014,9 @@ bool GLTF_Texture(rapidjson::Value& material, T& tex, std::string middleFix, int
 			material.AddMember("name", materialName, allocator);
 			material.AddMember("pbrMetallicRoughness", materialInfo, allocator);
 		}
-		else if (!material.HasMember("normalTexture"))
-			material.AddMember("normalTexture", materialColor, allocator);
-		else if (!material.HasMember("emissiveTexture"))
-			material.AddMember("emissiveTexture", materialColor, allocator);
-		else if (!material.HasMember("occlusionTexture"))
-			material.AddMember("occlusionTexture", materialColor, allocator);
+		else if (!material.HasMember("normalTexture")) 		material.AddMember("normalTexture", materialColor, allocator);
+		else if (!material.HasMember("emissiveTexture")) 	material.AddMember("emissiveTexture", materialColor, allocator);
+		else if (!material.HasMember("occlusionTexture")) 	material.AddMember("occlusionTexture", materialColor, allocator);
 	}
 
 	return true;
@@ -1082,40 +1071,13 @@ void GLTF_VertexAttribute(int index, const u32 inputMask, bool isIndexed)
 	// // scaling_table[] = { 32768., 1., 1., 255., 1., 32767., 1. }
 	// switch (va.type)
 	// {
-	// 	// 0: VTX_FMT_SNORM16
-	// 	case vertex_base_type::s1:
-	// 		GLTF_Extract<s16>(va, 1, GL_SHORT, 32768.f);
-	// 		break;
-
-	// 	// 1: VTX_FMT_FLOAT32
-	// 	case vertex_base_type::f:
-	// 		GLTF_Extract<float>(va, 1, GL_FLOAT, 1.f);
-	// 		break;
-
-	// 	// 2: VTX_FMT_FLOAT16
-	// 	case vertex_base_type::sf:
-	// 		GLTF_Extract<float>(va, 1, GL_FLOAT, 1.f);
-	// 		break;
-
-	// 	// 3: VTX_FMT_UNORM8
-	// 	case vertex_base_type::ub:
-	// 		GLTF_Extract<u8>(va, 1, GL_UNSIGNED_BYTE, 255.f);
-	// 		break;
-
-	// 	// 4: VTX_FMT_SINT16
-	// 	case vertex_base_type::s32k:
-	// 		GLTF_Extract<s16>(va, 1, GL_SHORT, 1.f);
-	// 		break;
-
-	// 	// 5: VTX_FMT_COMP32
-	// 	case vertex_base_type::cmp:
-	// 		GLTF_Extract<float>(va, 3, GL_FLOAT, 32767.f);
-	// 		break;
-
-	// 	// 6: VTX_FMT_UINT8
-	// 	case vertex_base_type::ub256:
-	// 		GLTF_Extract<u8>(va, 1, GL_UNSIGNED_BYTE, 255.f);
-	// 		break;
+	// case vertex_base_type::s1:    GLTF_Extract<s16>  (va, 1, GL_SHORT,         32768.f); break; // 0: VTX_FMT_SNORM16
+	// case vertex_base_type::f:     GLTF_Extract<float>(va, 1, GL_FLOAT,             1.f); break; // 1: VTX_FMT_FLOAT32
+	// case vertex_base_type::sf:    GLTF_Extract<float>(va, 1, GL_FLOAT,             1.f); break; // 2: VTX_FMT_FLOAT16
+	// case vertex_base_type::ub:    GLTF_Extract<u8>   (va, 1, GL_UNSIGNED_BYTE,   255.f); break; // 3: VTX_FMT_UNORM8
+	// case vertex_base_type::s32k:  GLTF_Extract<s16>  (va, 1, GL_SHORT,             1.f); break; // 4: VTX_FMT_SINT16
+	// case vertex_base_type::cmp:   GLTF_Extract<float>(va, 3, GL_FLOAT,         32767.f); break; // 5: VTX_FMT_COMP32
+	// case vertex_base_type::ub256: GLTF_Extract<u8>   (va, 1, GL_UNSIGNED_BYTE,   255.f); break; // 6: VTX_FMT_UINT8
 	// }
 
 	// vas.push_back(va);
@@ -1217,15 +1179,11 @@ void NewDrawEnd()
 
 		rapidjson::Value primitive(rapidjson::kObjectType);
 
-		if (attributes.MemberCount())
-			primitive.AddMember("attributes", attributes, allocator);
-		if (primitiveExtensions.MemberCount())
-			primitive.AddMember("extensions", primitiveExtensions, allocator);
-		if (indexId >= 0)
-			primitive.AddMember("indices", indexId, allocator);
-		if (materialId >= 0)
-			primitive.AddMember("material", materialId, allocator);
-		primitive.AddMember("mode", drawMode, allocator);
+		if (attributes.MemberCount()) 			primitive.AddMember("attributes", attributes, allocator);
+		if (primitiveExtensions.MemberCount()) 	primitive.AddMember("extensions", primitiveExtensions, allocator);
+		if (indexId >= 0) 						primitive.AddMember("indices", indexId, allocator);
+		if (materialId >= 0) 					primitive.AddMember("material", materialId, allocator);
+												primitive.AddMember("mode", drawMode, allocator);
 
 		if (!nodes.Size())
 		{

@@ -19,8 +19,11 @@
 #include <cstdio>
 #include <deque>
 #include <epoxy/gl.h>
+#include <filesystem>
 #include <fmt/core.h>
+#include <fstream>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -49,6 +52,8 @@
 #include "imgui/backends/imgui_impl_sdl.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 #include "implot/implot.h"
+// #include "ImFileDialog/ImFileDialog.h"
+#include "gamestats.h"
 #include "hw/xbox/nv2a/intercept.h"
 
 extern "C" {
@@ -301,7 +306,7 @@ static int PushWindowTransparencySettings(bool transparent, float alpha_transpar
 class MonitorWindow
 {
 public:
-	bool is_open;
+	bool is_open = false;
 
 private:
 	char                  InputBuf[256];
@@ -316,7 +321,6 @@ private:
 public:
 	MonitorWindow()
 	{
-		is_open = false;
 		memset(InputBuf, 0, sizeof(InputBuf));
 		HistoryPos     = -1;
 		AutoScroll     = true;
@@ -459,10 +463,9 @@ private:
 class InputWindow
 {
 public:
-	bool is_open;
+	bool is_open = false;
 
-	InputWindow() { is_open = false; }
-
+	InputWindow() {}
 	~InputWindow() {}
 
 	void Draw()
@@ -817,9 +820,7 @@ public:
 	}
 };
 
-static InputWindow input_window;
-
-static const char* paused_file_open(int flags, const char* filters, const char* default_path, const char* default_name)
+const char* paused_file_open(int flags, const char* filters, const char* default_path, const char* default_name)
 {
 	bool is_running = runstate_is_running();
 	if (is_running)
@@ -836,26 +837,24 @@ static const char* paused_file_open(int flags, const char* filters, const char* 
 	2048 // FIXME: Completely arbitrary and only used here
 	     // to give a buffer to ImGui for each field
 
+static InputWindow input_window;
+static ui::GamesWindow games_window;
+
 class SettingsWindow
 {
 public:
-	bool is_open;
+	bool is_open = false;
 
 private:
-	int       changed;
-	bool      clickedNow;
-	int       tab;
-	int       tabMenu;
+	int       changed    = 0;
+	bool      clickedNow = 0;
+	int       tab        = 0;
+	int       tabMenu    = 0;
 	XSettings prevSettings;
 
 public:
 	SettingsWindow()
 	{
-		is_open    = false;
-		changed    = 0;
-		clickedNow = 0;
-		tab        = 0;
-		tabMenu    = 0;
 		memcpy(&prevSettings, &xsettings, sizeof(XSettings));
 	}
 
@@ -1090,10 +1089,7 @@ public:
 			auto                     it       = std::find(memories.begin(), memories.end(), xsettings.memory);
 			int                      memory   = it ? std::distance(memories.begin(), it) : 0;
 
-			if (ImGui::Combo(
-			        "###mem", &memory,
-			        "64 MiB\0"
-			        "128 MiB\0"))
+			if (ImGui::Combo("###mem", &memory, "64 MiB\0" "128 MiB\0"))
 				xsettings.memory = memories[memory];
 		}
 
@@ -1321,15 +1317,14 @@ public:
 class NetworkWindow
 {
 public:
-	bool is_open;
+	bool is_open = false;
 	int  backend;
 	char remote_addr[64];
 	char local_addr[64];
 
 	std::unique_ptr<NetworkInterfaceManager> iface_mgr;
 
-	NetworkWindow() { is_open = false; }
-
+	NetworkWindow() {}
 	~NetworkWindow() {}
 
 	void Draw()
@@ -1522,9 +1517,10 @@ const char* get_cpu_info()
 class CompatibilityReporter
 {
 public:
+	bool is_open = false;
+
 	CompatibilityReport report;
 	bool                dirty;
-	bool                is_open;
 	bool                is_xbe_identified;
 	bool                did_send, send_result;
 	char                token_buf[512];
@@ -1534,8 +1530,6 @@ public:
 
 	CompatibilityReporter()
 	{
-		is_open = false;
-
 		report.token        = "";
 		report.xemu_version = xemu_version;
 		report.xemu_branch  = xemu_branch;
@@ -1566,7 +1560,13 @@ public:
 
 		const char* playability_names[] = { "Broken", "Intro", "Starts", "Playable", "Perfect" };
 
-		const char* playability_descriptions[] = { "This title crashes very soon after launching, or displays nothing at all.", "This title displays an intro sequence, but fails to make it to gameplay.", "This title starts, but may crash or have significant issues.", "This title is playable, but may have minor issues.", "This title is playable from start to finish with no noticable issues." };
+		const char* playability_descriptions[] = {
+			"This title crashes very soon after launching, or displays nothing at all.",
+			"This title displays an intro sequence, but fails to make it to gameplay.",
+			"This title starts, but may crash or have significant issues.",
+			"This title is playable, but may have minor issues.",
+			"This title is playable from start to finish with no noticable issues.",
+		};
 
 		ImGui::SetNextWindowContentSize(ImVec2(550.0f * xsettings.ui_scale, 0.0f));
 		if (!ImGui::Begin("Report Compatibility", &is_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
@@ -1599,9 +1599,7 @@ public:
 
 		if (!is_xbe_identified)
 		{
-			ImGui::TextWrapped(
-			    "An XBE could not be identified. Please launch an official "
-			    "Xbox title to submit a compatibility report.");
+			ImGui::TextWrapped("An XBE could not be identified.\nPlease launch an official Xbox title to submit a compatibility report.");
 			ImGui::End();
 			return;
 		}
@@ -1744,9 +1742,9 @@ float mix(float a, float b, float t)
 class DebugApuWindow
 {
 public:
-	bool is_open;
+	bool is_open = false;
 
-	DebugApuWindow() { is_open = false; }
+	DebugApuWindow() {}
 	~DebugApuWindow() {}
 
 	void Draw()
@@ -2202,9 +2200,9 @@ static std::deque<const char*> g_errors;
 class FirstBootWindow
 {
 public:
-	bool is_open;
+	bool is_open = false;
 
-	FirstBootWindow() { is_open = false; }
+	FirstBootWindow() {}
 	~FirstBootWindow() {}
 
 	void Draw()
@@ -2288,15 +2286,10 @@ static void action_eject_disc()
 
 static void action_load_disc()
 {
-	const char* iso_file_filters  = ".iso Files\0*.iso\0All Files\0*.*\0";
-	const char* current_disc_path = xsettings.dvd_path;
-	const char* new_disc_path     = paused_file_open(NOC_FILE_DIALOG_OPEN, iso_file_filters, current_disc_path, nullptr);
-	if (new_disc_path == nullptr)
-		return;
-
-	strcpy(xsettings.dvd_path, new_disc_path);
-	xsettingsSave();
-	xemu_load_disc(new_disc_path);
+	const char* filters  = ".iso Files\0*.iso\0All Files\0*.*\0";
+	const char* current  = xsettings.dvd_path;
+	const char* filename = paused_file_open(NOC_FILE_DIALOG_OPEN, filters, current, nullptr);
+	xemu_load_disc(filename, true);
 }
 
 static void action_toggle_pause()
@@ -2312,6 +2305,8 @@ static void action_reset()
 
 static void action_shutdown()
 {
+    fmt::print(stderr, "action_shutdown\n");
+    ui::LoadedGame("");
 	qemu_system_shutdown_request(SHUTDOWN_CAUSE_HOST_UI);
 }
 
@@ -2358,9 +2353,37 @@ static void ShowMainMenu()
 		{
 			if (ImGui::MenuItem("Eject Disc", SHORTCUT_MENU_TEXT(E))) action_eject_disc();
 			if (ImGui::MenuItem("Boot Disc", SHORTCUT_MENU_TEXT(O))) action_load_disc();
-			ImGui::MenuItem("Boot Recent");
+			if (ImGui::BeginMenu("Boot Recent"))
+			{
+				bool first = true;
+				for (int i = 0; i < 6; ++i)
+				{
+					const char* name = xsettings.recent_files[i];
+					if (*name)
+					{
+						if (first)
+						{
+							if (ImGui::MenuItem("List Clear"))
+							{
+								memset(xsettings.recent_files, 0, sizeof(xsettings.recent_files));
+								break;
+							}
+							ImGui::Separator();
+							first = false;
+						}
+						if (ImGui::MenuItem(name))
+							xemu_load_disc(name, true);
+					}
+				}
+
+				if (first)
+					ImGui::MenuItem("Empty List", nullptr, false, false);
+
+				ImGui::EndMenu();
+			}
 			ImGui::Separator();
-			if (ImGui::MenuItem("Add Games")) action_load_disc();
+			ImGui::MenuItem("Games", nullptr, &games_window.is_open);
+			if (ImGui::MenuItem("Scan Folder")) ui::ScanGamesFolder();
 			ImGui::Separator();
 			if (ImGui::MenuItem("Exit")) action_shutdown();
 			ImGui::EndMenu();
@@ -2549,6 +2572,28 @@ void xemu_hud_init(SDL_Window* window, void* sdl_gl_context)
 	g_sdl_window              = window;
 
 	ImPlot::CreateContext();
+
+	// ImFileDialog requires you to set the CreateTexture and DeleteTexture
+	// ifd::FileDialog::Instance().CreateTexture = [](uint8_t* data, int w, int h, char fmt) -> void* {
+	// 	GLuint tex;
+
+	// 	glGenTextures(1, &tex);
+	// 	glBindTexture(GL_TEXTURE_2D, tex);
+	// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	// 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, (fmt == 0) ? GL_BGRA : GL_RGBA, GL_UNSIGNED_BYTE, data);
+	// 	glGenerateMipmap(GL_TEXTURE_2D);
+	// 	glBindTexture(GL_TEXTURE_2D, 0);
+
+	// 	return (void*)tex;
+	// };
+	// ifd::FileDialog::Instance().DeleteTexture = [](void* tex) {
+	// 	GLuint texID = (GLuint)((uintptr_t)tex);
+	// 	glDeleteTextures(1, &texID);
+	// };
+	ui::OpenGamesList();
 
 #if defined(_WIN32)
 	int should_check_for_update = xsettings.check_for_update;
@@ -2753,6 +2798,7 @@ void xemu_hud_render()
 
 	first_boot_window.Draw();
 	input_window.Draw();
+	games_window.Draw();
 	settings_window.Draw();
 	monitor_window.Draw();
 	apu_window.Draw();

@@ -618,8 +618,11 @@ void qemu_system_killed(int signal, pid_t pid)
     qemu_notify_event();
 }
 
+void shutDownExtra(void);
+
 void qemu_system_shutdown_request(ShutdownCause reason)
 {
+    shutDownExtra();
     trace_qemu_system_shutdown_request(reason);
     replay_shutdown_request(reason);
     shutdown_requested = reason;
