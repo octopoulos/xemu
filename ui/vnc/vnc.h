@@ -41,10 +41,10 @@
 #include "authz/base.h"
 #include <zlib.h>
 
-#include "keymaps.h"
+#include "../qemui/keymaps.h"
 #include "vnc-palette.h"
 #include "vnc-enc-zrle.h"
-#include "ui/kbd-state.h"
+#include "../qemui/kbd-state.h"
 
 // #define _VNC_DEBUG 1
 

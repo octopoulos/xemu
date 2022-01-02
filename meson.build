@@ -137,6 +137,7 @@ add_project_arguments('-iquote', '.',
                       '-iquote', meson.current_source_dir(),
                       '-iquote', meson.current_source_dir() / 'include',
                       '-I' + meson.current_source_dir() / 'ui',
+                      '-I' + meson.current_source_dir() / 'ui/stb',
                       '-iquote', meson.current_source_dir() / 'disas/libvixl',
                       language: ['c', 'cpp', 'objc'])
 

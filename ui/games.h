@@ -1,4 +1,4 @@
-// gamestats.h
+// games.h
 // @2021 octopoulos
 
 #pragma once
@@ -13,7 +13,7 @@ class GamesWindow
 public:
 	bool is_open = true;
 
-    void Initialize();
+    void Initialize() {}
 	void Draw();
 };
 

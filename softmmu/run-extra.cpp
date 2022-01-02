@@ -1,7 +1,7 @@
 // run-extra.cpp
 // @2021 octopoulos
 
-#include "../ui/gamestats.h"
+#include "../ui/games.h"
 
 extern "C" void shutDownExtra()
 {

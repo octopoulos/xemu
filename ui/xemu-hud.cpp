@@ -53,11 +53,11 @@
 #include "imgui/backends/imgui_impl_sdl.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 #include "implot/implot.h"
-#include "gamestats.h"
+#include "games.h"
 #include "hw/xbox/nv2a/intercept.h"
 
 extern "C" {
-#include "noc_file_dialog.h"
+#include "qemui/noc_file_dialog.h"
 
 // Include necessary QEMU headers
 #include "qemu/osdep.h"
@@ -376,7 +376,7 @@ public:
 
 			ImGui::SetNextItemWidth(-1);
 			ImGui::PushFont(g_fixed_width_font);
-			if (ImGui::InputText("", InputBuf, IM_ARRAYSIZE(InputBuf), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory, &TextEditCallbackStub, (void*)this))
+			if (ImGui::InputText("##text", InputBuf, IM_ARRAYSIZE(InputBuf), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory, &TextEditCallbackStub, (void*)this))
 			{
 				char* s = InputBuf;
 				Strtrim(s);
@@ -868,12 +868,12 @@ public:
 	void FilePicker(const char* name, char* buf, size_t len, const char* filters)
 	{
 		ImGui::PushID(name);
-		ImGui::InputText("", buf, len);
+		ImGui::InputText("##file", buf, len);
 
 		ImGui::SameLine();
 		if (ImGui::Button("Browse...", ImVec2(100 * xsettings.ui_scale, 0)))
 		{
-			const char* selected = PausedFileOpen(NOC_FILE_DIALOG_OPEN, filters, buf, nullptr);
+			const char* selected = ui::PausedFileOpen(NOC_FILE_DIALOG_OPEN, filters, buf, nullptr);
 			if ((selected != nullptr) && (strcmp(buf, selected) != 0))
 				strcpy(buf, selected);
 		}
@@ -2295,8 +2295,8 @@ static void process_keyboard_shortcuts()
 	if (is_shortcut_key_pressed(SDL_SCANCODE_E, false)) action_eject_disc();
 	if (is_shortcut_key_pressed(SDL_SCANCODE_G, true)) g_user_asked_for_intercept = 1;
 	if (is_shortcut_key_pressed(SDL_SCANCODE_H, true)) g_user_asked_for_intercept = 2;
-	if (is_shortcut_key_pressed(SDL_SCANCODE_O, false)) LoadDisc();
-	if (is_shortcut_key_pressed(SDL_SCANCODE_P, false)) TogglePause();
+	if (is_shortcut_key_pressed(SDL_SCANCODE_O, false)) ui::LoadDisc();
+	if (is_shortcut_key_pressed(SDL_SCANCODE_P, false)) ui::TogglePause();
 	if (is_shortcut_key_pressed(SDL_SCANCODE_R, false)) action_reset();
 
 	// if (is_shortcut_key_pressed(SDL_SCANCODE_Q, false))
@@ -2326,7 +2326,7 @@ static void ShowMainMenu()
 		if (ImGui::BeginMenu("File"))
 		{
 			if (ImGui::MenuItem("Eject Disc", SHORTCUT_MENU_TEXT(E))) action_eject_disc();
-			if (ImGui::MenuItem("Boot Disc", SHORTCUT_MENU_TEXT(O))) LoadDisc();
+			if (ImGui::MenuItem("Boot Disc", SHORTCUT_MENU_TEXT(O))) ui::LoadDisc();
 			if (ImGui::BeginMenu("Boot Recent"))
 			{
 				bool first = true;
@@ -2364,7 +2364,7 @@ static void ShowMainMenu()
 
 		if (ImGui::BeginMenu("Emulation"))
 		{
-			if (ImGui::MenuItem(running ? "Pause" : "Run", SHORTCUT_MENU_TEXT(P))) TogglePause();
+			if (ImGui::MenuItem(running ? "Pause" : "Run", SHORTCUT_MENU_TEXT(P))) ui::TogglePause();
 			if (ImGui::MenuItem("Reset", SHORTCUT_MENU_TEXT(R))) action_reset();
 			ImGui::EndMenu();
 		}
@@ -2387,7 +2387,9 @@ static void ShowMainMenu()
 
 		if (ImGui::BeginMenu("View"))
 		{
-			ImGui::MenuItem("Game List", nullptr, &games_window.is_open);
+			ImGui::MenuItem("Controls", "F1", &games_window.is_open);
+			ImGui::MenuItem("Game List", "Esc", &games_window.is_open);
+			ImGui::MenuItem("Log", "F2", &games_window.is_open);
 			ImGui::Separator();
 			ImGui::MenuItem("ImGui Demo", nullptr, &showImGuiDemo);
 			ImGui::MenuItem("ImPlot Demo", nullptr, &showImPlotDemo);
@@ -2403,8 +2405,8 @@ static void ShowMainMenu()
 			ImGui::MenuItem("Video", nullptr, &video_window.is_open);
 
 			ImGui::Separator();
-			if (ImGui::MenuItem("Extract ISO")) LoadDisc();
-			if (ImGui::MenuItem("Create ISO")) LoadDisc();
+			if (ImGui::MenuItem("Extract ISO")) ui::LoadDisc();
+			if (ImGui::MenuItem("Create ISO")) ui::LoadDisc();
 
 			ImGui::Separator();
 			if (ImGui::MenuItem("Screenshot")) want_screenshot = (1 + 4) + 2; // force screenshot + maybe icon
@@ -2538,6 +2540,7 @@ void xemu_hud_init(SDL_Window* window, void* sdl_gl_context)
 	auto& io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	io.IniFilename = nullptr;
 
 	// Setup Platform/Renderer bindings
@@ -2747,9 +2750,14 @@ void xemu_hud_render()
 			ImGui::PushStyleColor(ImGuiCol_Text, tc);
 			ImGui::SetNextWindowBgAlpha(alpha);
 			ShowMainMenu();
+            games_window.is_open = true;
 			ImGui::PopStyleColor();
 		}
-		else g_main_menu_height = 0;
+		else
+        {
+            g_main_menu_height = 0;
+            games_window.is_open = false;
+        }
 	}
 
 	first_boot_window.Draw();

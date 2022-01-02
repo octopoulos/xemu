@@ -1,5 +1,5 @@
 
-#include "keymaps.h"
+#include "../qemui/keymaps.h"
 
 static const name2keysym_t name2keysym[]={
 /* ascii */

@@ -56,7 +56,7 @@
 
 #include "data/xemu_64x64.png.h"
 
-#include "gamestats.h"
+#include "games.h"
 #include "hw/xbox/smbus.h" // For eject, drive tray
 #include "hw/xbox/nv2a/nv2a.h"
 

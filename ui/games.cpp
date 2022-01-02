@@ -1,29 +1,20 @@
-// gamestats.cpp
+// games.cpp
 // @2021 octopoulos
 
-#include <chrono>
-#include <filesystem>
-#include <fstream>
-#include <map>
-
-#include <fmt/core.h>
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/prettywriter.h>
 
-#include "imgui/imgui.h"
 #include "imgui/imgui_internal.h"
 
 #include "common.h"
-#include "gamestats.h"
-#include "xsettings.h"
+#include "games.h"
 #include "xemu-hud.h"
 #include "xemu-notifications.h"
-#include "xemu-shaders.h"
 
 extern "C" {
-#include "noc_file_dialog.h"
+#include "qemui/noc_file_dialog.h"
 }
 
 #define JSON_GET_INT(name) \
@@ -42,27 +33,27 @@ namespace ui
 struct GameStats : public exiso::GameInfo
 {
 	int         compatibility = 0;
-	int         countPlay     = 0;     // # of times the game was launched (counts at 600 frames)
-	int         icon          = 0;     // &1: checked, &2: found
-	GLuint      iconTexture   = 0;     //
-	std::string lastPlay      = "";    // YYYY-MM-DD hh:mm
-	int         timePlay      = 0;     // seconds of play time
+	int         countPlay     = 0;  // # of times the game was launched (counts at 600 frames)
+	int         icon          = 0;  // &1: checked, &2: found
+	uint32_t    iconTexture   = 0;  //
+	std::string lastPlay      = ""; // YYYY-MM-DD hh:mm
+	int         timePlay      = 0;  // seconds of play time
 
 	GameStats() {}
 
 	GameStats(const exiso::GameInfo& info)
 	{
 		date   = info.date;
-        debug  = info.debug;
+		debug  = info.debug;
 		id     = info.id;
 		key    = info.key;
-        path   = info.path;
+		path   = info.path;
 		region = info.region;
 		title  = info.title;
-        uid    = info.uid;
+		uid    = info.uid;
 
 		CreateBufferUID();
-        CheckIcon();
+		CheckIcon();
 	}
 
 	void Deserialize(const rapidjson::Value& obj)
@@ -103,136 +94,69 @@ struct GameStats : public exiso::GameInfo
 		writer->EndObject();
 	}
 
-    void CheckIcon()
-    {
-        if (icon & 1)
-            return;
+	void CheckIcon()
+	{
+		if (icon & 1)
+			return;
 
-        std::filesystem::path iconPath = xsettingsFolder(nullptr);
-        iconPath /= "icons";
-        iconPath /= uid;
-        iconPath += ".png";
-        if (std::filesystem::exists(iconPath))
-        {
-            iconTexture = load_texture_from_file(iconPath.string().c_str(), 0);
-            icon = 3;
-        }
-        else
-            icon = 1;
-    }
+		std::filesystem::path iconPath = xsettingsFolder(nullptr);
+		iconPath /= "icons";
+        iconPath /= (uid + ".png");
+
+        iconTexture = LoadTexture(iconPath, uid);
+		icon        = iconTexture ? 3 : 1;
+	}
 };
 
 std::map<std::string, GameStats> gameStats;
-std::map<std::string, uint32_t>  textures;
-
-static std::vector<std::string> barNames = {
-	"Config",
-	"FullScr",
-	"FullScr2",
-	"Grid",
-	"List",
-	"Open",
-	"Pads",
-	"Pause",
-	"Refresh",
-	"Restart",
-	"Start",
-	"Stop",
-};
-
-/**
- * Load the icons for the top bar
- */
-void GamesWindow::Initialize()
-{
-	std::filesystem::path basePath = xsettingsFolder(nullptr);
-
-	for (auto& barName : barNames)
-	{
-		std::filesystem::path path = basePath / "bar" / (barName + ".png");
-		if (std::filesystem::exists(path))
-		{
-			auto texId        = load_texture_from_file(path.string().c_str(), 0);
-			textures[barName] = texId;
-		}
-	}
-}
-
-bool ImageTextButton(std::string name)
-{
-	static ImVec2 buttonSize(32.0f, 32.0f);
-
-	bool click;
-    if (textures.contains(name))
-        click = ImGui::ImageButton((void*)(intptr_t)textures[name], buttonSize);
-    else
-        click = ImGui::Button(name.c_str());
-
-    return click;
-}
 
 void GamesWindow::Draw()
 {
 	if (!is_open)
 		return;
 
-	static ImGuiWindowFlags wFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings;
-
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::DockSpaceOverViewport(viewport, ImGuiDockNodeFlags_PassthruCentralNode);
 
-	ImGui::SetNextWindowPos(viewport->WorkPos);
-    ImGui::SetNextWindowSize(viewport->WorkSize);
+	static int step = 0;
+	if (!step)
+	{
+		auto& size = viewport->WorkSize;
+		ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + size.x * 0.1f, viewport->WorkPos.y + size.y * 0.1f));
+		ImGui::SetNextWindowSize(ImVec2(size.x * 0.8f, size.y * 0.8f));
+		++step;
+	}
 
-	if (!ImGui::Begin("Games", &is_open, wFlags))
+	if (!ImGui::Begin("Game List", &is_open))
 	{
 		ImGui::End();
 		return;
 	}
 
-	if (ImageTextButton("Open")) LoadDisc();
-	ImGui::SameLine();
-	if (ImageTextButton("Refresh")) ScanGamesFolder();
-	ImGui::SameLine();
-	if (ImageTextButton("FullScr")) {}
-	ImGui::SameLine();
-	if (ImageTextButton("Stop")) {}
-	ImGui::SameLine();
-	if (ImageTextButton(IsRunning() ? "Pause" : "Start")) TogglePause();
-	ImGui::SameLine();
-	if (ImageTextButton("Config")) OpenConfig(1);
-	ImGui::SameLine();
-	if (ImageTextButton("Pads")) OpenConfig(10);
-	ImGui::SameLine();
-	if (ImageTextButton("List")) {}
-	ImGui::SameLine();
-	if (ImageTextButton("Grid")) {}
-	ImGui::SameLine();
-	ImGui::SliderInt("Scale", &xsettings.row_height, 24, 176);
-	// ImGui::SameLine();
-	// ImGui::InputText("Search", search, sizeof(str2k));
-
-	float icon_height = xsettings.row_height * 1.0f;
-	ImVec2 icon_dims = { icon_height * 16.0f / 9.0f, icon_height };
+	float  icon_height = xsettings.row_height * 1.0f;
+	ImVec2 icon_dims   = { icon_height * 16.0f / 9.0f, icon_height };
 
 	// recent
-	ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(8.0f, 8.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(2.0f, 2.0f));
 
-    static ImGuiTableFlags tFlags =
-        ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable
-        | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_ContextMenuInBody;
+	static ImGuiTableFlags tFlags =
+	    ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedSame | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders
+	    | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_ContextMenuInBody;
 
 	if (ImGui::BeginTable("Table", 9, tFlags))
 	{
-        ImGui::TableSetupScrollFreeze(1, 1);
-		ImGui::TableSetupColumn("Icon", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupScrollFreeze(1, 1);
+		// ImGui::TableSetColumnWidth(0, icon_dims.x);
+
+		ImGui::TableSetupColumn("Icon", 0, icon_dims.x);
+		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Serial", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Region", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Release Date", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Count Played", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Last Played", ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("Last Played", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Time Played", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Compatibility", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("Compatibility", ImGuiTableColumnFlags_WidthStretch | ImGuiTableColumnFlags_DefaultSort);
 		ImGui::TableHeadersRow();
 
 		for (auto& [key, game] : gameStats)
@@ -240,9 +164,12 @@ void GamesWindow::Draw()
 			ImGui::TableNextRow();
 
 			ImGui::TableSetColumnIndex(0);
-            game.CheckIcon();
+			game.CheckIcon();
 			if (game.icon & 2)
+			{
 				ImGui::Image((void*)(intptr_t)game.iconTexture, icon_dims);
+				ImGui::TextUnformatted(game.title.c_str());
+			}
 			else
 				ImGui::TextUnformatted("ICON");
 
@@ -260,18 +187,18 @@ void GamesWindow::Draw()
 			ImGui::TextUnformatted(game.lastPlay.c_str());
 
 			ImGui::TableSetColumnIndex(7);
-            int seconds = game.timePlay;
-            if (seconds > 0)
-            {
-                int minutes = seconds / 60;
-                int hours = minutes / 60;
-                ImGui::Text("%02d:%02d:%02d", hours, minutes % 60, seconds % 60);
-            }
-            else
-                ImGui::TextUnformatted("");
+			int seconds = game.timePlay;
+			if (seconds > 0)
+			{
+				int minutes = seconds / 60;
+				int hours   = minutes / 60;
+				ImGui::Text("%02d:%02d:%02d", hours, minutes % 60, seconds % 60);
+			}
+			else
+				ImGui::TextUnformatted("");
 
 			ImGui::TableSetColumnIndex(8);
-			ImGui::Text("%s", game.compatibility? "Playable": "No results found");
+			ImGui::Text("%s", game.compatibility ? "Playable" : "No results found");
 		}
 
 		ImGui::EndTable();
@@ -285,12 +212,12 @@ void GamesWindow::Draw()
 
 void CheckIcon(std::string uid)
 {
-    auto it = gameStats.find(uid);
+	auto it = gameStats.find(uid);
 	if (it != gameStats.end())
-    {
-        it->second.icon = 0;
-        it->second.CheckIcon();
-    }
+	{
+		it->second.icon = 0;
+		it->second.CheckIcon();
+	}
 }
 
 /**
@@ -319,7 +246,7 @@ void LoadedGame(std::string uid)
 
 	if (uid.size() && gameStats.contains(uid))
 	{
-        // new game => update count + last played
+		// new game => update count + last played
 		if (uid != gameUid)
 		{
 			auto& gameStat = gameStats[uid];
@@ -386,9 +313,12 @@ void SaveGamesList()
 
 void ScanGamesFolder()
 {
-	const char* filters  = ""; // ".iso Files\0*.iso\0All Files\0*.*\0";
-	const char* current  = xsettings.dvd_path;
-	const char* filename = PausedFileOpen(NOC_FILE_DIALOG_OPEN, filters, current, nullptr);
+	const char* filters  = ".iso Files\0*.iso\0All Files\0*.*\0";
+	// const char* current  = xsettings.dvd_path;
+	const char* filename = PausedFileOpen(NOC_FILE_DIALOG_OPEN, filters, "", nullptr);
+
+	if (!filename)
+		return;
 
 	std::string folder = filename;
 	folder.erase(folder.find_last_of("/\\") + 1);
@@ -401,15 +331,15 @@ void ScanGamesFolder()
 		auto it = gameStats.find(gameInfo.uid);
 		if (it == gameStats.end())
 		{
-			GameStats gameStat = gameInfo;
+			GameStats gameStat      = gameInfo;
 			gameStats[gameInfo.uid] = gameStat;
 		}
-        else
-        {
-            GameStats& gameStat = it->second;
-            gameStat.path = gameInfo.path;
-            gameStat.CheckIcon();
-        }
+		else
+		{
+			GameStats& gameStat = it->second;
+			gameStat.path       = gameInfo.path;
+			gameStat.CheckIcon();
+		}
 	}
 
 	SaveGamesList();

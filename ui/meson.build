@@ -2,17 +2,17 @@ softmmu_ss.add(pixman)
 specific_ss.add(when: ['CONFIG_SOFTMMU'], if_true: pixman)   # for the include path
 
 softmmu_ss.add(files(
-  'clipboard.c',
-  'console.c',
-  'cursor.c',
-  'input-barrier.c',
-  'input-keymap.c',
-  'input-legacy.c',
-  'input.c',
-  'kbd-state.c',
-  'keymaps.c',
-  'qemu-pixman.c',
-  'udmabuf.c',
+  'qemui/clipboard.c',
+  'qemui/console.c',
+  'qemui/cursor.c',
+  'qemui/input-barrier.c',
+  'qemui/input-keymap.c',
+  'qemui/input-legacy.c',
+  'qemui/input.c',
+  'qemui/kbd-state.c',
+  'qemui/keymaps.c',
+  'qemui/qemu-pixman.c',
+  'qemui/udmabuf.c',
 ))
 
 xemu_ss = ss.source_set()
@@ -40,14 +40,15 @@ xemu_ss.add(files(
   'xemu.cpp',
 
   'common.cpp',
+  'controls.cpp',
   'extract-xiso.cpp',
-  'gamestats.cpp',
+  'games.cpp',
+  'log.cpp',
   'xsettings.cpp',
 ))
 xemu_ss.add(when: 'CONFIG_WIN32', if_true: files('xemu-update.cpp'))
 
-imgui_flags = []
-# imgui_flags = ['-DIMGUI_IMPL_OPENGL_LOADER_CUSTOM="epoxy/gl.h"']
+imgui_flags = ['-DIMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS', '-DIMGUI_USE_STB_SPRINTF', '-DIMGUI_ENABLE_FREETYPE']
 
 if 'CONFIG_WIN32' in config_host
 imgui_flags += ['-DWIN32', '-DMINGW32']
@@ -68,34 +69,34 @@ freetype2 = declare_dependency(compile_args: config_host['FREETYPE2_CFLAGS'].spl
 
 imgui = declare_dependency(compile_args: imgui_flags, include_directories: 'imgui')
 xemu_ss.add(sdl, opengl, openssl, imgui, fmt, freetype2)
-xemu_ss.add(when: 'CONFIG_LINUX', if_true: [xemu_gtk, files('xemu-os-utils-linux.cpp', 'noc_file_dialog_gtk.c')])
-xemu_ss.add(when: 'CONFIG_WIN32', if_true: files('xemu-os-utils-windows.cpp', 'noc_file_dialog_win32.c'))
-xemu_ss.add(when: 'CONFIG_DARWIN', if_true: files('xemu-os-utils-macos.m', 'noc_file_dialog_macos.m'))
+xemu_ss.add(when: 'CONFIG_LINUX', if_true: [xemu_gtk, files('xemu-os-utils-linux.cpp', 'qemui/noc_file_dialog_gtk.c')])
+xemu_ss.add(when: 'CONFIG_WIN32', if_true: files('xemu-os-utils-windows.cpp', 'qemui/noc_file_dialog_win32.c'))
+xemu_ss.add(when: 'CONFIG_DARWIN', if_true: files('xemu-os-utils-macos.m', 'qemui/noc_file_dialog_macos.m'))
 softmmu_ss.add_all(xemu_ss)
 
-softmmu_ss.add([spice_headers, files('spice-module.c')])
-softmmu_ss.add(when: spice_protocol, if_true: files('vdagent.c'))
+softmmu_ss.add([spice_headers, files('qemui/spice-module.c')])
+softmmu_ss.add(when: spice_protocol, if_true: files('qemui/vdagent.c'))
 
-softmmu_ss.add(when: 'CONFIG_LINUX', if_true: files('input-linux.c'))
-softmmu_ss.add(when: cocoa, if_true: files('cocoa.m'))
+softmmu_ss.add(when: 'CONFIG_LINUX', if_true: files('qemui/input-linux.c'))
+softmmu_ss.add(when: cocoa, if_true: files('qemui/cocoa.m'))
 
 vnc_ss = ss.source_set()
 vnc_ss.add(files(
-  'vnc-auth-vencrypt.c',
-  'vnc-clipboard.c',
-  'vnc-enc-hextile.c',
-  'vnc-enc-tight.c',
-  'vnc-enc-zlib.c',
-  'vnc-enc-zrle.c',
-  'vnc-jobs.c',
-  'vnc-palette.c',
-  'vnc-ws.c',
-  'vnc.c',
+  'vnc/vnc-auth-vencrypt.c',
+  'vnc/vnc-clipboard.c',
+  'vnc/vnc-enc-hextile.c',
+  'vnc/vnc-enc-tight.c',
+  'vnc/vnc-enc-zlib.c',
+  'vnc/vnc-enc-zrle.c',
+  'vnc/vnc-jobs.c',
+  'vnc/vnc-palette.c',
+  'vnc/vnc-ws.c',
+  'vnc/vnc.c',
 ))
 vnc_ss.add(zlib, png, jpeg, gnutls)
-vnc_ss.add(when: sasl, if_true: files('vnc-auth-sasl.c'))
+vnc_ss.add(when: sasl, if_true: files('vnc/vnc-auth-sasl.c'))
 softmmu_ss.add_all(when: vnc, if_true: vnc_ss)
-softmmu_ss.add(when: vnc, if_false: files('vnc-stubs.c'))
+softmmu_ss.add(when: vnc, if_false: files('vnc/vnc-stubs.c'))
 specific_ss.add(when: ['CONFIG_SOFTMMU'], if_true: opengl)
 
 ui_modules = {}
@@ -106,7 +107,7 @@ if xemu_enable_extra_ui_modules
 
 if curses.found()
   curses_ss = ss.source_set()
-  curses_ss.add(when: [curses, iconv], if_true: [files('curses.c'), pixman])
+  curses_ss.add(when: [curses, iconv], if_true: [files('qemui/curses.c'), pixman])
   ui_modules += {'curses' : curses_ss}
 endif
 
@@ -114,55 +115,55 @@ if config_host.has_key('CONFIG_OPENGL')
   opengl_ss = ss.source_set()
   opengl_ss.add(gbm)
   opengl_ss.add(when: [opengl, pixman, 'CONFIG_OPENGL'],
-               if_true: files('shader.cpp', 'console-gl.c', 'egl-helpers.c', 'egl-context.c'))
+               if_true: files('shader.cpp', 'qemui/console-gl.c', 'qemui/egl-helpers.c', 'qemui/egl-context.c'))
   ui_modules += {'opengl' : opengl_ss}
 endif
 
 if config_host.has_key('CONFIG_OPENGL') and gbm.found()
   egl_headless_ss = ss.source_set()
   egl_headless_ss.add(when: [opengl, gbm, pixman, 'CONFIG_OPENGL'],
-                      if_true: files('egl-headless.c'))
+                      if_true: files('qemui/egl-headless.c'))
   ui_modules += {'egl-headless' : egl_headless_ss}
 endif
 
 if gtk.found()
-  softmmu_ss.add(when: 'CONFIG_WIN32', if_true: files('win32-kbd-hook.c'))
+  softmmu_ss.add(when: 'CONFIG_WIN32', if_true: files('qemui/win32-kbd-hook.c'))
 
   gtk_ss = ss.source_set()
-  gtk_ss.add(gtk, vte, pixman, files('gtk.c', 'gtk-clipboard.c'))
-  gtk_ss.add(when: x11, if_true: files('x_keymap.c'))
-  gtk_ss.add(when: [opengl, 'CONFIG_OPENGL'], if_true: files('gtk-gl-area.c'))
-  gtk_ss.add(when: [x11, opengl, 'CONFIG_OPENGL'], if_true: files('gtk-egl.c'))
+  gtk_ss.add(gtk, vte, pixman, files('qemui/gtk.c', 'qemui/gtk-clipboard.c'))
+  gtk_ss.add(when: x11, if_true: files('qemui/x_keymap.c'))
+  gtk_ss.add(when: [opengl, 'CONFIG_OPENGL'], if_true: files('qemui/gtk-gl-area.c'))
+  gtk_ss.add(when: [x11, opengl, 'CONFIG_OPENGL'], if_true: files('qemui/gtk-egl.c'))
   ui_modules += {'gtk' : gtk_ss}
 endif
 
 if sdl.found()
-  softmmu_ss.add(when: 'CONFIG_WIN32', if_true: files('win32-kbd-hook.c'))
+  softmmu_ss.add(when: 'CONFIG_WIN32', if_true: files('qemui/win32-kbd-hook.c'))
 
   sdl_ss = ss.source_set()
   sdl_ss.add(sdl, sdl_image, pixman, glib, files(
-    'sdl2-2d.c',
-    'sdl2-input.c',
-    'sdl2.c',
+    'qemui/sdl2-2d.c',
+    'qemui/sdl2-input.c',
+    'qemui/sdl2.c',
   ))
-  sdl_ss.add(when: [opengl, 'CONFIG_OPENGL'], if_true: files('sdl2-gl.c'))
-  sdl_ss.add(when: x11, if_true: files('x_keymap.c'))
+  sdl_ss.add(when: [opengl, 'CONFIG_OPENGL'], if_true: files('qemui/sdl2-gl.c'))
+  sdl_ss.add(when: x11, if_true: files('qemui/x_keymap.c'))
   ui_modules += {'sdl' : sdl_ss}
 endif
 
 if config_host.has_key('CONFIG_SPICE')
   spice_core_ss = ss.source_set()
   spice_core_ss.add(spice, pixman, files(
-    'spice-core.c',
-    'spice-input.c',
-    'spice-display.c'
+    'qemui/spice-core.c',
+    'qemui/spice-input.c',
+    'qemui/spice-display.c'
   ))
   ui_modules += {'spice-core' : spice_core_ss}
 endif
 
 if config_host.has_key('CONFIG_SPICE') and config_host.has_key('CONFIG_GIO')
   spice_ss = ss.source_set()
-  spice_ss.add(spice, gio, pixman, files('spice-app.c'))
+  spice_ss.add(spice, gio, pixman, files('qemui/spice-app.c'))
   ui_modules += {'spice-app': spice_ss}
 endif
 
@@ -210,7 +211,7 @@ subdir('shader')
 if have_system
   subdir('icons')
 
-  install_data('qemu.desktop', install_dir: qemu_desktopdir)
+  install_data('qemui/qemu.desktop', install_dir: qemu_desktopdir)
 endif
 
 modules += {'ui': ui_modules}
