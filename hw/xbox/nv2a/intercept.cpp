@@ -21,7 +21,7 @@
 #include "qemu/fast-hash.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb/stb_image_write.h>
+#include "stb/stb_image_write.h"
 
 constexpr char BASE_PREFIX[]   = "export/";
 constexpr int  CAPTURE_ID      = -1;

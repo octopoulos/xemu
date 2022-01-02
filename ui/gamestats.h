@@ -13,10 +13,12 @@ class GamesWindow
 public:
 	bool is_open = true;
 
+    void Initialize();
 	void Draw();
 };
 
-void LoadedGame(std::string key);
+void CheckIcon(std::string uid);
+void LoadedGame(std::string uid);
 void OpenGamesList();
 void SaveGamesList();
 void ScanGamesFolder();

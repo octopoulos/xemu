@@ -22,7 +22,7 @@
 #include <SDL2/SDL.h>
 #include <epoxy/gl.h>
 
-#include "stb_image.h"
+#include "stb/stb_image.h"
 
 enum SHADER_TYPE
 {
@@ -70,7 +70,8 @@ extern GLint  vp[4];
 
 GLuint compile_shader(GLenum type, const char* src);
 void   create_decal_shader(DecalShader& s, enum SHADER_TYPE type);
-GLuint load_texture_from_file(const char* name);
+GLuint load_texture(unsigned char* data, int width, int height, int channels);
+GLuint load_texture_from_file(const char* name, int flip);
 GLuint load_texture_from_memory(const unsigned char* buf, unsigned int size);
 FBO*   create_fbo(int width, int height);
 void   render_to_default_fb(void);

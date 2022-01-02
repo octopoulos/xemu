@@ -26,7 +26,7 @@
 #include "ui/shader/xemu-logo-frag.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "stb/stb_image.h"
 
 GLuint compile_shader(GLenum type, const char* src)
 {
@@ -209,7 +209,7 @@ void create_decal_shader(DecalShader& s, SHADER_TYPE type)
 	}
 }
 
-static GLuint load_texture(unsigned char* data, int width, int height, int channels)
+GLuint load_texture(unsigned char* data, int width, int height, int channels)
 {
 	GLuint tex;
 	glGenTextures(1, &tex);
@@ -224,10 +224,9 @@ static GLuint load_texture(unsigned char* data, int width, int height, int chann
 	return tex;
 }
 
-GLuint load_texture_from_file(const char* name)
+GLuint load_texture_from_file(const char* name, int flip)
 {
-	// Flip vertically so textures are loaded according to GL convention.
-	stbi_set_flip_vertically_on_load(1);
+	stbi_set_flip_vertically_on_load(flip);
 
 	// Read file into memory
 	int            width, height, channels = 0;

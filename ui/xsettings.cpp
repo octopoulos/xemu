@@ -297,6 +297,7 @@ static std::vector<Config> configs = {
 	X_STRING(emulator, 0, window_title, ""),
 
 	// [gui]
+    X_INT(gui, 0, row_height, 80, 24, 176),
 	X_FLOAT(gui, 0, ui_scale, 1.0f, 1.0f, 4.0f),
 
 	// [debug]

@@ -28,6 +28,7 @@
 #include <string>
 #include <vector>
 
+#include "common.h"
 #include "xemu-hud.h"
 #include "xemu-input.h"
 #include "xemu-notifications.h"
@@ -52,7 +53,6 @@
 #include "imgui/backends/imgui_impl_sdl.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 #include "implot/implot.h"
-// #include "ImFileDialog/ImFileDialog.h"
 #include "gamestats.h"
 #include "hw/xbox/nv2a/intercept.h"
 
@@ -80,6 +80,7 @@ extern FBO*        controller_fbo;
 extern FBO*        logo_fbo;
 extern int         g_user_asked_for_intercept;
 extern SDL_Window* m_window;
+extern bool        want_screenshot;
 
 static ImFont* g_fixed_width_font;
 float          g_main_menu_height;
@@ -820,19 +821,6 @@ public:
 	}
 };
 
-const char* paused_file_open(int flags, const char* filters, const char* default_path, const char* default_name)
-{
-	bool is_running = runstate_is_running();
-	if (is_running)
-		vm_stop(RUN_STATE_PAUSED);
-
-	const char* r = noc_file_dialog_open(flags, filters, default_path, default_name);
-	if (is_running)
-		vm_start();
-
-	return r;
-}
-
 #define MAX_STRING_LEN \
 	2048 // FIXME: Completely arbitrary and only used here
 	     // to give a buffer to ImGui for each field
@@ -885,7 +873,7 @@ public:
 		ImGui::SameLine();
 		if (ImGui::Button("Browse...", ImVec2(100 * xsettings.ui_scale, 0)))
 		{
-			const char* selected = paused_file_open(NOC_FILE_DIALOG_OPEN, filters, buf, nullptr);
+			const char* selected = PausedFileOpen(NOC_FILE_DIALOG_OPEN, filters, buf, nullptr);
 			if ((selected != nullptr) && (strcmp(buf, selected) != 0))
 				strcpy(buf, selected);
 		}
@@ -2284,20 +2272,6 @@ static void action_eject_disc()
 	xemu_eject_disc();
 }
 
-static void action_load_disc()
-{
-	const char* filters  = ".iso Files\0*.iso\0All Files\0*.*\0";
-	const char* current  = xsettings.dvd_path;
-	const char* filename = paused_file_open(NOC_FILE_DIALOG_OPEN, filters, current, nullptr);
-	xemu_load_disc(filename, true);
-}
-
-static void action_toggle_pause()
-{
-	if (runstate_is_running()) vm_stop(RUN_STATE_PAUSED);
-	else vm_start();
-}
-
 static void action_reset()
 {
 	qemu_system_reset_request(SHUTDOWN_CAUSE_GUEST_RESET);
@@ -2321,8 +2295,8 @@ static void process_keyboard_shortcuts()
 	if (is_shortcut_key_pressed(SDL_SCANCODE_E, false)) action_eject_disc();
 	if (is_shortcut_key_pressed(SDL_SCANCODE_G, true)) g_user_asked_for_intercept = 1;
 	if (is_shortcut_key_pressed(SDL_SCANCODE_H, true)) g_user_asked_for_intercept = 2;
-	if (is_shortcut_key_pressed(SDL_SCANCODE_O, false)) action_load_disc();
-	if (is_shortcut_key_pressed(SDL_SCANCODE_P, false)) action_toggle_pause();
+	if (is_shortcut_key_pressed(SDL_SCANCODE_O, false)) LoadDisc();
+	if (is_shortcut_key_pressed(SDL_SCANCODE_P, false)) TogglePause();
 	if (is_shortcut_key_pressed(SDL_SCANCODE_R, false)) action_reset();
 
 	// if (is_shortcut_key_pressed(SDL_SCANCODE_Q, false))
@@ -2352,7 +2326,7 @@ static void ShowMainMenu()
 		if (ImGui::BeginMenu("File"))
 		{
 			if (ImGui::MenuItem("Eject Disc", SHORTCUT_MENU_TEXT(E))) action_eject_disc();
-			if (ImGui::MenuItem("Boot Disc", SHORTCUT_MENU_TEXT(O))) action_load_disc();
+			if (ImGui::MenuItem("Boot Disc", SHORTCUT_MENU_TEXT(O))) LoadDisc();
 			if (ImGui::BeginMenu("Boot Recent"))
 			{
 				bool first = true;
@@ -2382,7 +2356,6 @@ static void ShowMainMenu()
 				ImGui::EndMenu();
 			}
 			ImGui::Separator();
-			ImGui::MenuItem("Games", nullptr, &games_window.is_open);
 			if (ImGui::MenuItem("Scan Folder")) ui::ScanGamesFolder();
 			ImGui::Separator();
 			if (ImGui::MenuItem("Exit")) action_shutdown();
@@ -2391,29 +2364,31 @@ static void ShowMainMenu()
 
 		if (ImGui::BeginMenu("Emulation"))
 		{
-			if (ImGui::MenuItem(running ? "Pause" : "Run", SHORTCUT_MENU_TEXT(P))) action_toggle_pause();
+			if (ImGui::MenuItem(running ? "Pause" : "Run", SHORTCUT_MENU_TEXT(P))) TogglePause();
 			if (ImGui::MenuItem("Reset", SHORTCUT_MENU_TEXT(R))) action_reset();
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu("Configuration"))
 		{
-			if (ImGui::MenuItem("CPU")) settings_window.OpenTab(0);
-			if (ImGui::MenuItem("GPU")) settings_window.OpenTab(1);
-			if (ImGui::MenuItem("Audio")) settings_window.OpenTab(2);
+			if (ImGui::MenuItem("CPU")) OpenConfig(0);
+			if (ImGui::MenuItem("GPU")) OpenConfig(1);
+			if (ImGui::MenuItem("Audio")) OpenConfig(2);
 			ImGui::Separator();
 			ImGui::MenuItem("Pads", nullptr, &input_window.is_open);
-			if (ImGui::MenuItem("System")) settings_window.OpenTab(4);
-			if (ImGui::MenuItem("Network")) settings_window.OpenTab(5);
-			if (ImGui::MenuItem("Advanced")) settings_window.OpenTab(6);
-			if (ImGui::MenuItem("Emulator")) settings_window.OpenTab(7);
-			if (ImGui::MenuItem("GUI")) settings_window.OpenTab(8);
-			if (ImGui::MenuItem("Debug")) settings_window.OpenTab(9);
+			if (ImGui::MenuItem("System")) OpenConfig(4);
+			if (ImGui::MenuItem("Network")) OpenConfig(5);
+			if (ImGui::MenuItem("Advanced")) OpenConfig(6);
+			if (ImGui::MenuItem("Emulator")) OpenConfig(7);
+			if (ImGui::MenuItem("GUI")) OpenConfig(8);
+			if (ImGui::MenuItem("Debug")) OpenConfig(9);
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu("View"))
 		{
+			ImGui::MenuItem("Game List", nullptr, &games_window.is_open);
+			ImGui::Separator();
 			ImGui::MenuItem("ImGui Demo", nullptr, &showImGuiDemo);
 			ImGui::MenuItem("ImPlot Demo", nullptr, &showImPlotDemo);
 			if (ImGui::MenuItem("Fullscreen", "Alt + Enter", xemu_is_fullscreen(), true)) xemu_toggle_fullscreen();
@@ -2428,11 +2403,11 @@ static void ShowMainMenu()
 			ImGui::MenuItem("Video", nullptr, &video_window.is_open);
 
 			ImGui::Separator();
-			if (ImGui::MenuItem("Extract ISO")) action_load_disc();
-			if (ImGui::MenuItem("Create ISO")) action_load_disc();
+			if (ImGui::MenuItem("Extract ISO")) LoadDisc();
+			if (ImGui::MenuItem("Create ISO")) LoadDisc();
 
 			ImGui::Separator();
-			ImGui::MenuItem("Screenshot", nullptr, &video_window.is_open);
+			if (ImGui::MenuItem("Screenshot")) want_screenshot = true;
 			ImGui::MenuItem("Export", nullptr, &video_window.is_open);
 			ImGui::EndMenu();
 		}
@@ -2572,28 +2547,8 @@ void xemu_hud_init(SDL_Window* window, void* sdl_gl_context)
 	g_sdl_window              = window;
 
 	ImPlot::CreateContext();
-
-	// ImFileDialog requires you to set the CreateTexture and DeleteTexture
-	// ifd::FileDialog::Instance().CreateTexture = [](uint8_t* data, int w, int h, char fmt) -> void* {
-	// 	GLuint tex;
-
-	// 	glGenTextures(1, &tex);
-	// 	glBindTexture(GL_TEXTURE_2D, tex);
-	// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	// 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, (fmt == 0) ? GL_BGRA : GL_RGBA, GL_UNSIGNED_BYTE, data);
-	// 	glGenerateMipmap(GL_TEXTURE_2D);
-	// 	glBindTexture(GL_TEXTURE_2D, 0);
-
-	// 	return (void*)tex;
-	// };
-	// ifd::FileDialog::Instance().DeleteTexture = [](void* tex) {
-	// 	GLuint texID = (GLuint)((uintptr_t)tex);
-	// 	glDeleteTextures(1, &texID);
-	// };
 	ui::OpenGamesList();
+    games_window.Initialize();
 
 #if defined(_WIN32)
 	int should_check_for_update = xsettings.check_for_update;
@@ -2846,4 +2801,15 @@ void xemu_queue_notification(const char* msg, bool instant)
 void xemu_queue_error_message(const char* msg)
 {
 	g_errors.push_back(strdup(msg));
+}
+
+// API
+//////
+
+void OpenConfig(int tab)
+{
+    if (tab > 10)
+        input_window.is_open = 1;
+    else
+        settings_window.OpenTab(tab);
 }

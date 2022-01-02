@@ -79,6 +79,3 @@
 [submodule "util/tomlplusplus"]
 	path = util/tomlplusplus
 	url = https://github.com/marzer/tomlplusplus.git
-[submodule "ui/ImFileDialog"]
-	path = ui/ImFileDialog
-	url = https://github.com/octopoulos/ImFileDialog.git

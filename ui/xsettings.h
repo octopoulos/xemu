@@ -111,6 +111,7 @@ typedef struct _XSettings
 	str2k window_title;
 
 	// [gui]
+    int   row_height;
 	float ui_scale;
 
 	// [debug]

@@ -50,12 +50,17 @@
 #include "xemu-os-utils.h"
 #include "xemu-version.h"
 
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include "stb/stb_image_resize.h"
+#include "stb/stb_image_write.h"
+
 #include "data/xemu_64x64.png.h"
 
 #include "gamestats.h"
 #include "hw/xbox/smbus.h" // For eject, drive tray
 #include "hw/xbox/nv2a/nv2a.h"
 
+#include <filesystem>
 #include <fstream>
 #include <map>
 
@@ -90,23 +95,11 @@ static int             guest_x;
 static int             guest_y;
 static SDL_Cursor*     guest_sprite;
 static SDL_GLContext   m_context;
+static QemuSemaphore   display_init_sem;
 
-SDL_Window* m_window = NULL;
+SDL_Window* m_window        = NULL;
+bool        want_screenshot = false;
 DecalShader blit;
-
-static QemuSemaphore display_init_sem;
-
-static void toggle_full_screen(SDL2_Console* scon);
-
-int xemu_is_fullscreen()
-{
-	return gui_fullscreen;
-}
-
-void xemu_toggle_fullscreen()
-{
-	toggle_full_screen(&sdl2_console[0]);
-}
 
 #define SDL2_REFRESH_INTERVAL_BUSY 16
 #define SDL2_MAX_IDLE_COUNT        (2 * GUI_REFRESH_INTERVAL_DEFAULT / SDL2_REFRESH_INTERVAL_BUSY + 1)
@@ -268,6 +261,16 @@ static void set_full_screen(SDL2_Console* scon, bool set)
 static void toggle_full_screen(SDL2_Console* scon)
 {
 	set_full_screen(scon, !gui_fullscreen);
+}
+
+int xemu_is_fullscreen()
+{
+	return gui_fullscreen;
+}
+
+void xemu_toggle_fullscreen()
+{
+	toggle_full_screen(&sdl2_console[0]);
 }
 
 static int get_mod_state()
@@ -939,6 +942,27 @@ void sdl2_gl_switch(DisplayChangeListener* dcl, DisplaySurface* new_surface)
 	}
 }
 
+/**
+ * Save screenshot + create Icon
+ */
+void SaveScreenshot(int width, int height)
+{
+    static uint8_t iconPixels[320 * 176];
+
+    uint8_t* pixels = new uint8_t[width * height * 3];
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+
+    stbir_resize_uint8(pixels, width, height, width, iconPixels, 320, 176, 320, 3);
+
+    std::filesystem::path path = xsettingsFolder(nullptr);
+    path /= (gameInfo.uid + ".png");
+    stbi_write_png(path.string().c_str(), width, height, 3, iconPixels, width);
+
+    delete[] pixels;
+
+    ui::CheckIcon(gameInfo.uid);
+}
+
 static float fps = 1.0f;
 
 static void update_fps()
@@ -1069,13 +1093,14 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 		sprintf(title, "FPS: %.2f | %s | %d x %d | %s | %s", fps, renderers[xsettings.renderer], tw, th, xemu_version, gameInfo.buffer);
 		SDL_SetWindowTitle(m_window, title);
 
-        // new game is loaded at 600 frames
+        // new game
         if (uid != gameInfo.uid)
         {
             uid = gameInfo.uid;
             frame = 0;
         }
-        else if (frame == 600)
+        // game is loaded at 600 frames + update every 18 minutes (at 60Hz)
+        else if (frame == 600 || !(frame & 65535))
             ui::LoadedGame(uid);
 
         ++ frame;
@@ -1102,6 +1127,12 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 	glClearColor(0, 0, 0, 0);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glDrawElements(GL_TRIANGLE_FAN, 4, GL_UNSIGNED_INT, NULL);
+
+    if (want_screenshot)
+    {
+        SaveScreenshot(ww, wh);
+        want_screenshot = false;
+    }
 
 	xemu_hud_render();
 

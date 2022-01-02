@@ -2,6 +2,7 @@
 // @2021 octopoulos
 
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <map>
 
@@ -14,15 +15,16 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_internal.h"
 
+#include "common.h"
 #include "gamestats.h"
 #include "xsettings.h"
+#include "xemu-hud.h"
 #include "xemu-notifications.h"
+#include "xemu-shaders.h"
 
 extern "C" {
 #include "noc_file_dialog.h"
 }
-
-const char* paused_file_open(int flags, const char* filters, const char* default_path, const char* default_name);
 
 #define JSON_GET_INT(name) \
 	if (obj.HasMember(#name)) name = obj[#name].GetInt()
@@ -40,10 +42,11 @@ namespace ui
 struct GameStats : public exiso::GameInfo
 {
 	int         compatibility = 0;
-	int         countPlay     = 0; // # of times the game was launched (counts at 600 frames)
-	int         icon          = 0; // taken from a screenshot
-	int         timePlay      = 0; // seconds of play time
-	std::string lastPlay;          // YYYY-MM-DD hh:mm
+	int         countPlay     = 0;     // # of times the game was launched (counts at 600 frames)
+	int         icon          = 0;     // &1: checked, &2: found
+	GLuint      iconTexture   = 0;     //
+	std::string lastPlay      = "";    // YYYY-MM-DD hh:mm
+	int         timePlay      = 0;     // seconds of play time
 
 	GameStats() {}
 
@@ -57,7 +60,9 @@ struct GameStats : public exiso::GameInfo
 		region = info.region;
 		title  = info.title;
         uid    = info.uid;
-		MakeBuffer();
+
+		CreateBufferUID();
+        CheckIcon();
 	}
 
 	void Deserialize(const rapidjson::Value& obj)
@@ -73,11 +78,10 @@ struct GameStats : public exiso::GameInfo
 		// stats
 		JSON_GET_INT(compatibility);
 		JSON_GET_INT(countPlay);
-		JSON_GET_INT(icon);
 		JSON_GET_INT(timePlay);
 		JSON_GET_STRING(lastPlay);
 
-		MakeBuffer();
+		CreateBufferUID();
 	}
 
 	void Serialize(rapidjson::Writer<rapidjson::StringBuffer>* writer) const
@@ -94,48 +98,155 @@ struct GameStats : public exiso::GameInfo
 		// stats
 		JSON_SAVE_INT(compatibility);
 		JSON_SAVE_INT(countPlay);
-		JSON_SAVE_INT(icon);
 		JSON_SAVE_INT(timePlay);
 		JSON_SAVE_STRING(lastPlay);
 		writer->EndObject();
 	}
+
+    void CheckIcon()
+    {
+        if (icon & 1)
+            return;
+
+        std::filesystem::path iconPath = xsettingsFolder(nullptr);
+        iconPath /= (uid + ".png");
+        if (std::filesystem::exists(iconPath))
+        {
+            iconTexture = load_texture_from_file(iconPath.string().c_str(), 0);
+            icon = 3;
+        }
+        else
+            icon = 1;
+    }
 };
 
 std::map<std::string, GameStats> gameStats;
+std::map<std::string, uint32_t>  textures;
+
+static std::vector<std::string> barNames = {
+	"Config",
+	"FullScr",
+	"FullScr2",
+	"Grid",
+	"List",
+	"Open",
+	"Pads",
+	"Pause",
+	"Refresh",
+	"Restart",
+	"Start",
+	"Stop",
+};
+
+/**
+ * Load the icons for the top bar
+ */
+void GamesWindow::Initialize()
+{
+	std::filesystem::path basePath = xsettingsFolder(nullptr);
+
+	for (auto& barName : barNames)
+	{
+		std::filesystem::path path = basePath / "bar" / (barName + ".png");
+		// path /= "bar";
+		// path /= barName;
+		// path += ".png";
+		fmt::print(stderr, "barName={}\n", path.string().c_str());
+		if (std::filesystem::exists(path))
+		{
+			auto texId        = load_texture_from_file(path.string().c_str(), 0);
+			textures[barName] = texId;
+		}
+	}
+}
+
+bool ImageTextButton(std::string name)
+{
+	static ImVec2 buttonSize(32.0f, 32.0f);
+	// static ImVec2 uv0(0.0f, 0.0f);
+	// static ImVec2 uv1(1.0f, 1.0f);
+    // static ImVec4 colorBack(1.0f, 1.0f, 1.0f, 1.0f);
+    // static ImVec4 colorTex(0.0f, 0.0f, 0.0f, 1.0f);
+
+	bool click;
+    if (textures.contains(name))
+        click = ImGui::ImageButton((void*)(intptr_t)textures[name], buttonSize);    //, uv0, uv1, -1, colorBack, colorTex);
+    else
+        click = ImGui::Button(name.c_str());
+
+    return click;
+}
 
 void GamesWindow::Draw()
 {
 	if (!is_open)
 		return;
 
-	if (!ImGui::Begin("Games", &is_open))
+	static ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings;
+
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+	ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(viewport->WorkSize);
+
+	if (!ImGui::Begin("Games", &is_open, flags))
 	{
 		ImGui::End();
 		return;
 	}
 
+	if (ImageTextButton("Open")) LoadDisc();
+	ImGui::SameLine();
+	if (ImageTextButton("Refresh")) ScanGamesFolder();
+	ImGui::SameLine();
+	if (ImageTextButton("FullScr")) {}
+	ImGui::SameLine();
+	if (ImageTextButton("Stop")) {}
+	ImGui::SameLine();
+	if (ImageTextButton(IsRunning() ? "Pause" : "Start")) TogglePause();
+	ImGui::SameLine();
+	if (ImageTextButton("Config")) OpenConfig(1);
+	ImGui::SameLine();
+	if (ImageTextButton("Pads")) OpenConfig(10);
+	ImGui::SameLine();
+	if (ImageTextButton("List")) {}
+	ImGui::SameLine();
+	if (ImageTextButton("Grid")) {}
+	ImGui::SameLine();
+	ImGui::SliderInt("Scale", &xsettings.row_height, 24, 176);
+	// ImGui::SameLine();
+	// ImGui::InputText("Search", search, sizeof(str2k));
+
+	float icon_height = xsettings.row_height * 1.0f;
+	ImVec2 icon_dims = { icon_height * 16.0f / 9.0f, icon_height };
+
 	// recent
-	ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(16.0f, 16.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(8.0f, 8.0f));
 
 	if (ImGui::BeginTable("Table", 9, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable))
 	{
 		ImGui::TableSetupColumn("Icon", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Serial", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Region", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Release Date", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Count Played", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Last Played", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Time Played", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Compatibility", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("Compatibility", ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableHeadersRow();
 
-		for (const auto& [key, game] : gameStats)
+		for (auto& [key, game] : gameStats)
 		{
 			ImGui::TableNextRow();
 
 			ImGui::TableSetColumnIndex(0);
-			ImGui::TextUnformatted("ICON");
+            game.CheckIcon();
+			if (game.icon & 2)
+				ImGui::Image((void*)(intptr_t)game.iconTexture, icon_dims);
+			else
+				ImGui::TextUnformatted("ICON");
+
 			ImGui::TableSetColumnIndex(1);
 			ImGui::TextUnformatted(game.title.c_str());
 			ImGui::TableSetColumnIndex(2);
@@ -161,7 +272,7 @@ void GamesWindow::Draw()
                 ImGui::TextUnformatted("");
 
 			ImGui::TableSetColumnIndex(8);
-			ImGui::Text("%d", game.compatibility);
+			ImGui::Text("%s", game.compatibility? "Playable": "No results found");
 		}
 
 		ImGui::EndTable();
@@ -173,24 +284,32 @@ void GamesWindow::Draw()
 	ImGui::End();
 }
 
+void CheckIcon(std::string uid)
+{
+    auto it = gameStats.find(uid);
+	if (it != gameStats.end())
+    {
+        it->second.icon = 0;
+        it->second.CheckIcon();
+    }
+}
+
 /**
  * Signal that a game was loaded
  * @param key empty to signal the game was closed, must be called when closing the app
  */
-void LoadedGame(std::string key)
+void LoadedGame(std::string uid)
 {
 	static std::string gameUid;
 	static auto        start = std::chrono::steady_clock::now();
 
 	bool mustSave = false;
-    fmt::print(stderr, "LoadedGame, key={} gameUid={}\n", key, gameUid);
 
 	// close game => count the play time
 	if (gameUid.size())
 	{
 		auto finish  = std::chrono::steady_clock::now();
 		auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(finish - start).count();
-        fmt::print(stderr, "elapsed={} gameUid={}\n", elapsed, gameUid);
 
 		if (elapsed > 10 && gameStats.contains(gameUid))
 		{
@@ -199,17 +318,21 @@ void LoadedGame(std::string key)
 		}
 	}
 
-	if (key.size() && gameStats.contains(key))
+	if (uid.size() && gameStats.contains(uid))
 	{
-		auto& gameStat = gameStats[key];
+        // new game => update count + last played
+		if (uid != gameUid)
+		{
+			auto& gameStat = gameStats[uid];
 
-		auto    now   = std::chrono::system_clock::now();
-		auto    timer = std::chrono::system_clock::to_time_t(now);
-		std::tm gmtime;
-		gmtime_s(&gmtime, &timer);
+			auto    now   = std::chrono::system_clock::now();
+			auto    timer = std::chrono::system_clock::to_time_t(now);
+			std::tm gmtime;
+			gmtime_s(&gmtime, &timer);
 
-		++gameStat.countPlay;
-		gameStat.lastPlay = fmt::format("{}-{:02}-{:02} {:02}:{:02}", 1900 + gmtime.tm_year, 1 + gmtime.tm_mon, gmtime.tm_mday, gmtime.tm_hour, gmtime.tm_min);
+			++gameStat.countPlay;
+			gameStat.lastPlay = fmt::format("{}-{:02}-{:02} {:02}:{:02}", 1900 + gmtime.tm_year, 1 + gmtime.tm_mon, gmtime.tm_mday, gmtime.tm_hour, gmtime.tm_min);
+		}
 
 		mustSave = true;
 		start    = std::chrono::steady_clock::now();
@@ -218,8 +341,7 @@ void LoadedGame(std::string key)
 	if (mustSave)
 		SaveGamesList();
 
-    fmt::print(stderr, "~LoadedGame, key={} gameUid={} mustSave={}\n", key, gameUid, mustSave);
-	gameUid = key;
+	gameUid = uid;
 }
 
 void OpenGamesList()
@@ -267,7 +389,7 @@ void ScanGamesFolder()
 {
 	const char* filters  = ""; // ".iso Files\0*.iso\0All Files\0*.*\0";
 	const char* current  = xsettings.dvd_path;
-	const char* filename = paused_file_open(NOC_FILE_DIALOG_OPEN, filters, current, nullptr);
+	const char* filename = PausedFileOpen(NOC_FILE_DIALOG_OPEN, filters, current, nullptr);
 
 	std::string folder = filename;
 	folder.erase(folder.find_last_of("/\\") + 1);
@@ -284,7 +406,11 @@ void ScanGamesFolder()
 			gameStats[gameInfo.uid] = gameStat;
 		}
         else
-            it->second.path = gameInfo.path;
+        {
+            GameStats& gameStat = it->second;
+            gameStat.path = gameInfo.path;
+            gameStat.CheckIcon();
+        }
 	}
 
 	SaveGamesList();

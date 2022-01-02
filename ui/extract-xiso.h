@@ -33,7 +33,7 @@ struct GameInfo
 	std::string title;               // Full Game Title
     std::string uid;                 // Full Game Title (XX-123-AJ*)
 
-	void MakeBuffer();
+	void CreateBufferUID();
 };
 
 int  CreateXiso(std::string in_root_directory, std::string in_output_directory, std::string in_name, bool force);

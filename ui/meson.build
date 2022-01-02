@@ -27,7 +27,6 @@ xemu_ss.add(files(
   'implot/implot.cpp',
   'implot/implot_demo.cpp',
   'implot/implot_items.cpp',
-  # 'ImFileDialog/ImFileDialog.cpp',
 
   'xemu-custom-widgets.cpp',
   'xemu-data.cpp',
@@ -39,13 +38,15 @@ xemu_ss.add(files(
   'xemu-shaders.cpp',
   'xemu.cpp',
 
+  'common.cpp',
   'extract-xiso.cpp',
   'gamestats.cpp',
   'xsettings.cpp',
 ))
 xemu_ss.add(when: 'CONFIG_WIN32', if_true: files('xemu-update.cpp'))
 
-imgui_flags = ['-DIMGUI_IMPL_OPENGL_LOADER_CUSTOM="epoxy/gl.h"']
+imgui_flags = []
+# imgui_flags = ['-DIMGUI_IMPL_OPENGL_LOADER_CUSTOM="epoxy/gl.h"']
 
 if 'CONFIG_WIN32' in config_host
 imgui_flags += ['-DWIN32', '-DMINGW32']

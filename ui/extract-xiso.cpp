@@ -45,7 +45,7 @@
 //#define SAVE_PNG
 #ifdef SAVE_PNG
 #	define STB_IMAGE_WRITE_IMPLEMENTATION
-#	include <stb_image_write.h>
+#	include "stb/stb_image_write.h"
 #endif
 
 #if defined(__FREEBSD__) || defined(__OPENBSD__)
@@ -1702,9 +1702,10 @@ end_traverse:
 // API
 //////
 
-void GameInfo::MakeBuffer()
+void GameInfo::CreateBufferUID()
 {
-    strcpy_s(buffer, fmt::format("{} ({}) {}", title, key, region, date).c_str());
+	uid = fmt::format("{} ({})", title, key);
+    strcpy_s(buffer, fmt::format("{} {}", uid, date).c_str());
 }
 
 struct XBE
@@ -2048,9 +2049,8 @@ int ExtractMetadata(int ifile, GameInfo* gameInfo)
 	gameInfo->debug  = !!(cert.game_region & 8);
 	gameInfo->key    = fmt::format("{}-{}{}", gameInfo->id, gameInfo->region, gameInfo->debug ? "*" : "");
 	gameInfo->title  = title8;
-	gameInfo->uid    = fmt::format("{} ({})", gameInfo->title, gameInfo->key);
 
-	gameInfo->MakeBuffer();
+	gameInfo->CreateBufferUID();
 
 	XLOG("\n=> {}\n", gameInfo->buffer);
 	return err;
