@@ -45,7 +45,7 @@
 //#define SAVE_PNG
 #ifdef SAVE_PNG
 #	define STB_IMAGE_WRITE_IMPLEMENTATION
-#	include "stb/stb_image_write.h"
+#	include <stb_image_write.h>
 #endif
 
 #if defined(__FREEBSD__) || defined(__OPENBSD__)

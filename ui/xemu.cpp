@@ -98,7 +98,7 @@ static SDL_GLContext   m_context;
 static QemuSemaphore   display_init_sem;
 
 SDL_Window* m_window        = NULL;
-bool        want_screenshot = false;
+int         want_screenshot = 0;
 DecalShader blit;
 
 #define SDL2_REFRESH_INTERVAL_BUSY 16
@@ -944,23 +944,46 @@ void sdl2_gl_switch(DisplayChangeListener* dcl, DisplaySurface* new_surface)
 
 /**
  * Save screenshot + create Icon
+ * - want_screenshot: 1 = screenshot      , 2 = icon
+ *                    4 = force screenshot, 8 = force icon
  */
-void SaveScreenshot(int width, int height)
+void SaveScreenshot(int texId, int width, int height)
 {
-    static uint8_t iconPixels[320 * 176];
+	static uint8_t              iconPixels[320 * 176 * 3];
+	static std::vector<uint8_t> buffer;
 
-    uint8_t* pixels = new uint8_t[width * height * 3];
-    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+	if ((int)buffer.size() < width * height * 3)
+		buffer.reserve(width * height * 3);
 
-    stbir_resize_uint8(pixels, width, height, width, iconPixels, 320, 176, 320, 3);
+	glGetTextureImage(texId, 0, GL_RGB, GL_UNSIGNED_BYTE, width * height * 3, buffer.data());
 
-    std::filesystem::path path = xsettingsFolder(nullptr);
-    path /= (gameInfo.uid + ".png");
-    stbi_write_png(path.string().c_str(), width, height, 3, iconPixels, width);
+	std::filesystem::path basePath = xsettingsFolder(nullptr);
 
-    delete[] pixels;
+	for (int i = 1; i <= 2; ++i)
+	{
+		if (!(want_screenshot & i))
+			continue;
 
-    ui::CheckIcon(gameInfo.uid);
+		auto folder = basePath / ((i & 2) ? "icons" : "screenshots");
+		if (!std::filesystem::is_directory(folder))
+			std::filesystem::create_directory(folder);
+
+		auto filename = folder / (gameInfo.uid + ".png");
+		if (!(want_screenshot & (1 << (i + 1))) && std::filesystem::exists(filename))
+			continue;
+
+		stbi_flip_vertically_on_write(1);
+		if (i & 2)
+		{
+			stbir_resize_uint8(buffer.data(), width, height, width * 3, iconPixels, 320, 176, 320 * 3, 3);
+			stbi_write_png(filename.string().c_str(), 320, 176, 3, iconPixels, 320 * 3);
+		}
+		else
+			stbi_write_png(filename.string().c_str(), width, height, 3, buffer.data(), width * 3);
+	}
+
+	ui::CheckIcon(gameInfo.uid);
+	want_screenshot = 0;
 }
 
 static float fps = 1.0f;
@@ -1065,6 +1088,9 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &tw);
 	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &th);
 
+	if (want_screenshot)
+		SaveScreenshot(tex, tw, th);
+
 	// Get window dimensions
 	int ww, wh;
 	SDL_GL_GetDrawableSize(scon->real_window, &ww, &wh);
@@ -1128,13 +1154,8 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 	glClear(GL_COLOR_BUFFER_BIT);
 	glDrawElements(GL_TRIANGLE_FAN, 4, GL_UNSIGNED_INT, NULL);
 
-    if (want_screenshot)
-    {
-        SaveScreenshot(ww, wh);
-        want_screenshot = false;
-    }
-
-	xemu_hud_render();
+    if (!want_screenshot)
+	    xemu_hud_render();
 
 	// Release BQL before swapping (which may sleep if swap interval is not immediate)
 	qemu_mutex_unlock_iothread();

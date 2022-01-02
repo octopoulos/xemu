@@ -80,7 +80,7 @@ extern FBO*        controller_fbo;
 extern FBO*        logo_fbo;
 extern int         g_user_asked_for_intercept;
 extern SDL_Window* m_window;
-extern bool        want_screenshot;
+extern int         want_screenshot;
 
 static ImFont* g_fixed_width_font;
 float          g_main_menu_height;
@@ -2407,7 +2407,8 @@ static void ShowMainMenu()
 			if (ImGui::MenuItem("Create ISO")) LoadDisc();
 
 			ImGui::Separator();
-			if (ImGui::MenuItem("Screenshot")) want_screenshot = true;
+			if (ImGui::MenuItem("Screenshot")) want_screenshot = (1 + 4) + 2; // force screenshot + maybe icon
+			if (ImGui::MenuItem("Save Icon")) want_screenshot = 2 + 8;        // force icon
 			ImGui::MenuItem("Export", nullptr, &video_window.is_open);
 			ImGui::EndMenu();
 		}

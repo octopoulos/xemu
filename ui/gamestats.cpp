@@ -109,7 +109,9 @@ struct GameStats : public exiso::GameInfo
             return;
 
         std::filesystem::path iconPath = xsettingsFolder(nullptr);
-        iconPath /= (uid + ".png");
+        iconPath /= "icons";
+        iconPath /= uid;
+        iconPath += ".png";
         if (std::filesystem::exists(iconPath))
         {
             iconTexture = load_texture_from_file(iconPath.string().c_str(), 0);
@@ -148,10 +150,6 @@ void GamesWindow::Initialize()
 	for (auto& barName : barNames)
 	{
 		std::filesystem::path path = basePath / "bar" / (barName + ".png");
-		// path /= "bar";
-		// path /= barName;
-		// path += ".png";
-		fmt::print(stderr, "barName={}\n", path.string().c_str());
 		if (std::filesystem::exists(path))
 		{
 			auto texId        = load_texture_from_file(path.string().c_str(), 0);
@@ -163,14 +161,10 @@ void GamesWindow::Initialize()
 bool ImageTextButton(std::string name)
 {
 	static ImVec2 buttonSize(32.0f, 32.0f);
-	// static ImVec2 uv0(0.0f, 0.0f);
-	// static ImVec2 uv1(1.0f, 1.0f);
-    // static ImVec4 colorBack(1.0f, 1.0f, 1.0f, 1.0f);
-    // static ImVec4 colorTex(0.0f, 0.0f, 0.0f, 1.0f);
 
 	bool click;
     if (textures.contains(name))
-        click = ImGui::ImageButton((void*)(intptr_t)textures[name], buttonSize);    //, uv0, uv1, -1, colorBack, colorTex);
+        click = ImGui::ImageButton((void*)(intptr_t)textures[name], buttonSize);
     else
         click = ImGui::Button(name.c_str());
 
@@ -182,14 +176,14 @@ void GamesWindow::Draw()
 	if (!is_open)
 		return;
 
-	static ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings;
+	static ImGuiWindowFlags wFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings;
 
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
 
 	ImGui::SetNextWindowPos(viewport->WorkPos);
     ImGui::SetNextWindowSize(viewport->WorkSize);
 
-	if (!ImGui::Begin("Games", &is_open, flags))
+	if (!ImGui::Begin("Games", &is_open, wFlags))
 	{
 		ImGui::End();
 		return;
@@ -223,15 +217,20 @@ void GamesWindow::Draw()
 	// recent
 	ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(8.0f, 8.0f));
 
-	if (ImGui::BeginTable("Table", 9, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable))
+    static ImGuiTableFlags tFlags =
+        ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable
+        | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_ContextMenuInBody;
+
+	if (ImGui::BeginTable("Table", 9, tFlags))
 	{
+        ImGui::TableSetupScrollFreeze(1, 1);
 		ImGui::TableSetupColumn("Icon", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Serial", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Region", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Release Date", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Count Played", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Last Played", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("Last Played", ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Time Played", ImGuiTableColumnFlags_WidthFixed);
 		ImGui::TableSetupColumn("Compatibility", ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableHeadersRow();

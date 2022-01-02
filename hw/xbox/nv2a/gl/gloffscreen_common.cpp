@@ -27,6 +27,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <vector>
 
 #include "gloffscreen.h"
 
@@ -34,10 +35,10 @@ void glo_readpixels(
 	GLenum gl_format, GLenum gl_type, uint32_t bytes_per_pixel, uint32_t stride, uint32_t width, uint32_t height,
 	bool vflip, void* data)
 {
-	/* TODO: weird strides */
+	// TODO: weird strides
 	assert(stride % bytes_per_pixel == 0);
 
-	/* Save guest processes GL state before we ReadPixels() */
+	// Save guest processes GL state before we ReadPixels()
 	int rl, pa;
 	glGetIntegerv(GL_PACK_ROW_LENGTH, &rl);
 	glGetIntegerv(GL_PACK_ALIGNMENT, &pa);
@@ -50,19 +51,22 @@ void glo_readpixels(
 	{
 		GLubyte* b = (GLubyte*)data;
 		GLubyte* c = &((GLubyte*)data)[stride * (height - 1)];
-		GLubyte* tmp = (GLubyte*)malloc(width * bytes_per_pixel);
+
+        static std::vector<GLubyte> tmp;
+        if (tmp.size() < width * bytes_per_pixel)
+            tmp.reserve(width * bytes_per_pixel);
+
 		for (uint32_t irow = 0; irow < height / 2; irow++)
 		{
-			memcpy(tmp, b, width * bytes_per_pixel);
+			memcpy(tmp.data(), b, width * bytes_per_pixel);
 			memcpy(b, c, width * bytes_per_pixel);
-			memcpy(c, tmp, width * bytes_per_pixel);
+			memcpy(c, tmp.data(), width * bytes_per_pixel);
 			b += stride;
 			c -= stride;
 		}
-		free(tmp);
 	}
 
-	/* Restore GL state */
+	// Restore GL state
 	glPixelStorei(GL_PACK_ROW_LENGTH, rl);
 	glPixelStorei(GL_PACK_ALIGNMENT, pa);
 }

@@ -850,11 +850,6 @@ libpcap = declare_dependency(compile_args: config_host['LIBPCAP_CFLAGS'].split()
 libsamplerate = declare_dependency(compile_args: config_host['LIBSAMPLERATE_CFLAGS'].split(),
                                    link_args: config_host['LIBSAMPLERATE_LIBS'].split())
 
-# extra
-fmt = declare_dependency(compile_args: config_host['FMT_CFLAGS'].split(),
-                         link_args: config_host['FMT_LIBS'].split())
-rapidjson = declare_dependency(compile_args: config_host['RAPIDJSON_CFLAGS'].split())
-
 gnutls = not_found
 gnutls_crypto = not_found
 if get_option('gnutls').enabled() or (get_option('gnutls').auto() and have_system)

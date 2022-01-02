@@ -24,6 +24,7 @@ xemu_ss.add(files(
   'imgui/imgui_widgets.cpp',
   'imgui/backends/imgui_impl_opengl3.cpp',
   'imgui/backends/imgui_impl_sdl.cpp',
+  'imgui/misc/freetype/imgui_freetype.cpp',
   'implot/implot.cpp',
   'implot/implot_demo.cpp',
   'implot/implot_items.cpp',
@@ -62,8 +63,11 @@ xemu_cocoa = dependency('appleframeworks', modules: 'Cocoa')
 xemu_ss.add(xemu_cocoa) # FIXME: Use existing cocoa name
 endif
 
+fmt       = declare_dependency(compile_args: config_host['FMT_CFLAGS'      ].split(), link_args: config_host['FMT_LIBS'      ].split())
+freetype2 = declare_dependency(compile_args: config_host['FREETYPE2_CFLAGS'].split(), link_args: config_host['FREETYPE2_LIBS'].split())
+
 imgui = declare_dependency(compile_args: imgui_flags, include_directories: 'imgui')
-xemu_ss.add(sdl, opengl, openssl, imgui)
+xemu_ss.add(sdl, opengl, openssl, imgui, fmt, freetype2)
 xemu_ss.add(when: 'CONFIG_LINUX', if_true: [xemu_gtk, files('xemu-os-utils-linux.cpp', 'noc_file_dialog_gtk.c')])
 xemu_ss.add(when: 'CONFIG_WIN32', if_true: files('xemu-os-utils-windows.cpp', 'noc_file_dialog_win32.c'))
 xemu_ss.add(when: 'CONFIG_DARWIN', if_true: files('xemu-os-utils-macos.m', 'noc_file_dialog_macos.m'))

@@ -3583,11 +3583,14 @@ fi
 # extra stuff
 if test "$mingw32" = "yes"; then
     QEMU_CFLAGS="$QEMU_CFLAGS -I/mingw64/include"
-    QEMU_LDFLAGS="$QEMU_LDFLAGS -liphlpapi -lfmt"
+    QEMU_LDFLAGS="$QEMU_LDFLAGS -liphlpapi"
 fi
 
 fmt_cflags=$($pkg_config --cflags fmt)
 fmt_libs=$($pkg_config --libs fmt)
+
+freetype2_cflags=$($pkg_config --cflags freetype2)
+freetype2_libs=$($pkg_config --libs freetype2)
 
 rapidjson_cflags=$($pkg_config --cflags rapidjson)
 
@@ -4934,6 +4937,8 @@ echo "LIBSAMPLERATE_LIBS=$libsamplerate_libs" >> $config_host_mak
 # extra
 echo "FMT_CFLAGS=$fmt_cflags" >> $config_host_mak
 echo "FMT_LIBS=$fmt_libs" >> $config_host_mak
+echo "FREETYPE2_CFLAGS=$freetype2_cflags" >> $config_host_mak
+echo "FREETYPE2_LIBS=$freetype2_libs" >> $config_host_mak
 echo "RAPIDJSON_CFLAGS=$rapidjson_cflags" >> $config_host_mak
 
 if test "$replication" = "yes" ; then
