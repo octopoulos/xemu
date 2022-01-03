@@ -1,7 +1,7 @@
 /*
  * xsettings.cpp
  *
- * Copyright (C) 2021 Octo Poulos
+ * Copyright (C) 2022 octopoulos
  * Copyright (C) 2021 Matt Borgerson
  *
  * This program is free software; you can redistribute it and/or modify it under the terms of
@@ -43,11 +43,14 @@ enum NET_BACKEND
 
 enum RENDERER
 {
+	RENDERER_DX9,
+	RENDERER_DX11,
 	RENDERER_OPENGL,
 	RENDERER_VULKAN,
 	RENDERER_NONE,
 };
 
+typedef char str32[32];
 typedef char str2k[2048];
 
 typedef struct _XSettings
@@ -112,6 +115,19 @@ typedef struct _XSettings
 
 	// [gui]
     int   row_height;
+    str32 shortcut_controls;
+    str32 shortcut_eject;
+    str32 shortcut_fullscreen;
+    str32 shortcut_games;
+    str32 shortcut_gpu;
+    str32 shortcut_intercept;
+    str32 shortcut_log;
+    str32 shortcut_monitor;
+    str32 shortcut_open;
+    str32 shortcut_pads;
+    str32 shortcut_pause;
+    str32 shortcut_reset;
+    str32 shortcut_screenshot;
 	float ui_scale;
 
 	// [debug]

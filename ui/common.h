@@ -10,12 +10,15 @@
 
 #include <fmt/core.h>
 #include "imgui/imgui.h"
+#include "imgui/imgui_internal.h"
 
 #include "xsettings.h"
 
 namespace ui
 {
 
+std::string FileOpen(const char* filters, std::string current);
+std::string FileOpenISO(std::string current);
 bool        ImageTextButton(std::string name);
 bool        IsRunning();
 void        LoadDisc();

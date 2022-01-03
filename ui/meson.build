@@ -44,6 +44,7 @@ xemu_ss.add(files(
   'extract-xiso.cpp',
   'games.cpp',
   'log.cpp',
+  'settings.cpp',
   'xsettings.cpp',
 ))
 xemu_ss.add(when: 'CONFIG_WIN32', if_true: files('xemu-update.cpp'))

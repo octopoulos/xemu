@@ -6,9 +6,6 @@
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/prettywriter.h>
 
-#include "imgui/imgui_internal.h"
-
-#include "common.h"
 #include "games.h"
 #include "xemu-hud.h"
 #include "xemu-notifications.h"

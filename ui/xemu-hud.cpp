@@ -49,14 +49,15 @@
 #include "data/roboto_medium.ttf.h"
 
 #include "imgui/imgui.h"
-#include "imgui/imgui_internal.h"
 #include "imgui/backends/imgui_impl_sdl.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 #include "implot/implot.h"
 #include "games.h"
 #include "hw/xbox/nv2a/intercept.h"
+#include "settings.h"
 
-extern "C" {
+extern "C"
+{
 #include "qemui/noc_file_dialog.h"
 
 // Include necessary QEMU headers
@@ -76,11 +77,10 @@ extern "C" {
 #undef atomic_fetch_sub
 }
 
-extern FBO*        controller_fbo;
-extern FBO*        logo_fbo;
-extern int         g_user_asked_for_intercept;
-extern SDL_Window* m_window;
-extern int         want_screenshot;
+extern FBO* controller_fbo;
+extern FBO* logo_fbo;
+extern int  g_user_asked_for_intercept;
+extern int  want_screenshot;
 
 static ImFont* g_fixed_width_font;
 float          g_main_menu_height;
@@ -828,318 +828,6 @@ public:
 static InputWindow input_window;
 static ui::GamesWindow games_window;
 
-class SettingsWindow
-{
-public:
-	bool is_open = false;
-
-private:
-	int       changed    = 0;
-	bool      clickedNow = 0;
-	int       tab        = 0;
-	int       tabMenu    = 0;
-	XSettings prevSettings;
-
-public:
-	SettingsWindow()
-	{
-		memcpy(&prevSettings, &xsettings, sizeof(XSettings));
-	}
-
-	~SettingsWindow() {}
-
-	void Load() { memcpy(&prevSettings, &xsettings, sizeof(XSettings)); }
-
-	void Save()
-	{
-		xsettingsSave();
-		xemu_queue_notification("Settings saved!", false);
-
-		if ((changed = xsettingsCompare(&prevSettings)))
-			memcpy(&prevSettings, &xsettings, sizeof(XSettings));
-	}
-
-	void OpenTab(int tabMenu_)
-	{
-		tabMenu = tabMenu_;
-		is_open = true;
-	}
-
-	void FilePicker(const char* name, char* buf, size_t len, const char* filters)
-	{
-		ImGui::PushID(name);
-		ImGui::InputText("##file", buf, len);
-
-		ImGui::SameLine();
-		if (ImGui::Button("Browse...", ImVec2(100 * xsettings.ui_scale, 0)))
-		{
-			const char* selected = ui::PausedFileOpen(NOC_FILE_DIALOG_OPEN, filters, buf, nullptr);
-			if ((selected != nullptr) && (strcmp(buf, selected) != 0))
-				strcpy(buf, selected);
-		}
-		ImGui::PopID();
-	}
-
-	void Draw()
-	{
-		if (!is_open)
-			return;
-
-		ImGui::SetNextWindowContentSize(ImVec2(800.0f * xsettings.ui_scale, 600.0f * xsettings.ui_scale));
-		if (!ImGui::Begin("Settings", &is_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
-		{
-			ImGui::End();
-			return;
-		}
-
-		if (ImGui::IsWindowAppearing()) Load();
-
-		clickedNow = false;
-
-		if (ImGui::BeginTabBar("Settings#tabs"))
-		{
-			const char* tabNames[] = {
-				"CPU",
-				"GPU",
-				"Audio",
-				"I/O",
-				"System",
-				"Network",
-				"Advanced",
-				"Emulator",
-				"GUI",
-				"Debug",
-				nullptr,
-			};
-
-			for (int i = 0; tabNames[i]; ++i)
-				if (ImGui::BeginTabItem(tabNames[i]))
-				{
-					if (tab != i)
-					{
-						clickedNow = true;
-						tab        = i;
-						tabMenu    = i;
-					}
-					ImGui::EndTabItem();
-				}
-
-			ImGui::EndTabBar();
-		}
-
-		ImGui::Dummy(ImVec2(0, 0));
-
-		switch (tabMenu)
-		{
-		case 0: DrawCPU(); break;
-		case 1: DrawGPU(); break;
-		case 2: DrawAudio(); break;
-		case 3: DrawIO(); break;
-		case 4: DrawSystem(); break;
-		case 5: DrawNetwork(); break;
-		case 6: DrawAdvanced(); break;
-		case 7: DrawEmulator(); break;
-		case 8: DrawGUI(); break;
-		case 9: DrawDebug(); break;
-		default: break;
-		}
-
-		ImGui::TextUnformatted("Description");
-
-		ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 60);
-
-		if (ImGui::Button("Restore Defaults"))
-		{
-			memcpy(&xsettings, &prevSettings, sizeof(XSettings));
-			changed = 0;
-		}
-		ImGui::SameLine();
-		ImGui::SetItemDefaultFocus();
-		if (ImGui::Button("Save"))
-		{
-			Save();
-			is_open = false;
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Close"))
-		{
-			if ((changed = xsettingsCompare(&prevSettings))) {}
-			memcpy(&xsettings, &prevSettings, sizeof(XSettings));
-			is_open = false;
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Apply")) {}
-
-		if (changed & 2)
-		{
-			const char* msg = "Restart to apply changes";
-			ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize(msg).x) / 2.0);
-			ImGui::TextUnformatted(msg);
-			ImGui::SameLine();
-		}
-
-		ImGui::End();
-	}
-
-	void DrawCPU() { ImGui::Text("%s %d %d", "CPU", tab, tabMenu); }
-
-	void DrawGPU()
-	{
-		ImGui::Columns(2, "", false);
-		ImGui::SetColumnWidth(0, ImGui::GetWindowWidth() / 2);
-
-		ImGui::Combo("Renderer", &xsettings.renderer, "OpenGL\0Vulkan\0Null\0");
-
-		if (ImGui::SliderInt("Resolution Scale", &xsettings.resolution_scale, 1, 10, "%dx")) nv2a_set_surface_scale_factor(xsettings.resolution_scale);
-
-		ImGui::Combo(
-		    "Aspect Ratio", &xsettings.aspect_ratio,
-		    "16:9\0"
-		    "4:3\0Native\0Window\0");
-
-		ImGui::Checkbox("Stretch to Display Area", (bool*)&xsettings.stretch);
-		{
-			if (!xsettings.stretch) ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-			ImGui::Checkbox("Vertical Integer Scaling", (bool*)&xsettings.integer_scaling);
-			if (!xsettings.stretch) ImGui::PopItemFlag();
-		}
-		{
-			const std::array<int, 6> anisotropics = { 0, 1, 2, 4, 8, 16 };
-			auto                     it           = std::find(anisotropics.begin(), anisotropics.end(), xsettings.anisotropic);
-			int                      anisotropic  = it ? std::distance(anisotropics.begin(), it) : 0;
-
-			if (ImGui::Combo("Anisotropic Filtering", &anisotropic, "Auto\0x1\0x2\0x4\0x8\0x16\0")) xsettings.anisotropic = anisotropics[anisotropic];
-		}
-
-		ImGui::Combo("Dither", &xsettings.dither, "Off\0On\0Auto\0");
-		ImGui::Combo("Line Smooth", &xsettings.line_smooth, "Off\0On\0Auto\0");
-		ImGui::Combo("Polygon Smooth", &xsettings.polygon_smooth, "Off\0On\0Auto\0");
-		ImGui::Checkbox("Show shader compilation hint", (bool*)&xsettings.shader_hint);
-
-		// ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().WindowPadding.y));
-		ImGui::NextColumn();
-		ImGui::Checkbox("FBO Nearest", (bool*)&xsettings.fbo_nearest);
-		ImGui::Checkbox("Graph Nearest", (bool*)&xsettings.graph_nearest);
-		ImGui::Checkbox("Overlay Nearest", (bool*)&xsettings.overlay_nearest);
-		ImGui::Checkbox("Scale Nearest", (bool*)&xsettings.scale_nearest);
-		ImGui::Checkbox("Shader Nearest", (bool*)&xsettings.shader_nearest);
-		ImGui::Checkbox("Surface part Nearest", (bool*)&xsettings.surface_part_nearest);
-		ImGui::Checkbox("Surface texture Nearest", (bool*)&xsettings.surface_texture_nearest);
-	}
-
-	void DrawAudio() { ImGui::Text("%s %d %d", "Audio", tab, tabMenu); }
-
-	void DrawIO()
-	{
-		if (clickedNow)
-			input_window.is_open = !input_window.is_open;
-	}
-
-	void DrawSystem()
-	{
-		const char* rom_file_filters  = ".bin Files\0*.bin\0.rom Files\0*.rom\0All Files\0*.*\0";
-		const char* qcow_file_filters = ".qcow2 Files\0*.qcow2\0All Files\0*.*\0";
-
-		ImGui::Columns(2, "", false);
-		ImGui::SetColumnWidth(0, ImGui::GetWindowWidth() * 0.25);
-
-		ImGui::Text("Flash (BIOS) File");
-		ImGui::NextColumn();
-		float picker_width = ImGui::GetColumnWidth() - 120 * xsettings.ui_scale;
-		ImGui::SetNextItemWidth(picker_width);
-		FilePicker("###Flash", xsettings.flash_path, sizeof(xsettings.flash_path), rom_file_filters);
-		ImGui::NextColumn();
-
-		ImGui::Text("MCPX Boot ROM File");
-		ImGui::NextColumn();
-		ImGui::SetNextItemWidth(picker_width);
-		FilePicker("###BootROM", xsettings.bootrom_path, sizeof(xsettings.bootrom_path), rom_file_filters);
-		ImGui::NextColumn();
-
-		ImGui::Text("Hard Disk Image File");
-		ImGui::NextColumn();
-		ImGui::SetNextItemWidth(picker_width);
-		FilePicker("###HDD", xsettings.hdd_path, sizeof(xsettings.hdd_path), qcow_file_filters);
-		ImGui::NextColumn();
-
-		ImGui::Text("EEPROM File");
-		ImGui::NextColumn();
-		ImGui::SetNextItemWidth(picker_width);
-		FilePicker("###EEPROM", xsettings.eeprom_path, sizeof(xsettings.eeprom_path), rom_file_filters);
-		ImGui::NextColumn();
-
-		ImGui::Text("System Memory");
-		ImGui::NextColumn();
-		ImGui::SetNextItemWidth(ImGui::GetColumnWidth() * 0.5);
-
-		{
-			const std::array<int, 2> memories = { 64, 128 };
-			auto                     it       = std::find(memories.begin(), memories.end(), xsettings.memory);
-			int                      memory   = it ? std::distance(memories.begin(), it) : 0;
-
-			if (ImGui::Combo("###mem", &memory, "64 MiB\0" "128 MiB\0"))
-				xsettings.memory = memories[memory];
-		}
-
-		ImGui::Columns(1);
-		ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().WindowPadding.y));
-		ImGui::Separator();
-		ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().WindowPadding.y));
-
-		Hyperlink("Help", "https://xemu.app/docs/getting-started/");
-		ImGui::SameLine();
-	}
-
-	void DrawNetwork() { ImGui::Text("%s %d %d", "Network", tab, tabMenu); }
-
-	void DrawAdvanced() { ImGui::Text("%s %d %d", "Advanced", tab, tabMenu); }
-
-	void DrawEmulator()
-	{
-		ImGui::Checkbox("Skip startup animation", (bool*)&xsettings.short_animation);
-		ImGui::Checkbox("Check for updates on startup", (bool*)&xsettings.check_for_update);
-		ImGui::Checkbox("Boot game at startup", (bool*)&xsettings.startup_game);
-		ImGui::Checkbox("Start in Fullscreen mode", (bool*)&xsettings.start_fullscreen);
-		ImGui::Checkbox("Resize window on boot", (bool*)&xsettings.resize_on_boot);
-		{
-			if (!xsettings.resize_on_boot) ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-			int ww, wh;
-			SDL_GetWindowSize(m_window, &ww, &wh);
-			ImGui::InputInt(fmt::format("width ({})", ww).c_str(), &xsettings.resize_width);
-			ImGui::InputInt(fmt::format("height ({})", wh).c_str(), &xsettings.resize_height);
-			if (!xsettings.resize_on_boot) ImGui::PopItemFlag();
-		}
-		ImGui::InputText("Window Title", xsettings.window_title, sizeof(xsettings.window_title));
-		ImGui::Checkbox("Enable performance overlay", (bool*)&xsettings.performance_overlay);
-	}
-
-	void DrawGUI()
-	{
-		static float prev_delta = 0;
-
-		float prev_scale = xsettings.ui_scale;
-		if (ImGui::SliderFloat("UI Scale", &xsettings.ui_scale, 1.0f, 4.0f, "%.3f"))
-		{
-			float delta  = xsettings.ui_scale - prev_scale;
-			bool  change = (delta * prev_delta >= 0);
-			if (!change && fabsf(delta) > 0.2f)
-			{
-				xsettings.ui_scale = prev_scale * 0.9f + xsettings.ui_scale * 0.1f;
-				change             = true;
-			}
-			if (change) g_trigger_style_update = true;
-			prev_delta = delta;
-		}
-	}
-
-	void DrawDebug()
-	{
-		ImGui::Text("%s %d %d", "Debug", tab, tabMenu);
-
-		ImGui::InputTextMultiline("Intercept Filter", xsettings.intercept_filter, 2048);
-	}
-};
-
 class AboutWindow
 {
 public:
@@ -1347,8 +1035,9 @@ public:
 		HelpMarker("The network backend which the emulated NIC interacts with");
 		ImGui::NextColumn();
 		if (is_enabled) ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.6f);
-		int temp_backend = backend; // Temporary to make backend combo read-only (FIXME: surely there's a nicer way)
-		if (ImGui::Combo("##backend", is_enabled ? &temp_backend : &backend, "NAT\0UDP Tunnel\0Bridged Adapter\0") && !is_enabled)
+		int         temp_backend   = backend; // Temporary to make backend combo read-only (FIXME: surely there's a nicer way)
+		const char* sNetBackends[] = { "NAT", "UDP Tunnel", "Bridged Adapter" };
+		if (ImGui::Combo("##backend", is_enabled ? &temp_backend : &backend, sNetBackends, 3) && !is_enabled)
 		{
 			xsettings.net_backend = backend;
 			xsettingsSave();
@@ -1628,13 +1317,8 @@ public:
 		ImGui::Text("Playability");
 		ImGui::NextColumn();
 		ImGui::SetNextItemWidth(item_width);
-		if (ImGui::Combo(
-		        "###PlayabilityRating", &playability,
-		        "Broken\0"
-		        "Intro/Menus\0"
-		        "Starts\0"
-		        "Playable\0"
-		        "Perfect\0"))
+		const char* sPlayabilities[] = { "Broken", "Intro/Menus", "Starts", "Playable", "Perfect" };
+		if (ImGui::Combo("###PlayabilityRating", &playability, sPlayabilities, 5))
 		{
 			report.compat_rating = playability_names[playability];
 			dirty                = true;
@@ -1883,9 +1567,10 @@ public:
 
 		ImGui::Separator();
 
-		static int mon = 0;
-		mon            = mcpx_apu_debug_get_monitor();
-		if (ImGui::Combo("Monitor", &mon, "AC97\0VP Only\0GP Only\0EP Only\0GP/EP if enabled\0"))
+		static int  mon         = 0;
+		const char* sMonitors[] = { "AC97", "VP Only", "GP Only", "EP Only", "GP/EP if enabled" };
+		mon                     = mcpx_apu_debug_get_monitor();
+		if (ImGui::Combo("Monitor", &mon, sMonitors, 5))
 			mcpx_apu_debug_set_monitor(mon);
 
 		static bool gp_realtime;
@@ -2172,14 +1857,14 @@ public:
 };
 #endif
 
-static MonitorWindow         monitor_window;
+static AboutWindow           about_window;
+static CompatibilityReporter compatibility_reporter_window;
 static DebugApuWindow        apu_window;
 static DebugVideoWindow      video_window;
+static MonitorWindow         monitor_window;
 static NetworkWindow         network_window;
-static AboutWindow           about_window;
-static SettingsWindow        settings_window;
-static CompatibilityReporter compatibility_reporter_window;
 static NotificationManager   notification_manager;
+static ui::SettingsWindow    settings_window;
 #if defined(_WIN32)
 static AutoUpdateWindow update_window;
 #endif
@@ -2306,12 +1991,6 @@ static void process_keyboard_shortcuts()
 		monitor_window.toggle_open();
 }
 
-#if defined(__APPLE__)
-#	define SHORTCUT_MENU_TEXT(c) "Cmd+" #    c
-#else
-#	define SHORTCUT_MENU_TEXT(c) "Ctrl+" #    c
-#endif
-
 static bool showImGuiDemo  = false;
 static bool showImPlotDemo = false;
 
@@ -2325,8 +2004,8 @@ static void ShowMainMenu()
 	{
 		if (ImGui::BeginMenu("File"))
 		{
-			if (ImGui::MenuItem("Eject Disc", SHORTCUT_MENU_TEXT(E))) action_eject_disc();
-			if (ImGui::MenuItem("Boot Disc", SHORTCUT_MENU_TEXT(O))) ui::LoadDisc();
+			if (ImGui::MenuItem("Eject Disc", xsettings.shortcut_eject)) action_eject_disc();
+			if (ImGui::MenuItem("Boot Disc", xsettings.shortcut_open)) ui::LoadDisc();
 			if (ImGui::BeginMenu("Boot Recent"))
 			{
 				bool first = true;
@@ -2345,7 +2024,8 @@ static void ShowMainMenu()
 							ImGui::Separator();
 							first = false;
 						}
-						if (ImGui::MenuItem(name))
+                        std::filesystem::path path = name;
+						if (ImGui::MenuItem(path.filename().string().c_str(), fmt::format("Ctrl+{}", i + 1).c_str()))
 							xemu_load_disc(name, true);
 					}
 				}
@@ -2364,18 +2044,18 @@ static void ShowMainMenu()
 
 		if (ImGui::BeginMenu("Emulation"))
 		{
-			if (ImGui::MenuItem(running ? "Pause" : "Run", SHORTCUT_MENU_TEXT(P))) ui::TogglePause();
-			if (ImGui::MenuItem("Reset", SHORTCUT_MENU_TEXT(R))) action_reset();
+			if (ImGui::MenuItem(running ? "Pause" : "Run", xsettings.shortcut_pause)) ui::TogglePause();
+			if (ImGui::MenuItem("Reset", xsettings.shortcut_reset)) action_reset();
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu("Configuration"))
 		{
 			if (ImGui::MenuItem("CPU")) OpenConfig(0);
-			if (ImGui::MenuItem("GPU")) OpenConfig(1);
+			if (ImGui::MenuItem("GPU", xsettings.shortcut_gpu)) OpenConfig(1);
 			if (ImGui::MenuItem("Audio")) OpenConfig(2);
 			ImGui::Separator();
-			ImGui::MenuItem("Pads", nullptr, &input_window.is_open);
+			ImGui::MenuItem("Pads", xsettings.shortcut_pads, &input_window.is_open);
 			if (ImGui::MenuItem("System")) OpenConfig(4);
 			if (ImGui::MenuItem("Network")) OpenConfig(5);
 			if (ImGui::MenuItem("Advanced")) OpenConfig(6);
@@ -2387,31 +2067,31 @@ static void ShowMainMenu()
 
 		if (ImGui::BeginMenu("View"))
 		{
-			ImGui::MenuItem("Controls", "F1", &games_window.is_open);
-			ImGui::MenuItem("Game List", "Esc", &games_window.is_open);
-			ImGui::MenuItem("Log", "F2", &games_window.is_open);
+			ImGui::MenuItem("Controls", xsettings.shortcut_controls, &games_window.is_open);
+			ImGui::MenuItem("Game List", xsettings.shortcut_games, &games_window.is_open);
+			ImGui::MenuItem("Log", xsettings.shortcut_log, &games_window.is_open);
 			ImGui::Separator();
 			ImGui::MenuItem("ImGui Demo", nullptr, &showImGuiDemo);
 			ImGui::MenuItem("ImPlot Demo", nullptr, &showImPlotDemo);
-			if (ImGui::MenuItem("Fullscreen", "Alt + Enter", xemu_is_fullscreen(), true)) xemu_toggle_fullscreen();
+			if (ImGui::MenuItem("Fullscreen", xsettings.shortcut_fullscreen, xemu_is_fullscreen(), true)) xemu_toggle_fullscreen();
 
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu("Utilities"))
 		{
-			ImGui::MenuItem("Monitor", "~", &monitor_window.is_open);
+			ImGui::MenuItem("Monitor", xsettings.shortcut_monitor, &monitor_window.is_open);
 			ImGui::MenuItem("Audio", nullptr, &apu_window.is_open);
 			ImGui::MenuItem("Video", nullptr, &video_window.is_open);
 
 			ImGui::Separator();
-			if (ImGui::MenuItem("Extract ISO")) ui::LoadDisc();
-			if (ImGui::MenuItem("Create ISO")) ui::LoadDisc();
+			if (ImGui::MenuItem("Extract ISO")) exiso::DecodeXiso(ui::FileOpenISO(""));
+			if (ImGui::MenuItem("Create ISO")) exiso::CreateXiso(ui::FileOpenISO(""));
 
 			ImGui::Separator();
-			if (ImGui::MenuItem("Screenshot")) want_screenshot = (1 + 4) + 2; // force screenshot + maybe icon
+			if (ImGui::MenuItem("Screenshot", xsettings.shortcut_screenshot)) want_screenshot = (1 + 4) + 2; // force screenshot + maybe icon
 			if (ImGui::MenuItem("Save Icon")) want_screenshot = 2 + 8;        // force icon
-			ImGui::MenuItem("Export", nullptr, &video_window.is_open);
+			ImGui::MenuItem("Intercept", xsettings.shortcut_intercept, &video_window.is_open);
 			ImGui::EndMenu();
 		}
 

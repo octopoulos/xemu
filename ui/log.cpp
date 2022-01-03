@@ -11,4 +11,11 @@ void LogWindow::Draw()
 
 }
 
+LogWindow logWindow;
+
+void AddLog(std::string text)
+{
+
+}
+
 } // namespace ui

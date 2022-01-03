@@ -20,6 +20,19 @@ namespace ui
 
 std::map<std::string, uint32_t> textures;
 
+// TODO: create custom file explorer
+std::string FileOpen(const char* filters, std::string current)
+{
+	const char* filename = PausedFileOpen(NOC_FILE_DIALOG_OPEN, filters, current.c_str(), nullptr);
+	return filename ? filename : "";
+}
+
+std::string FileOpenISO(std::string current)
+{
+	static const char* filters = ".iso Files\0*.iso\0All Files\0*.*\0";
+	return FileOpen(filters, current);
+}
+
 bool ImageTextButton(std::string name)
 {
 	static ImVec2 buttonSize(32.0f, 32.0f);
@@ -40,10 +53,7 @@ bool IsRunning()
 
 void LoadDisc()
 {
-	const char* filters  = ".iso Files\0*.iso\0All Files\0*.*\0";
-	const char* current  = xsettings.dvd_path;
-	const char* filename = PausedFileOpen(NOC_FILE_DIALOG_OPEN, filters, current, nullptr);
-	xemu_load_disc(filename, true);
+	xemu_load_disc(FileOpenISO(xsettings.dvd_path).c_str(), true);
 }
 
 uint32_t LoadTexture(std::filesystem::path path, std::string name)

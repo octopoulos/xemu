@@ -1,7 +1,7 @@
 /*
  * xsettings.cpp
  *
- * Copyright (C) 2021 Octo Poulos
+ * Copyright (C) 2022 octopoulos
  * Copyright (C) 2021 Matt Borgerson
  *
  * This program is free software; you can redistribute it and/or modify it under the terms of
@@ -52,6 +52,8 @@ const EnumMap backendMaps[] = {
 };
 
 const EnumMap rendererMaps[] = {
+	{ RENDERER_DX9, "dx9" },
+	{ RENDERER_DX11, "dx11" },
 	{ RENDERER_OPENGL, "opengl" },
 	{ RENDERER_VULKAN, "vulkan" },
 	{ RENDERER_NONE, "none" },
@@ -298,6 +300,19 @@ static std::vector<Config> configs = {
 
 	// [gui]
     X_INT(gui, 0, row_height, 80, 24, 176),
+    X_STRING(gui, 0, shortcut_controls, "Ctrl+C"),
+    X_STRING(gui, 0, shortcut_eject, "Ctrl+E"),
+    X_STRING(gui, 0, shortcut_fullscreen, "Alt+Enter"),
+    X_STRING(gui, 0, shortcut_games, "Esc"),
+    X_STRING(gui, 0, shortcut_gpu, "F1"),
+    X_STRING(gui, 0, shortcut_intercept, "Alt+I"),
+    X_STRING(gui, 0, shortcut_log, "Ctrl+L"),
+    X_STRING(gui, 0, shortcut_monitor, "`"),
+    X_STRING(gui, 0, shortcut_open, "Ctrl+O"),
+    X_STRING(gui, 0, shortcut_pads, "F2"),
+    X_STRING(gui, 0, shortcut_pause, "Ctrl+P"),
+    X_STRING(gui, 0, shortcut_reset, "Ctrl+R"),
+    X_STRING(gui, 0, shortcut_screenshot, "Ctrl+S"),
 	X_FLOAT(gui, 0, ui_scale, 1.0f, 1.0f, 4.0f),
 
 	// [debug]

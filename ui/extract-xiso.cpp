@@ -1,13 +1,14 @@
 /*
     extract-xiso.cpp
-	v1.0
+	v1.1
 
-    C++ rewrite WIP @2021 by octopoulos:
+    C++ rewrite WIP @2022 by octopoulos:
         - faster
         - less OS specific code (more portable)
         - has additional features
 
 	TODO:
+	    - redo path/name extractions with filesystem::path instead
 	    - add a GUI
 
     Original extract-xiso.c
@@ -106,7 +107,6 @@
 #	endif
 
 #	define lseek       _lseeki64
-#	define mkdir(a, b) _mkdir(a)
 #endif
 
 using u8 = uint8_t;
@@ -133,7 +133,7 @@ namespace exiso
 #	define little32(n)
 #endif
 
-#define exiso_version  "1.0 (2021-12-28)"
+#define exiso_version  "1.1 (2022-01-01)"
 #define VERSION_LENGTH 16
 
 #define XLOG(format, ...) \
@@ -349,9 +349,9 @@ bool TryChangeDir(std::string path, int& err, const std::source_location locatio
 
 bool TryMakeDir(std::string path, int& err, const std::source_location location = std::source_location::current())
 {
-	if (!err && mkdir(path.c_str(), 0755) == -1)
+	if (!err && !std::filesystem::create_directory(path))
 	{
-		fmt::print(stderr, "{}:{}:{} - cannot mkdir {}: {}\n", location.function_name(), location.line(), location.column(), path, _strerror_s(errorBuffer, 512, nullptr));
+		fmt::print(stderr, "{}:{}:{} - cannot create dir {}: {}\n", location.function_name(), location.line(), location.column(), path, _strerror_s(errorBuffer, 512, nullptr));
 		err = 1;
 	}
 	return !err;
@@ -1781,8 +1781,20 @@ int CreateXiso(std::string in_root_directory, std::string in_output_directory, s
 	return CreateXiso(in_root_directory, in_output_directory, nullptr, -1, nullptr, in_name, nullptr, force);
 }
 
+int CreateXiso(std::string filename)
+{
+    std::filesystem::path path = filename;
+    if (!std::filesystem::is_directory(path))
+        path = path.parent_path();
+
+    return CreateXiso(path.string(), path.parent_path().string(), "", false);
+}
+
 int DecodeXiso(std::string filename, std::string in_path, modes in_mode, std::string* out_iso_path, bool in_ll_compat, GameInfo* gameInfo)
 {
+    if (!filename.size())
+        return 1;
+
 	dir_node_avl* root   = nullptr;
 	bool          repair = false;
 	int           root_dir_sect;
@@ -1887,6 +1899,11 @@ int DecodeXiso(std::string filename, std::string in_path, modes in_mode, std::st
 		filename += '.';
 
 	return err;
+}
+
+int DecodeXiso(std::string filename)
+{
+    return DecodeXiso(filename, "", modes::extract, nullptr, false, nullptr);
 }
 
 /**

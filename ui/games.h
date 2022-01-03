@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "common.h"
 #include "extract-xiso.h"
 
 namespace ui

@@ -37,7 +37,9 @@ struct GameInfo
 };
 
 int  CreateXiso(std::string in_root_directory, std::string in_output_directory, std::string in_name, bool force);
-int  DecodeXiso(std::string filename, std::string in_path, modes in_mode, std::string* out_iso_path, bool in_ll_compat, int extract, GameInfo* gameInfo);
+int  CreateXiso(std::string filename);
+int  DecodeXiso(std::string filename, std::string in_path, modes in_mode, std::string* out_iso_path, bool in_ll_compat, GameInfo* gameInfo);
+int  DecodeXiso(std::string filename);
 bool ExtractGameInfo(std::string filename, GameInfo* gameInfo, bool log);
 int  ExtractMetadata(int ifile, GameInfo* gameInfo);
 void PrintHexBytes(char* buffer, int count, size_t offset, bool showHeader);
