@@ -1,12 +1,12 @@
-// games.cpp
-// @2021 octopoulos
+// ui-games.cpp
+// @2022 octopoulos
 
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/prettywriter.h>
 
-#include "games.h"
+#include "ui-games.h"
 #include "xemu-hud.h"
 #include "xemu-notifications.h"
 
@@ -27,6 +27,7 @@ extern "C" {
 
 namespace ui
 {
+
 struct GameStats : public exiso::GameInfo
 {
 	int         compatibility = 0;
@@ -109,11 +110,11 @@ std::map<std::string, GameStats> gameStats;
 
 void GamesWindow::Draw()
 {
-	if (!is_open)
+	if (!isOpen)
 		return;
 
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
-	ImGui::DockSpaceOverViewport(viewport, ImGuiDockNodeFlags_PassthruCentralNode);
+	// ImGui::DockSpaceOverViewport(viewport, ImGuiDockNodeFlags_PassthruCentralNode);
 
 	static int step = 0;
 	if (!step)
@@ -124,81 +125,99 @@ void GamesWindow::Draw()
 		++step;
 	}
 
-	if (!ImGui::Begin("Game List", &is_open))
+	if (!ImGui::Begin("Game List", &isOpen))
 	{
 		ImGui::End();
 		return;
 	}
 
-	float  icon_height = xsettings.row_height * 1.0f;
-	ImVec2 icon_dims   = { icon_height * 16.0f / 9.0f, icon_height };
+	float  iconHeight = xsettings.row_height * 1.0f;
+	ImVec2 iconDims   = { iconHeight * 16.0f / 9.0f, iconHeight };
 
-	// recent
 	ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(2.0f, 2.0f));
 
-	static ImGuiTableFlags tFlags =
-	    ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedSame | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders
-	    | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_ContextMenuInBody;
-
-	if (ImGui::BeginTable("Table", 9, tFlags))
+	if (isGrid)
 	{
-		ImGui::TableSetupScrollFreeze(1, 1);
-		// ImGui::TableSetColumnWidth(0, icon_dims.x);
+		ImVec2 childDims = { iconDims.x, iconDims.y };
+        childDims.y += 20.0f;
 
-		ImGui::TableSetupColumn("Icon", 0, icon_dims.x);
-		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Serial", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Region", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Release Date", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Count Played", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Last Played", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Time Played", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Compatibility", ImGuiTableColumnFlags_WidthStretch | ImGuiTableColumnFlags_DefaultSort);
-		ImGui::TableHeadersRow();
-
+        int n = 0;
 		for (auto& [key, game] : gameStats)
 		{
-			ImGui::TableNextRow();
-
-			ImGui::TableSetColumnIndex(0);
-			game.CheckIcon();
+            ImGui::PushID(n++);
+            // ImGui::BeginChild("##child", iconDims);
 			if (game.icon & 2)
-			{
-				ImGui::Image((void*)(intptr_t)game.iconTexture, icon_dims);
-				ImGui::TextUnformatted(game.title.c_str());
-			}
+				ImGui::Image((void*)(intptr_t)game.iconTexture, childDims);
 			else
 				ImGui::TextUnformatted("ICON");
-
-			ImGui::TableSetColumnIndex(1);
 			ImGui::TextUnformatted(game.title.c_str());
-			ImGui::TableSetColumnIndex(2);
-			ImGui::TextUnformatted(game.id.c_str());
-			ImGui::TableSetColumnIndex(3);
-			ImGui::TextUnformatted(game.region.c_str());
-			ImGui::TableSetColumnIndex(4);
-			ImGui::TextUnformatted(game.date.c_str());
-			ImGui::TableSetColumnIndex(5);
-			ImGui::Text("%d", game.countPlay);
-			ImGui::TableSetColumnIndex(6);
-			ImGui::TextUnformatted(game.lastPlay.c_str());
-
-			ImGui::TableSetColumnIndex(7);
-			int seconds = game.timePlay;
-			if (seconds > 0)
-			{
-				int minutes = seconds / 60;
-				int hours   = minutes / 60;
-				ImGui::Text("%02d:%02d:%02d", hours, minutes % 60, seconds % 60);
-			}
-			else
-				ImGui::TextUnformatted("");
-
-			ImGui::TableSetColumnIndex(8);
-			ImGui::Text("%s", game.compatibility ? "Playable" : "No results found");
+            // ImGui::EndChild();
+            ImGui::PopID();
 		}
+	}
+	else
+	{
+		static ImGuiTableFlags tFlags =
+		    ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedSame | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders
+		    | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable;
 
-		ImGui::EndTable();
+		if (ImGui::BeginTable("Table", 9, tFlags))
+		{
+			ImGui::TableSetupScrollFreeze(1, 1);
+			// ImGui::TableSetColumnWidth(0, iconDims.x);
+
+			ImGui::TableSetupColumn("Icon", 0, iconDims.x);
+			ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultSort);
+			ImGui::TableSetupColumn("Serial", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Region", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Release Date", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Count Played", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Last Played", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Time Played", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("Compatibility", ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableHeadersRow();
+
+			for (auto& [key, game] : gameStats)
+			{
+				ImGui::TableNextRow();
+
+				ImGui::TableSetColumnIndex(0);
+				game.CheckIcon();
+				if (game.icon & 2)
+					ImGui::Image((void*)(intptr_t)game.iconTexture, iconDims);
+				else
+					ImGui::TextUnformatted("ICON");
+
+				ImGui::TableSetColumnIndex(1);
+				ImGui::TextUnformatted(game.title.c_str());
+				ImGui::TableSetColumnIndex(2);
+				ImGui::TextUnformatted(game.id.c_str());
+				ImGui::TableSetColumnIndex(3);
+				ImGui::TextUnformatted(game.region.c_str());
+				ImGui::TableSetColumnIndex(4);
+				ImGui::TextUnformatted(game.date.c_str());
+				ImGui::TableSetColumnIndex(5);
+				ImGui::Text("%d", game.countPlay);
+				ImGui::TableSetColumnIndex(6);
+				ImGui::TextUnformatted(game.lastPlay.c_str());
+
+				ImGui::TableSetColumnIndex(7);
+				int seconds = game.timePlay;
+				if (seconds > 0)
+				{
+					int minutes = seconds / 60;
+					int hours   = minutes / 60;
+					ImGui::Text("%02d:%02d:%02d", hours, minutes % 60, seconds % 60);
+				}
+				else
+					ImGui::TextUnformatted("");
+
+				ImGui::TableSetColumnIndex(8);
+				ImGui::Text("%s", game.compatibility ? "Playable" : "No results found");
+			}
+
+			ImGui::EndTable();
+		}
 	}
 
 	ImGui::PopStyleVar();
@@ -206,6 +225,10 @@ void GamesWindow::Draw()
 	// saved
 	ImGui::End();
 }
+
+static GamesWindow gamesWindow;
+
+GamesWindow& GetGamesWindow() { return gamesWindow; }
 
 void CheckIcon(std::string uid)
 {

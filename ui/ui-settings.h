@@ -1,9 +1,9 @@
-// settings.h
+// ui-settings.h
 // @2022 octopoulos
 
 #pragma once
 
-#include "common.h"
+#include "ui-common.h"
 
 namespace ui
 {
@@ -11,7 +11,7 @@ namespace ui
 class SettingsWindow
 {
 public:
-	bool is_open = false;
+	bool isOpen = false;
 
 private:
 	int  changed    = 0;
@@ -39,5 +39,8 @@ private:
 	void DrawGUI();
 	void DrawDebug();
 };
+
+SettingsWindow& GetSettingsWindow();
+void            OpenConfig(int tab);
 
 } // namespace ui

@@ -1,7 +1,7 @@
-// settings.cpp
+// ui-settings.cpp
 // @2022 octopoulos
 
-#include "settings.h"
+#include "ui-settings.h"
 #include "xemu-notifications.h"
 
 #include <SDL.h>
@@ -43,7 +43,7 @@ void SettingsWindow::Save()
 void SettingsWindow::OpenTab(int tabMenu_)
 {
     tabMenu = tabMenu_;
-    is_open = true;
+    isOpen = true;
 }
 
 void FilePicker(const char* name, char* buf, size_t len, const char* filters)
@@ -63,11 +63,11 @@ void FilePicker(const char* name, char* buf, size_t len, const char* filters)
 
 void SettingsWindow::Draw()
 {
-    if (!is_open)
+    if (!isOpen)
         return;
 
     ImGui::SetNextWindowContentSize(ImVec2(800.0f * xsettings.ui_scale, 600.0f * xsettings.ui_scale));
-    if (!ImGui::Begin("Settings", &is_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+    if (!ImGui::Begin("Settings", &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
     {
         ImGui::End();
         return;
@@ -139,14 +139,14 @@ void SettingsWindow::Draw()
     if (ImGui::Button("Save"))
     {
         Save();
-        is_open = false;
+        isOpen = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Close"))
     {
         if ((changed = xsettingsCompare(&prevSettings))) {}
         memcpy(&xsettings, &prevSettings, sizeof(XSettings));
-        is_open = false;
+        isOpen = false;
     }
     ImGui::SameLine();
     if (ImGui::Button("Apply")) {}
@@ -351,5 +351,13 @@ void SettingsWindow::DrawDebug()
 
     ImGui::InputTextMultiline("Intercept Filter", xsettings.intercept_filter, 2048);
 }
+
+// API
+//////
+
+static SettingsWindow settingsWindow;
+
+SettingsWindow& GetSettingsWindow() { return settingsWindow; }
+void            OpenConfig(int tab) { settingsWindow.OpenTab(tab); }
 
 } // namespace ui

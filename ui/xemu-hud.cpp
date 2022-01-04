@@ -28,7 +28,6 @@
 #include <string>
 #include <vector>
 
-#include "common.h"
 #include "xemu-hud.h"
 #include "xemu-input.h"
 #include "xemu-notifications.h"
@@ -48,13 +47,16 @@
 
 #include "data/roboto_medium.ttf.h"
 
-#include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_sdl.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 #include "implot/implot.h"
-#include "games.h"
 #include "hw/xbox/nv2a/intercept.h"
-#include "settings.h"
+
+#include "ui-controls.h"
+#include "ui-file.h"
+#include "ui-games.h"
+#include "ui-log.h"
+#include "ui-settings.h"
 
 extern "C"
 {
@@ -307,7 +309,7 @@ static int PushWindowTransparencySettings(bool transparent, float alpha_transpar
 class MonitorWindow
 {
 public:
-	bool is_open = false;
+	bool isOpen = false;
 
 private:
 	char                  InputBuf[256];
@@ -346,14 +348,14 @@ public:
 
 	void Draw()
 	{
-		if (!is_open)
+		if (!isOpen)
 			return;
 		int    style_pop_cnt = PushWindowTransparencySettings(true);
 		auto&  io            = ImGui::GetIO();
 		ImVec2 window_pos    = ImVec2(0, io.DisplaySize.y / 2);
 		ImGui::SetNextWindowPos(window_pos, ImGuiCond_Appearing);
 		ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, io.DisplaySize.y / 2), ImGuiCond_Appearing);
-		if (ImGui::Begin("Monitor", &is_open, ImGuiWindowFlags_NoCollapse))
+		if (ImGui::Begin("Monitor", &isOpen, ImGuiWindowFlags_NoCollapse))
 		{
 			const float footer_height_to_reserve = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();             // 1 separator, 1 input text
 			ImGui::BeginChild("ScrollingRegion", ImVec2(0, -footer_height_to_reserve), false, ImGuiWindowFlags_HorizontalScrollbar); // Leave room for 1 separator + 1 InputText
@@ -395,7 +397,7 @@ public:
 		ImGui::PopStyleColor(style_pop_cnt);
 	}
 
-	void toggle_open() { is_open = !is_open; }
+	void toggle_open() { isOpen = !isOpen; }
 
 private:
 	void ExecCommand(const char* command_line)
@@ -464,20 +466,20 @@ private:
 class InputWindow
 {
 public:
-	bool is_open = false;
+	bool isOpen = false;
 
 	InputWindow() {}
 	~InputWindow() {}
 
 	void Draw()
 	{
-		if (!is_open)
+		if (!isOpen)
 			return;
 
 		ImGui::SetNextWindowContentSize(ImVec2(600.0f * xsettings.ui_scale, 0.0f));
 		// Remove window X padding for this window to easily center stuff
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, ImGui::GetStyle().WindowPadding.y));
-		if (!ImGui::Begin("Gamepad Settings", &is_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+		if (!ImGui::Begin("Gamepad Settings", &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			ImGui::End();
 			ImGui::PopStyleVar();
@@ -826,12 +828,11 @@ public:
 	     // to give a buffer to ImGui for each field
 
 static InputWindow input_window;
-static ui::GamesWindow games_window;
 
 class AboutWindow
 {
 public:
-	bool is_open;
+	bool isOpen;
 
 private:
 	char build_info_text[256];
@@ -855,11 +856,11 @@ public:
 
 	void Draw()
 	{
-		if (!is_open)
+		if (!isOpen)
 			return;
 
 		ImGui::SetNextWindowContentSize(ImVec2(400.0f * xsettings.ui_scale, 0.0f));
-		if (!ImGui::Begin("About", &is_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+		if (!ImGui::Begin("About", &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			ImGui::End();
 			return;
@@ -993,7 +994,7 @@ public:
 class NetworkWindow
 {
 public:
-	bool is_open = false;
+	bool isOpen = false;
 	int  backend;
 	char remote_addr[64];
 	char local_addr[64];
@@ -1005,11 +1006,11 @@ public:
 
 	void Draw()
 	{
-		if (!is_open)
+		if (!isOpen)
 			return;
 
 		ImGui::SetNextWindowContentSize(ImVec2(500.0f * xsettings.ui_scale, 0.0f));
-		if (!ImGui::Begin("Network", &is_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+		if (!ImGui::Begin("Network", &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			ImGui::End();
 			return;
@@ -1194,7 +1195,7 @@ const char* get_cpu_info()
 class CompatibilityReporter
 {
 public:
-	bool is_open = false;
+	bool isOpen = false;
 
 	CompatibilityReport report;
 	bool                dirty;
@@ -1232,7 +1233,7 @@ public:
 
 	void Draw()
 	{
-		if (!is_open)
+		if (!isOpen)
 			return;
 
 		const char* playability_names[] = { "Broken", "Intro", "Starts", "Playable", "Perfect" };
@@ -1246,7 +1247,7 @@ public:
 		};
 
 		ImGui::SetNextWindowContentSize(ImVec2(550.0f * xsettings.ui_scale, 0.0f));
-		if (!ImGui::Begin("Report Compatibility", &is_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+		if (!ImGui::Begin("Report Compatibility", &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			ImGui::End();
 			return;
@@ -1392,7 +1393,7 @@ public:
 			if (send_result)
 			{
 				// Close window on success
-				is_open = false;
+				isOpen = false;
 
 				// Save user token if it was used
 				strcpy(xsettings.user_token, token_buf);
@@ -1414,18 +1415,18 @@ float mix(float a, float b, float t)
 class DebugApuWindow
 {
 public:
-	bool is_open = false;
+	bool isOpen = false;
 
 	DebugApuWindow() {}
 	~DebugApuWindow() {}
 
 	void Draw()
 	{
-		if (!is_open)
+		if (!isOpen)
 			return;
 
 		ImGui::SetNextWindowContentSize(ImVec2(600.0f * xsettings.ui_scale, 0.0f));
-		if (!ImGui::Begin("Audio Debug", &is_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+		if (!ImGui::Begin("Audio Debug", &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			ImGui::End();
 			return;
@@ -1623,12 +1624,12 @@ struct ScrollingBuffer
 class DebugVideoWindow
 {
 public:
-	bool is_open;
+	bool isOpen;
 	bool transparent;
 
 	DebugVideoWindow()
 	{
-		is_open     = false;
+		isOpen      = false;
 		transparent = false;
 	}
 
@@ -1636,13 +1637,13 @@ public:
 
 	void Draw()
 	{
-		if (!is_open)
+		if (!isOpen)
 			return;
 
 		float alpha = transparent ? 0.2 : 1.0;
 		PushWindowTransparencySettings(transparent, 0.2);
 		ImGui::SetNextWindowSize(ImVec2(600.0f * xsettings.ui_scale, 150.0f * xsettings.ui_scale), ImGuiCond_Once);
-		if (ImGui::Begin("Video Debug", &is_open))
+		if (ImGui::Begin("Video Debug", &isOpen))
 		{
 			double      x_start, x_end;
 			static auto rt_axis = ImPlotAxisFlags_NoTickLabels;
@@ -1729,12 +1730,12 @@ protected:
 	Updater updater;
 
 public:
-	bool is_open;
+	bool isOpen;
 	bool should_prompt_auto_update_selection;
 
 	AutoUpdateWindow()
 	{
-		is_open                             = false;
+		isOpen                              = false;
 		should_prompt_auto_update_selection = false;
 	}
 
@@ -1763,7 +1764,7 @@ public:
 		if (ImGui::Button("No", ImVec2(w, 0)))
 		{
 			save_auto_update_selection(false);
-			is_open = false;
+			isOpen = false;
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("Yes", ImVec2(w, 0)))
@@ -1775,15 +1776,15 @@ public:
 
 	void check_for_updates_and_prompt_if_available()
 	{
-		updater.check_for_update([this]() { is_open |= updater.is_update_available(); });
+		updater.check_for_update([this]() { isOpen |= updater.is_update_available(); });
 	}
 
 	void Draw()
 	{
-		if (!is_open)
+		if (!isOpen)
 			return;
 		ImGui::SetNextWindowContentSize(ImVec2(550.0f * xsettings.ui_scale, 0.0f));
-		if (!ImGui::Begin("Update", &is_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+		if (!ImGui::Begin("Update", &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			ImGui::End();
 			return;
@@ -1864,7 +1865,6 @@ static DebugVideoWindow      video_window;
 static MonitorWindow         monitor_window;
 static NetworkWindow         network_window;
 static NotificationManager   notification_manager;
-static ui::SettingsWindow    settings_window;
 #if defined(_WIN32)
 static AutoUpdateWindow update_window;
 #endif
@@ -1873,14 +1873,14 @@ static std::deque<const char*> g_errors;
 class FirstBootWindow
 {
 public:
-	bool is_open = false;
+	bool isOpen = false;
 
 	FirstBootWindow() {}
 	~FirstBootWindow() {}
 
 	void Draw()
 	{
-		if (!is_open)
+		if (!isOpen)
 			return;
 
 		ImVec2 size(400 * xsettings.ui_scale, 300 * xsettings.ui_scale);
@@ -1890,7 +1890,7 @@ public:
 		ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
 
 		ImGui::SetNextWindowSize(size, ImGuiCond_Appearing);
-		if (!ImGui::Begin("First Boot", &is_open, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDecoration))
+		if (!ImGui::Begin("First Boot", &isOpen, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDecoration))
 		{
 			ImGui::End();
 			return;
@@ -1929,8 +1929,7 @@ public:
 
 		ImGui::Dummy(ImVec2(0, 20 * xsettings.ui_scale));
 		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 120 * xsettings.ui_scale) / 2);
-		if (ImGui::Button("Settings", ImVec2(120 * xsettings.ui_scale, 0)))
-			settings_window.is_open = true; // FIXME
+		if (ImGui::Button("Settings", ImVec2(120 * xsettings.ui_scale, 0))) ui::GetSettingsWindow().isOpen = true;
 		ImGui::Dummy(ImVec2(0, 20 * xsettings.ui_scale));
 
 		msg = "Visit https://xemu.app for more information";
@@ -1964,7 +1963,6 @@ static void action_reset()
 
 static void action_shutdown()
 {
-    fmt::print(stderr, "action_shutdown\n");
     ui::LoadedGame("");
 	qemu_system_shutdown_request(SHUTDOWN_CAUSE_HOST_UI);
 }
@@ -1996,7 +1994,6 @@ static bool showImPlotDemo = false;
 
 static void ShowMainMenu()
 {
-	bool       running    = runstate_is_running();
 	static int dirty_menu = 0;
 	int        update     = 0;
 
@@ -2044,32 +2041,32 @@ static void ShowMainMenu()
 
 		if (ImGui::BeginMenu("Emulation"))
 		{
-			if (ImGui::MenuItem(running ? "Pause" : "Run", xsettings.shortcut_pause)) ui::TogglePause();
+			if (ImGui::MenuItem(runstate_is_running() ? "Pause" : "Run", xsettings.shortcut_pause)) ui::TogglePause();
 			if (ImGui::MenuItem("Reset", xsettings.shortcut_reset)) action_reset();
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu("Configuration"))
 		{
-			if (ImGui::MenuItem("CPU")) OpenConfig(0);
-			if (ImGui::MenuItem("GPU", xsettings.shortcut_gpu)) OpenConfig(1);
-			if (ImGui::MenuItem("Audio")) OpenConfig(2);
+			if (ImGui::MenuItem("CPU")) ui::OpenConfig(0);
+			if (ImGui::MenuItem("GPU", xsettings.shortcut_gpu)) ui::OpenConfig(1);
+			if (ImGui::MenuItem("Audio")) ui::OpenConfig(2);
 			ImGui::Separator();
-			ImGui::MenuItem("Pads", xsettings.shortcut_pads, &input_window.is_open);
-			if (ImGui::MenuItem("System")) OpenConfig(4);
-			if (ImGui::MenuItem("Network")) OpenConfig(5);
-			if (ImGui::MenuItem("Advanced")) OpenConfig(6);
-			if (ImGui::MenuItem("Emulator")) OpenConfig(7);
-			if (ImGui::MenuItem("GUI")) OpenConfig(8);
-			if (ImGui::MenuItem("Debug")) OpenConfig(9);
+			ImGui::MenuItem("Pads", xsettings.shortcut_pads, &input_window.isOpen);
+			if (ImGui::MenuItem("System")) ui::OpenConfig(4);
+			if (ImGui::MenuItem("Network")) ui::OpenConfig(5);
+			if (ImGui::MenuItem("Advanced")) ui::OpenConfig(6);
+			if (ImGui::MenuItem("Emulator")) ui::OpenConfig(7);
+			if (ImGui::MenuItem("GUI")) ui::OpenConfig(8);
+			if (ImGui::MenuItem("Debug")) ui::OpenConfig(9);
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu("View"))
 		{
-			ImGui::MenuItem("Controls", xsettings.shortcut_controls, &games_window.is_open);
-			ImGui::MenuItem("Game List", xsettings.shortcut_games, &games_window.is_open);
-			ImGui::MenuItem("Log", xsettings.shortcut_log, &games_window.is_open);
+			ImGui::MenuItem("Controls", xsettings.shortcut_controls, &ui::GetControlsWindow().isOpen);
+			ImGui::MenuItem("Game List", xsettings.shortcut_games, &ui::GetGamesWindow().isOpen);
+			ImGui::MenuItem("Log", xsettings.shortcut_log, &ui::GetLogWindow().isOpen);
 			ImGui::Separator();
 			ImGui::MenuItem("ImGui Demo", nullptr, &showImGuiDemo);
 			ImGui::MenuItem("ImPlot Demo", nullptr, &showImPlotDemo);
@@ -2080,9 +2077,9 @@ static void ShowMainMenu()
 
 		if (ImGui::BeginMenu("Utilities"))
 		{
-			ImGui::MenuItem("Monitor", xsettings.shortcut_monitor, &monitor_window.is_open);
-			ImGui::MenuItem("Audio", nullptr, &apu_window.is_open);
-			ImGui::MenuItem("Video", nullptr, &video_window.is_open);
+			ImGui::MenuItem("Monitor", xsettings.shortcut_monitor, &monitor_window.isOpen);
+			ImGui::MenuItem("Audio", nullptr, &apu_window.isOpen);
+			ImGui::MenuItem("Video", nullptr, &video_window.isOpen);
 
 			ImGui::Separator();
 			if (ImGui::MenuItem("Extract ISO")) exiso::DecodeXiso(ui::FileOpenISO(""));
@@ -2091,7 +2088,7 @@ static void ShowMainMenu()
 			ImGui::Separator();
 			if (ImGui::MenuItem("Screenshot", xsettings.shortcut_screenshot)) want_screenshot = (1 + 4) + 2; // force screenshot + maybe icon
 			if (ImGui::MenuItem("Save Icon")) want_screenshot = 2 + 8;        // force icon
-			ImGui::MenuItem("Intercept", xsettings.shortcut_intercept, &video_window.is_open);
+			if (ImGui::MenuItem("Intercept", xsettings.shortcut_intercept)) ui::GetFileWindow().isOpen = true;
 			ImGui::EndMenu();
 		}
 
@@ -2099,11 +2096,11 @@ static void ShowMainMenu()
 		{
 			if (ImGui::MenuItem("Help", nullptr)) xemu_open_web_browser("https://xemu.app/docs/getting-started/");
 
-			ImGui::MenuItem("Report Compatibility...", nullptr, &compatibility_reporter_window.is_open);
-			ImGui::MenuItem("Check for Updates...", nullptr, &update_window.is_open);
+			ImGui::MenuItem("Report Compatibility...", nullptr, &compatibility_reporter_window.isOpen);
+			ImGui::MenuItem("Check for Updates...", nullptr, &update_window.isOpen);
 
 			ImGui::Separator();
-			ImGui::MenuItem("About", nullptr, &about_window.is_open);
+			ImGui::MenuItem("About", nullptr, &about_window.isOpen);
 			ImGui::EndMenu();
 		}
 
@@ -2227,17 +2224,18 @@ void xemu_hud_init(SDL_Window* window, void* sdl_gl_context)
 	ImGui_ImplSDL2_InitForOpenGL(window, sdl_gl_context);
 	ImGui_ImplOpenGL3_Init("#version 150");
 
-	first_boot_window.is_open = xsettingsFailed();
-	g_sdl_window              = window;
+	first_boot_window.isOpen = xsettingsFailed();
+	g_sdl_window             = window;
 
 	ImPlot::CreateContext();
 	ui::OpenGamesList();
-    games_window.Initialize();
+    ui::GetControlsWindow().Initialize();
+    ui::GetGamesWindow().Initialize();
 
 #if defined(_WIN32)
 	int should_check_for_update = xsettings.check_for_update;
 	if (should_check_for_update == -1)
-		update_window.should_prompt_auto_update_selection = update_window.is_open = !xsettingsFailed();
+		update_window.should_prompt_auto_update_selection = update_window.isOpen = !xsettingsFailed();
 	else if (should_check_for_update)
 		update_window.check_for_updates_and_prompt_if_available();
 #endif
@@ -2408,7 +2406,7 @@ void xemu_hud_render()
 	ImGui::NewFrame();
 	process_keyboard_shortcuts();
 
-	if (!first_boot_window.is_open)
+	if (!first_boot_window.isOpen)
 	{
 		// Auto-hide main menu after 5s of inactivity
 		static uint32_t last_check    = 0;
@@ -2430,20 +2428,26 @@ void xemu_hud_render()
 			ImGui::PushStyleColor(ImGuiCol_Text, tc);
 			ImGui::SetNextWindowBgAlpha(alpha);
 			ShowMainMenu();
-            games_window.is_open = true;
+            ui::GetControlsWindow().isOpen = true;
 			ImGui::PopStyleColor();
 		}
 		else
         {
             g_main_menu_height = 0;
-            games_window.is_open = false;
+            ui::GetControlsWindow().isOpen = false;
         }
 	}
 
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::DockSpaceOverViewport(viewport, ImGuiDockNodeFlags_PassthruCentralNode);
+
 	first_boot_window.Draw();
+	ui::GetControlsWindow().Draw();
+    ui::GetFileWindow().Draw();
+	ui::GetGamesWindow().Draw();
+	ui::GetLogWindow().Draw();
 	input_window.Draw();
-	games_window.Draw();
-	settings_window.Draw();
+	ui::GetSettingsWindow().Draw();
 	monitor_window.Draw();
 	apu_window.Draw();
 	video_window.Draw();
@@ -2490,15 +2494,4 @@ void xemu_queue_notification(const char* msg, bool instant)
 void xemu_queue_error_message(const char* msg)
 {
 	g_errors.push_back(strdup(msg));
-}
-
-// API
-//////
-
-void OpenConfig(int tab)
-{
-    if (tab > 10)
-        input_window.is_open = 1;
-    else
-        settings_window.OpenTab(tab);
 }

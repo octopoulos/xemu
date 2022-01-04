@@ -1,7 +1,7 @@
-// common.cpp
+// ui-common.cpp
 // @2021 octopoulos
 
-#include "common.h"
+#include "ui-common.h"
 #include "xemu-shaders.h"   // load_texture_from_file
 
 extern "C" {
@@ -18,9 +18,8 @@ void xemu_load_disc(const char* path, bool saveSetting);
 namespace ui
 {
 
-std::map<std::string, uint32_t> textures;
+static std::map<std::string, uint32_t> textures;
 
-// TODO: create custom file explorer
 std::string FileOpen(const char* filters, std::string current)
 {
 	const char* filename = PausedFileOpen(NOC_FILE_DIALOG_OPEN, filters, current.c_str(), nullptr);

@@ -1,5 +1,5 @@
-// common.h
-// @2021 octopoulos
+// ui-common.h
+// @2022 octopoulos
 
 #pragma once
 
@@ -11,6 +11,7 @@
 #include <fmt/core.h>
 #include "imgui/imgui.h"
 #include "imgui/imgui_internal.h"
+#include "imgui/misc/cpp/imgui_stdlib.h"
 
 #include "xsettings.h"
 

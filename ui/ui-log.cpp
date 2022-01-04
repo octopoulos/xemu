@@ -1,0 +1,110 @@
+// ui-log.cpp
+// @2022 octopoulos
+
+#include "ui-log.h"
+#include "stb_sprintf.h"
+
+namespace ui
+{
+
+const ImVec4 colorValues[] = {
+	{1.0f,  1.0f, 1.0f, 1.0f}, // text
+	{ 1.0f, 0.5f, 0.5f, 1.0f}, // error
+	{ 0.3f, 0.7f, 1.0f, 1.0f}, // info
+	{ 1.0f, 0.8f, 0.5f, 1.0f}, // warning
+};
+
+void LogWindow::AddLog(int color, std::string text)
+{
+	colors.push_back(color);
+	lines.push_back(text);
+}
+
+void LogWindow::Draw()
+{
+	if (!ImGui::Begin("Log", &isOpen))
+	{
+		ImGui::End();
+		return;
+	}
+
+	ImGuiListClipper clipper;
+	clipper.Begin(lines.size());
+	while (clipper.Step())
+	{
+	    for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
+	    {
+            if (colors[i]) ImGui::PushStyleColor(ImGuiCol_Text, colorValues[colors[i]]);
+            ImGui::TextUnformatted(lines[i].c_str());
+            if (colors[i]) ImGui::PopStyleColor();
+	    }
+	}
+	clipper.End();
+
+	ImGui::End();
+}
+
+static LogWindow logWindow;
+
+LogWindow& GetLogWindow() { return logWindow; }
+
+void AddLogV(int color, const char* fmt, va_list args)
+{
+	const int   bufSize = 2048;
+	static char buf[bufSize];
+
+	int w = stbsp_vsnprintf(buf, (int)bufSize, fmt, args);
+	if (w == -1 || w >= (int)bufSize)
+		w = (int)bufSize - 1;
+	buf[w] = 0;
+
+	fwrite(buf, 1, w, stderr);
+	fputc('\n', stderr);
+	logWindow.AddLog(color, buf);
+}
+
+void AddLog(int color, std::string text)
+{
+	fwrite(text.c_str(), 1, text.size(), stderr);
+	fputc('\n', stderr);
+	logWindow.AddLog(color, text);
+}
+
+void Log(const char* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	AddLogV(0, fmt, args);
+	va_end(args);
+}
+
+void LogError(const char* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	AddLogV(1, fmt, args);
+	va_end(args);
+}
+
+void LogInfo(const char* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	AddLogV(2, fmt, args);
+	va_end(args);
+}
+
+void LogWarning(const char* fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	AddLogV(3, fmt, args);
+	va_end(args);
+}
+
+void Log       (std::string text) { AddLog(0, text); }
+void LogError  (std::string text) { AddLog(1, text); }
+void LogInfo   (std::string text) { AddLog(2, text); }
+void LogWarning(std::string text) { AddLog(3, text); }
+
+} // namespace ui

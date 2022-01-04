@@ -56,7 +56,8 @@
 
 #include "data/xemu_64x64.png.h"
 
-#include "games.h"
+#include "ui-games.h"
+#include "ui-log.h"
 #include "hw/xbox/smbus.h" // For eject, drive tray
 #include "hw/xbox/nv2a/nv2a.h"
 
@@ -626,13 +627,13 @@ static void sdl_mouse_define(DisplayChangeListener* dcl, QEMUCursor* c)
 	guest_sprite_surface = SDL_CreateRGBSurfaceFrom(c->data, c->width, c->height, 32, c->width * 4, 0xff0000, 0x00ff00, 0xff, 0xff000000);
 	if (!guest_sprite_surface)
 	{
-		fprintf(stderr, "Failed to make rgb surface from %p\n", c);
+		ui::LogError("Failed to make rgb surface from %p", c);
 		return;
 	}
 	guest_sprite = SDL_CreateColorCursor(guest_sprite_surface, c->hot_x, c->hot_y);
 	if (!guest_sprite)
 	{
-		fprintf(stderr, "Failed to make color cursor from %p\n", c);
+		ui::LogError("Failed to make color cursor from %p", c);
 		return;
 	}
 	if (guest_cursor && (gui_grab || qemu_input_is_absolute() || absolute_enabled))
@@ -758,11 +759,11 @@ static void sdl2_display_very_early_init(DisplayOptions* o)
 		// Note: Retaining the memory allocated by stbi_load. It's used in place by the SDL surface.
 	}
 
-	fprintf(stderr, "OS_Version: %s\n", xemu_get_os_info());
-	fprintf(stderr, "GL_VENDOR: %s\n", glGetString(GL_VENDOR));
-	fprintf(stderr, "GL_RENDERER: %s\n", glGetString(GL_RENDERER));
-	fprintf(stderr, "GL_VERSION: %s\n", glGetString(GL_VERSION));
-	fprintf(stderr, "GL_SHADING_LANGUAGE_VERSION: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
+	ui::LogInfo("OS_Version: %s", xemu_get_os_info());
+	ui::LogInfo("GL_VENDOR: %s", glGetString(GL_VENDOR));
+	ui::LogInfo("GL_RENDERER: %s", glGetString(GL_RENDERER));
+	ui::LogInfo("GL_VERSION: %s", glGetString(GL_VERSION));
+	ui::LogInfo("GL_SHADING_LANGUAGE_VERSION: %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
 	// Initialize offscreen rendering context now
 	nv2a_gl_context_init();
@@ -795,7 +796,7 @@ static void sdl2_display_init(DisplayState* ds, DisplayOptions* o)
 	memset(&info, 0, sizeof(info));
 	SDL_VERSION(&info.version);
 
-	fprintf(stderr, "sdl2_display_init gui_fullscreen=%d %d %d %d\n", gui_fullscreen, o->has_full_screen, o->full_screen, xsettings.start_fullscreen);
+	ui::Log("sdl2_display_init gui_fullscreen=%d %d %d %d", gui_fullscreen, o->has_full_screen, o->full_screen, xsettings.start_fullscreen);
 	gui_fullscreen = (o->has_full_screen && o->full_screen) || xsettings.start_fullscreen;
 
 #if 1

@@ -24,6 +24,7 @@ xemu_ss.add(files(
   'imgui/imgui_widgets.cpp',
   'imgui/backends/imgui_impl_opengl3.cpp',
   'imgui/backends/imgui_impl_sdl.cpp',
+  'imgui/misc/cpp/imgui_stdlib.cpp',
   'imgui/misc/freetype/imgui_freetype.cpp',
   'implot/implot.cpp',
   'implot/implot_demo.cpp',
@@ -39,13 +40,15 @@ xemu_ss.add(files(
   'xemu-shaders.cpp',
   'xemu.cpp',
 
-  'common.cpp',
-  'controls.cpp',
   'extract-xiso.cpp',
-  'games.cpp',
-  'log.cpp',
-  'settings.cpp',
   'xsettings.cpp',
+
+  'ui-common.cpp',
+  'ui-controls.cpp',
+  'ui-file.cpp',
+  'ui-games.cpp',
+  'ui-log.cpp',
+  'ui-settings.cpp',
 ))
 xemu_ss.add(when: 'CONFIG_WIN32', if_true: files('xemu-update.cpp'))
 

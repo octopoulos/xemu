@@ -72,7 +72,7 @@
 	path = ui/implot
 	url = https://github.com/epezent/implot.git
 	ignore = untracked
-[submodule "hw/xbox/nv2a/xxHash"]
+[submodule "util/xxHash"]
 	path = util/xxHash
 	url = https://github.com/Cyan4973/xxHash.git
 	ignore = untracked

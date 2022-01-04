@@ -1276,17 +1276,13 @@ int CreateXiso(std::string in_root_directory, std::string in_output_directory, d
 	int                i    = 0;
 	int                xiso = -1;
 	int                err  = 0;
-	char*              cwd  = nullptr;
 	char*              buf  = nullptr;
-	char               cwdBuffer[2048];
+    auto               currentPath = std::filesystem::current_path();
 	std::string        iso_dir;
 	std::string        iso_name;
 	std::string        xiso_path;
 
 	s_total_bytes = s_total_files = 0;
-
-	cwd = _getcwd(cwdBuffer, sizeof(cwdBuffer));
-	MEMORY_CHECK(cwd);
 
 	if (!err)
 	{
@@ -1320,9 +1316,9 @@ int CreateXiso(std::string in_root_directory, std::string in_output_directory, d
 			iso_name    = iso_name.substr(1);
 		}
 #if defined(_WIN32)
-		xiso_path = fmt::format("{}{}{}{}", in_output_directory.size() ? in_output_directory : cwd, PATH_CHAR, iso_name, in_name.size() ? "" : ".iso");
+		xiso_path = fmt::format("{}{}{}{}", in_output_directory.size() ? in_output_directory : currentPath.string(), PATH_CHAR, iso_name, in_name.size() ? "" : ".iso");
 #else
-		xiso_path = fmt::format("{}{}{}{}{}{}", *in_output_directory == PATH_CHAR ? "" : cwd, *in_output_directory == PATH_CHAR ? "" : PATH_CHAR_STR, in_output_directory, PATH_CHAR, iso_name, in_name ? "" : ".iso");
+		xiso_path = fmt::format("{}{}{}{}{}{}", *in_output_directory == PATH_CHAR ? "" : currentPath.string(), *in_output_directory == PATH_CHAR ? "" : PATH_CHAR_STR, in_output_directory, PATH_CHAR, iso_name, in_name ? "" : ".iso");
 #endif
 	}
 	if (!err)
@@ -1466,9 +1462,7 @@ int CreateXiso(std::string in_root_directory, std::string in_output_directory, d
 	if (ft)
 		delete ft;
 
-	if (cwd)
-		CHANGE_DIR(cwd);
-
+    std::filesystem::current_path(currentPath);
 	return err;
 }
 
@@ -1801,9 +1795,8 @@ int DecodeXiso(std::string filename, std::string in_path, modes in_mode, std::st
 	int           root_dir_size;
 	int           err       = 0;
 	int           add_slash = 0;
-	char*         cwd       = nullptr;
-	char          cwdBuffer[2048];
 	size_t        len = 0;
+    auto          currentPath = std::filesystem::current_path();
 	std::string   iso_name;
 	std::string   name;
 	std::string   short_name;
@@ -1835,8 +1828,6 @@ int DecodeXiso(std::string filename, std::string in_path, modes in_mode, std::st
 
 	if (!err && in_mode == modes::extract && in_path.size())
 	{
-		cwd = _getcwd(cwdBuffer, sizeof(cwdBuffer));
-		MEMORY_CHECK(cwd);
 		MAKE_DIR(in_path);
 		CHANGE_DIR(in_path);
 	}
@@ -1892,8 +1883,7 @@ int DecodeXiso(std::string filename, std::string in_path, modes in_mode, std::st
 	if (ifile != -1)
 		_close(ifile);
 
-	if (cwd)
-		CHANGE_DIR(cwd);
+    std::filesystem::current_path(currentPath);
 
 	if (repair)
 		filename += '.';

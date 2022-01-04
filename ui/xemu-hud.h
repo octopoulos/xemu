@@ -36,5 +36,3 @@ void xemu_hud_cleanup();
 void xemu_hud_render();
 void xemu_hud_process_sdl_events(SDL_Event* event);
 void xemu_hud_should_capture_kbd_mouse(int* kbd, int* mouse);
-
-void OpenConfig(int tab);

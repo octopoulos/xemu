@@ -1,9 +1,9 @@
-// controls.cpp
+// ui-controls.cpp
 // @2022 octopoulos
 
-#include "common.h"
-#include "controls.h"
-#include "games.h"
+#include "ui-controls.h"
+#include "ui-games.h"
+#include "ui-settings.h"
 #include "xemu-hud.h"
 
 namespace ui
@@ -34,22 +34,21 @@ void ControlsWindow::Initialize()
 
 void ControlsWindow::Draw()
 {
-	if (!is_open)
+	if (!isOpen)
 		return;
 
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::DockSpaceOverViewport(viewport, ImGuiDockNodeFlags_PassthruCentralNode);
 
     static int step = 0;
     if (!step)
     {
         auto& size = viewport->WorkSize;
-        ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + size.x * 0.1f, viewport->WorkPos.y + size.y * 0.1f));
-        ImGui::SetNextWindowSize(ImVec2(size.x * 0.8f, size.y * 0.8f));
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::SetNextWindowSize(ImVec2(size.x, 64.0f));
         ++step;
     }
 
-	if (!ImGui::Begin("Game List", &is_open))
+	if (!ImGui::Begin("Controls", &isOpen, ImGuiWindowFlags_NoTitleBar))
 	{
 		ImGui::End();
 		return;
@@ -69,9 +68,9 @@ void ControlsWindow::Draw()
 	ImGui::SameLine();
 	if (ImageTextButton("Pads")) OpenConfig(10);
 	ImGui::SameLine();
-	if (ImageTextButton("List")) {}
+	if (ImageTextButton("List")) GetGamesWindow().isGrid = 0;
 	ImGui::SameLine();
-	if (ImageTextButton("Grid")) {}
+	if (ImageTextButton("Grid")) GetGamesWindow().isGrid = 1;
 	ImGui::SameLine();
     ImGui::PushItemWidth(200);
 	ImGui::SliderInt("Scale", &xsettings.row_height, 24, 176);
@@ -79,11 +78,12 @@ void ControlsWindow::Draw()
 	// ImGui::SameLine();
 	// ImGui::InputText("Search", search, sizeof(str2k));
 
-	float icon_height = xsettings.row_height * 1.0f;
-	ImVec2 icon_dims = { icon_height * 16.0f / 9.0f, icon_height };
-
 	// saved
 	ImGui::End();
 }
+
+static ControlsWindow controlsWindow;
+
+ControlsWindow& GetControlsWindow() { return controlsWindow; }
 
 } // namespace ui
