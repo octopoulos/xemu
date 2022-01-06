@@ -37,34 +37,34 @@ struct EnumMap
 };
 
 const EnumMap aspectRatioMaps[] = {
-	{ ASPECT_RATIO_169, "16:9" },
-	{ ASPECT_RATIO_43, "4:3" },
-	{ ASPECT_RATIO_NATIVE, "native" },
-	{ ASPECT_RATIO_WINDOW, "window" },
-	{ -1, nullptr },
+	{ASPECT_RATIO_169,     "16:9"  },
+	{ ASPECT_RATIO_43,     "4:3"   },
+	{ ASPECT_RATIO_NATIVE, "native"},
+	{ ASPECT_RATIO_WINDOW, "window"},
+	{ -1,                  nullptr },
 };
 
 const EnumMap backendMaps[] = {
-	{ NET_BACKEND_USER, "user" },
-	{ NET_BACKEND_SOCKET_UDP, "udp" },
-	{ NET_BACKEND_PCAP, "pcap" },
-	{ -1, nullptr },
+	{NET_BACKEND_USER,        "user" },
+	{ NET_BACKEND_SOCKET_UDP, "udp"  },
+	{ NET_BACKEND_PCAP,       "pcap" },
+	{ -1,                     nullptr},
 };
 
 const EnumMap rendererMaps[] = {
-	{ RENDERER_DX9, "dx9" },
-	{ RENDERER_DX11, "dx11" },
-	{ RENDERER_OPENGL, "opengl" },
-	{ RENDERER_VULKAN, "vulkan" },
-	{ RENDERER_NONE, "none" },
-	{ -1, nullptr },
+	{RENDERER_DX9,     "dx9"   },
+	{ RENDERER_DX11,   "dx11"  },
+	{ RENDERER_OPENGL, "opengl"},
+	{ RENDERER_VULKAN, "vulkan"},
+	{ RENDERER_NONE,   "none"  },
+	{ -1,              nullptr },
 };
 
-#define CHECK_TYPE(want) \
-	if (type != want) \
-	{ \
+#define CHECK_TYPE(want)                                                                          \
+	if (type != want)                                                                             \
+	{                                                                                             \
 		std::cerr << "Wrong type for " << name << ", " << want << " instead of " << type << '\n'; \
-		return; \
+		return;                                                                                   \
 	}
 
 #define X_ARRAY(section, restart, name, def, count) \
@@ -299,20 +299,25 @@ static std::vector<Config> configs = {
 	X_STRING(emulator, 0, window_title, ""),
 
 	// [gui]
-    X_INT(gui, 0, row_height, 80, 24, 176),
-    X_STRING(gui, 0, shortcut_controls, "Ctrl+C"),
-    X_STRING(gui, 0, shortcut_eject, "Ctrl+E"),
-    X_STRING(gui, 0, shortcut_fullscreen, "Alt+Enter"),
-    X_STRING(gui, 0, shortcut_games, "Esc"),
-    X_STRING(gui, 0, shortcut_gpu, "F1"),
-    X_STRING(gui, 0, shortcut_intercept, "Alt+I"),
-    X_STRING(gui, 0, shortcut_log, "Ctrl+L"),
-    X_STRING(gui, 0, shortcut_monitor, "`"),
-    X_STRING(gui, 0, shortcut_open, "Ctrl+O"),
-    X_STRING(gui, 0, shortcut_pads, "F2"),
-    X_STRING(gui, 0, shortcut_pause, "Ctrl+P"),
-    X_STRING(gui, 0, shortcut_reset, "Ctrl+R"),
-    X_STRING(gui, 0, shortcut_screenshot, "Ctrl+S"),
+	X_INT(gui, 0, guide, 1, 0, 2),
+	X_INT(gui, 0, guide_hold, 2, 0, 2),
+	X_INT(gui, 0, guide_hold_frames, 15, 1, 60),
+	X_INT(gui, 0, row_height, 80, 24, 176),
+	X_BOOL(gui, 0, run_no_ui, 1),
+	X_STRING(gui, 0, shortcut_controls, "Ctrl+C"),
+	X_STRING(gui, 0, shortcut_eject, "Ctrl+E"),
+	X_STRING(gui, 0, shortcut_fullscreen, "Alt+Enter"),
+	X_STRING(gui, 0, shortcut_games, "Esc"),
+	X_STRING(gui, 0, shortcut_gpu, "F1"),
+	X_STRING(gui, 0, shortcut_intercept, "Alt+I"),
+	X_STRING(gui, 0, shortcut_log, "Ctrl+L"),
+	X_STRING(gui, 0, shortcut_monitor, "`"),
+	X_STRING(gui, 0, shortcut_open, "Ctrl+O"),
+	X_STRING(gui, 0, shortcut_pads, "F2"),
+	X_STRING(gui, 0, shortcut_pause, "Ctrl+P"),
+	X_STRING(gui, 0, shortcut_reset, "Ctrl+R"),
+	X_STRING(gui, 0, shortcut_screenshot, "Ctrl+S"),
+	X_BOOL(gui, 0, text_button, 1),
 	X_FLOAT(gui, 0, ui_scale, 1.0f, 1.0f, 4.0f),
 
 	// [debug]
@@ -466,14 +471,12 @@ void xsettingsLoad()
 	// iterate & visit over the data
 	for (const auto& [section, data] : doc)
 	{
-		data.visit([](auto& node) noexcept
-		{
+		data.visit([](auto& node) noexcept {
 			if constexpr (toml::is_table<decltype(node)>)
 			{
 				for (const auto& [key, value] : node)
 				{
-					value.visit([&key](auto& item) noexcept
-					{
+					value.visit([&key](auto& item) noexcept {
 						auto config = configFind(key);
 						if (!config)
 							return;
@@ -485,8 +488,7 @@ void xsettingsLoad()
 								int i = 0;
 								for (auto& element : *array)
 								{
-									element.visit([&config, i](auto& part) noexcept
-									{
+									element.visit([&config, i](auto& part) noexcept {
 										if constexpr (toml::is_string<decltype(part)>)
 											config->SetArray(i, part.value_or(""s).c_str());
 									});

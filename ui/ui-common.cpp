@@ -1,59 +1,13 @@
 // ui-common.cpp
-// @2021 octopoulos
+// @2022 octopoulos
 
 #include "ui-common.h"
-#include "xemu-shaders.h"   // load_texture_from_file
-
-extern "C" {
-#include "qemui/noc_file_dialog.h"
-
-#include "qemu/osdep.h"
-#include "qemu-common.h"
-#include "sysemu/sysemu.h"
-#include "sysemu/runstate.h"
-}
-
-void xemu_load_disc(const char* path, bool saveSetting);
+#include "xemu-shaders.h" // load_texture_from_file
 
 namespace ui
 {
 
 static std::map<std::string, uint32_t> textures;
-
-std::string FileOpen(const char* filters, std::string current)
-{
-	const char* filename = PausedFileOpen(NOC_FILE_DIALOG_OPEN, filters, current.c_str(), nullptr);
-	return filename ? filename : "";
-}
-
-std::string FileOpenISO(std::string current)
-{
-	static const char* filters = ".iso Files\0*.iso\0All Files\0*.*\0";
-	return FileOpen(filters, current);
-}
-
-bool ImageTextButton(std::string name)
-{
-	static ImVec2 buttonSize(32.0f, 32.0f);
-
-	bool click;
-	if (textures.contains(name))
-		click = ImGui::ImageButton((void*)(intptr_t)textures[name], buttonSize);
-	else
-		click = ImGui::Button(name.c_str());
-
-	return click;
-}
-
-bool IsRunning()
-{
-	return runstate_is_running();
-}
-
-void LoadDisc()
-{
-	xemu_load_disc(FileOpenISO(xsettings.dvd_path).c_str(), true);
-}
 
 uint32_t LoadTexture(std::filesystem::path path, std::string name)
 {
@@ -61,47 +15,56 @@ uint32_t LoadTexture(std::filesystem::path path, std::string name)
 		return 0;
 
 	auto texId = load_texture_from_file(path.string().c_str(), 0);
-    if (texId)
-	    textures[name] = texId;
+	if (texId)
+		textures[name] = texId;
 	return texId;
 }
 
 bool LoadTextures(std::string folder, std::vector<std::string> names)
 {
-	bool success = true;
-
 	std::filesystem::path basePath = xsettingsFolder(nullptr);
 	basePath /= folder;
 
+	bool success = true;
 	for (auto& name : names)
 	{
 		std::filesystem::path path = basePath / (name + ".png");
-        if (!LoadTexture(path, name))
-            success = false;
+		if (!LoadTexture(path, name))
+			success = false;
 	}
-
 	return success;
 }
 
-const char* PausedFileOpen(int flags, const char* filters, const char* default_path, const char* default_name)
+/**
+ * Image text button aligned on a row
+ */
+int RowButton(std::string name)
 {
-	bool is_running = runstate_is_running();
-	if (is_running)
-		vm_stop(RUN_STATE_PAUSED);
+	const ImVec2 buttonDims(32.0f, 32.0f);
+	const ImVec2 childDims(64.0f, 64.0f);
 
-	const char* r = noc_file_dialog_open(flags, filters, default_path, default_name);
-	if (is_running)
-		vm_start();
+	auto nameStr = name.c_str();
 
-	return r;
-}
-
-void TogglePause()
-{
-	if (IsRunning())
-		vm_stop(RUN_STATE_PAUSED);
+	ImGui::BeginChild(nameStr, childDims, true, ImGuiWindowFlags_NoScrollbar);
+	if (textures.contains(name))
+	{
+		float x = ImGui::GetCursorPosX();
+		ImGui::SetCursorPosX(x + 8.0f);
+		ImGui::Image((void*)(intptr_t)textures[name], buttonDims);
+		if (xsettings.text_button)
+		{
+			float offset = (childDims.x - ImGui::CalcTextSize(nameStr).x) / 2;
+			ImGui::SetCursorPosX(x + std::max(offset, -8.0f));
+			ImGui::TextUnformatted(nameStr);
+		}
+	}
 	else
-		vm_start();
+		ImGui::Button(nameStr, childDims);
+	ImGui::EndChild();
+
+	int flag = ImGui::IsItemClicked() ? 1 : 0;
+	ImGui::SameLine();
+	return flag;
 }
 
 } // namespace ui

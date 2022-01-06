@@ -1,9 +1,9 @@
 // run-extra.cpp
-// @2021 octopoulos
+// @2022 octopoulos
 
 #include "../ui/ui-games.h"
 
-extern "C" void shutDownExtra()
+extern "C" void ShutDownExtra()
 {
-    ui::LoadedGame("");
+	ui::LoadedGame("");
 }

@@ -8,15 +8,14 @@
 namespace ui
 {
 
-class FileWindow
+class FileWindow : public CommonWindow
 {
 public:
-    bool isOpen = true;
-    bool isFolder = false;
+	bool isFolder = false;
 
-    void Draw();
+	void Draw();
 };
 
 FileWindow& GetFileWindow();
 
-}
+} // namespace ui

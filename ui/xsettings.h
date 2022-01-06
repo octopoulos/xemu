@@ -24,7 +24,7 @@ extern "C" {
 
 #define DEFAULT_KEYB_MAPPING "4,5,27,28,80,82,79,81,42,40,30,31,32,33,34,,,,,,,,26,18,22,9,7,8,13,15,14,12"
 // value >= 32 = axis
-#define DEFAULT_PAD_MAPPING "0,1,2,3,13,11,14,12,4,6,9,10,7,8,5,,,,,,,,36,37,32,33,32,33,34,35,34,35"
+#define DEFAULT_PAD_MAPPING  "0,1,2,3,13,11,14,12,4,6,9,10,7,8,5,,,,,,,,36,37,32,33,32,33,34,35,34,35"
 
 enum ASPECT_RATIO
 {
@@ -114,20 +114,25 @@ typedef struct _XSettings
 	str2k window_title;
 
 	// [gui]
-    int   row_height;
-    str32 shortcut_controls;
-    str32 shortcut_eject;
-    str32 shortcut_fullscreen;
-    str32 shortcut_games;
-    str32 shortcut_gpu;
-    str32 shortcut_intercept;
-    str32 shortcut_log;
-    str32 shortcut_monitor;
-    str32 shortcut_open;
-    str32 shortcut_pads;
-    str32 shortcut_pause;
-    str32 shortcut_reset;
-    str32 shortcut_screenshot;
+	int   guide;
+	int   guide_hold;
+	int   guide_hold_frames;
+	int   row_height;
+	int   run_no_ui;
+	str32 shortcut_controls;
+	str32 shortcut_eject;
+	str32 shortcut_fullscreen;
+	str32 shortcut_games;
+	str32 shortcut_gpu;
+	str32 shortcut_intercept;
+	str32 shortcut_log;
+	str32 shortcut_monitor;
+	str32 shortcut_open;
+	str32 shortcut_pads;
+	str32 shortcut_pause;
+	str32 shortcut_reset;
+	str32 shortcut_screenshot;
+	int   text_button;
 	float ui_scale;
 
 	// [debug]

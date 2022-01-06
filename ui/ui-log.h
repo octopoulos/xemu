@@ -8,12 +8,10 @@
 namespace ui
 {
 
-class LogWindow
+class LogWindow : public CommonWindow
 {
 public:
-	bool isOpen = true;
-
-	void Initialize() {}
+	LogWindow() { isOpen = manualOpen = true; }
 	void AddLog(int color, std::string text);
 	void Draw();
 
@@ -23,6 +21,7 @@ private:
 };
 
 LogWindow& GetLogWindow();
+void       AddLogV(int color, const char* fmt, va_list args);
 void       Log       (const char* fmt, ...);
 void       LogError  (const char* fmt, ...);
 void       LogInfo   (const char* fmt, ...);

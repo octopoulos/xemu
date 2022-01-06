@@ -6,9 +6,12 @@
 #include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/prettywriter.h>
 
+#include "ui-controls.h"
 #include "ui-games.h"
-#include "xemu-hud.h"
+#include "ui-log.h"
 #include "xemu-notifications.h"
+
+#include <unordered_set>
 
 extern "C" {
 #include "qemui/noc_file_dialog.h"
@@ -19,14 +22,17 @@ extern "C" {
 #define JSON_GET_STRING(name) \
 	if (obj.HasMember(#name)) name = obj[#name].GetString()
 #define JSON_SAVE_INT(name) \
-	writer->String(#name); \
+	writer->String(#name);  \
 	writer->Int(name)
 #define JSON_SAVE_STRING(name) \
-	writer->String(#name); \
+	writer->String(#name);     \
 	writer->String(name.c_str())
 
 namespace ui
 {
+
+static GamesWindow gamesWindow;
+GamesWindow&       GetGamesWindow() { return gamesWindow; }
 
 struct GameStats : public exiso::GameInfo
 {
@@ -99,30 +105,98 @@ struct GameStats : public exiso::GameInfo
 
 		std::filesystem::path iconPath = xsettingsFolder(nullptr);
 		iconPath /= "icons";
-        iconPath /= (uid + ".png");
+		iconPath /= (uid + ".png");
 
-        iconTexture = LoadTexture(iconPath, uid);
+		iconTexture = LoadTexture(iconPath, uid);
 		icon        = iconTexture ? 3 : 1;
 	}
 };
 
 std::map<std::string, GameStats> gameStats;
 
+/**
+ * Add a cell in columns mode
+ */
+static void AddCell(int col, float posy, std::string text)
+{
+	ImGui::TableSetColumnIndex(col);
+	ImGui::SetCursorPosY(posy);
+	ImGui::TextUnformatted((" " + text + "      ").c_str());
+}
+
+/**
+ * Left/right click action
+ */
+static void CheckClicks(std::string key, GameStats& game)
+{
+	if (ImGui::IsItemClicked(0))
+	{
+		static auto lastTime = std::chrono::steady_clock::now();
+		auto        nowTime  = std::chrono::steady_clock::now();
+		auto        elapsed  = std::chrono::duration_cast<std::chrono::milliseconds>(nowTime - lastTime).count();
+
+		if (elapsed > 0)
+		{
+			lastTime = nowTime;
+			if (elapsed < 300)
+			{
+				lastTime += std::chrono::milliseconds(700);
+				if (LoadDisc(game.path, true))
+				{
+					if (xsettings.run_no_ui) ShowWindows(0);
+					TogglePause(1);
+				}
+			}
+		}
+	}
+	if (ImGui::IsItemClicked(1))
+	{
+		Log("right clicked on %s", key.c_str());
+		if (ImGui::BeginPopupContextItem()) // <-- use last item id as popup id
+		{
+			ImGui::Text("This a popup for \"%s\"!", key);
+			if (ImGui::Button("Close"))
+				ImGui::CloseCurrentPopup();
+			ImGui::EndPopup();
+		}
+	}
+}
+
+/**
+ * Selectable for grid/columns
+ */
+static float Selectable(bool isGrid, std::string key, GameStats& game, float height)
+{
+	static std::unordered_set<std::string> selection;
+
+	ImGuiSelectableFlags flags = ImGuiSelectableFlags_None | ImGuiSelectableFlags_AllowItemOverlap | ImGuiSelectableFlags_SelectOnClick;
+	if (isGrid) flags |= ImGuiSelectableFlags_SpanAllColumns;
+
+	float y = ImGui::GetCursorPosY();
+	if (ImGui::Selectable("", selection.contains(key), flags, ImVec2(0.0f, height)))
+	{
+		selection.clear();
+		selection.insert(key);
+	}
+	CheckClicks(key, game);
+	ImGui::SetCursorPosY(y);
+	return y;
+}
+
 void GamesWindow::Draw()
 {
 	if (!isOpen)
 		return;
 
-	const ImGuiViewport* viewport = ImGui::GetMainViewport();
-	// ImGui::DockSpaceOverViewport(viewport, ImGuiDockNodeFlags_PassthruCentralNode);
-
-	static int step = 0;
-	if (!step)
+	if (!drawn)
 	{
-		auto& size = viewport->WorkSize;
+		const ImGuiViewport* viewport = ImGui::GetMainViewport();
+		auto&                size     = viewport->WorkSize;
 		ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + size.x * 0.1f, viewport->WorkPos.y + size.y * 0.1f));
 		ImGui::SetNextWindowSize(ImVec2(size.x * 0.8f, size.y * 0.8f));
-		++step;
+
+		OpenGamesList();
+		++drawn;
 	}
 
 	if (!ImGui::Begin("Game List", &isOpen))
@@ -133,87 +207,113 @@ void GamesWindow::Draw()
 
 	float  iconHeight = xsettings.row_height * 1.0f;
 	ImVec2 iconDims   = { iconHeight * 16.0f / 9.0f, iconHeight };
+	float  textHeight = ImGui::GetFontSize();
 
 	ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(2.0f, 2.0f));
 
+	// grid display
 	if (isGrid)
 	{
-		ImVec2 childDims = { iconDims.x, iconDims.y };
-        childDims.y += 20.0f;
+		ImVec2      childDims         = { iconDims.x, iconDims.y };
+		ImGuiStyle& style             = ImGui::GetStyle();
+		float       window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
 
-        int n = 0;
+		if (childDims.x > 128.0f)
+			childDims.y += textHeight + style.ItemSpacing.y * 2;
+
 		for (auto& [key, game] : gameStats)
 		{
-            ImGui::PushID(n++);
-            // ImGui::BeginChild("##child", iconDims);
+			ImGui::BeginChild(key.c_str(), childDims);
+			ImGui::PushID(key.c_str());
+
+			if (focus)
+			{
+				ImGui::SetKeyboardFocusHere();
+				focus = 0;
+			}
+
+			// selectable + icon
+			Selectable(isGrid, key, game, childDims.y);
+			game.CheckIcon();
 			if (game.icon & 2)
-				ImGui::Image((void*)(intptr_t)game.iconTexture, childDims);
+				ImGui::Image((void*)(intptr_t)game.iconTexture, iconDims);
 			else
 				ImGui::TextUnformatted("ICON");
-			ImGui::TextUnformatted(game.title.c_str());
-            // ImGui::EndChild();
-            ImGui::PopID();
+
+			// text
+			if (childDims.x > 128.0f)
+			{
+				auto title = game.title.c_str();
+				if (float offset = (childDims.x - ImGui::CalcTextSize(title).x) / 2; offset > 0)
+					ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset);
+				ImGui::TextUnformatted(title);
+			}
+			ImGui::PopID();
+			ImGui::EndChild();
+
+			float last_x2 = ImGui::GetItemRectMax().x;
+			float next_x2 = last_x2 + style.ItemSpacing.x / 2 + childDims.x;
+			if (next_x2 < window_visible_x2)
+				ImGui::SameLine();
 		}
 	}
+	// column display
 	else
 	{
-		static ImGuiTableFlags tFlags =
-		    ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedSame | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders
-		    | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable;
+		static ImGuiTableFlags tFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_RowBg
+		    | ImGuiTableFlags_NoBordersInBody | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY;
 
 		if (ImGui::BeginTable("Table", 9, tFlags))
 		{
 			ImGui::TableSetupScrollFreeze(1, 1);
-			// ImGui::TableSetColumnWidth(0, iconDims.x);
 
-			ImGui::TableSetupColumn("Icon", 0, iconDims.x);
-			ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultSort);
-			ImGui::TableSetupColumn("Serial", ImGuiTableColumnFlags_WidthFixed);
-			ImGui::TableSetupColumn("Region", ImGuiTableColumnFlags_WidthFixed);
-			ImGui::TableSetupColumn("Release Date", ImGuiTableColumnFlags_WidthFixed);
-			ImGui::TableSetupColumn("Count Played", ImGuiTableColumnFlags_WidthFixed);
-			ImGui::TableSetupColumn("Last Played", ImGuiTableColumnFlags_WidthFixed);
-			ImGui::TableSetupColumn("Time Played", ImGuiTableColumnFlags_WidthFixed);
-			ImGui::TableSetupColumn("Compatibility", ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn(" Icon      ", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize, iconDims.x);
+			ImGui::TableSetupColumn(" Name      ", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_DefaultSort);
+			ImGui::TableSetupColumn(" Serial      ", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn(" Region      ", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn(" Release Date      ", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn(" Count Played      ", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn(" Last Played      ", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn(" Time Played      ", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn(" Compatibility      ", ImGuiTableColumnFlags_WidthStretch);
+
 			ImGui::TableHeadersRow();
+
+			float offset = (iconDims.y - textHeight) / 2;
 
 			for (auto& [key, game] : gameStats)
 			{
+				ImGui::PushID(key.c_str());
 				ImGui::TableNextRow();
 
+				// selectable + icon
 				ImGui::TableSetColumnIndex(0);
+				float posy = Selectable(isGrid, key, game, iconDims.y) + offset;
 				game.CheckIcon();
 				if (game.icon & 2)
 					ImGui::Image((void*)(intptr_t)game.iconTexture, iconDims);
 				else
 					ImGui::TextUnformatted("ICON");
 
-				ImGui::TableSetColumnIndex(1);
-				ImGui::TextUnformatted(game.title.c_str());
-				ImGui::TableSetColumnIndex(2);
-				ImGui::TextUnformatted(game.id.c_str());
-				ImGui::TableSetColumnIndex(3);
-				ImGui::TextUnformatted(game.region.c_str());
-				ImGui::TableSetColumnIndex(4);
-				ImGui::TextUnformatted(game.date.c_str());
-				ImGui::TableSetColumnIndex(5);
-				ImGui::Text("%d", game.countPlay);
-				ImGui::TableSetColumnIndex(6);
-				ImGui::TextUnformatted(game.lastPlay.c_str());
+				// all columns
+				AddCell(1, posy, game.title);
+				AddCell(2, posy, game.id);
+				AddCell(3, posy, game.region);
+				AddCell(4, posy, game.date);
+				AddCell(5, posy, std::to_string(game.countPlay));
+				AddCell(6, posy, game.lastPlay);
 
-				ImGui::TableSetColumnIndex(7);
-				int seconds = game.timePlay;
-				if (seconds > 0)
+				if (int seconds = game.timePlay; seconds > 0)
 				{
 					int minutes = seconds / 60;
 					int hours   = minutes / 60;
-					ImGui::Text("%02d:%02d:%02d", hours, minutes % 60, seconds % 60);
+					AddCell(7, posy, fmt::format("{:02}:{:02}:{:02}", hours, minutes % 60, seconds % 60));
 				}
 				else
-					ImGui::TextUnformatted("");
+					AddCell(7, posy, "");
 
-				ImGui::TableSetColumnIndex(8);
-				ImGui::Text("%s", game.compatibility ? "Playable" : "No results found");
+				AddCell(8, posy, game.compatibility ? "Playable" : "No results found");
+				ImGui::PopID();
 			}
 
 			ImGui::EndTable();
@@ -226,9 +326,17 @@ void GamesWindow::Draw()
 	ImGui::End();
 }
 
-static GamesWindow gamesWindow;
+/**
+ * Set the grid + activate/deactive window
+ */
+void GamesWindow::SetGrid(bool grid)
+{
+	isOpen = (isGrid == grid) ? !isOpen : true;
+	isGrid = grid;
+}
 
-GamesWindow& GetGamesWindow() { return gamesWindow; }
+// API
+//////
 
 void CheckIcon(std::string uid)
 {
@@ -308,9 +416,6 @@ void OpenGamesList()
 	}
 }
 
-/**
- * Save games list
- */
 void SaveGamesList()
 {
 	rapidjson::StringBuffer ss;

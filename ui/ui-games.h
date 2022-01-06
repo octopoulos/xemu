@@ -1,5 +1,5 @@
 // ui-games.h
-// @2021 octopoulos
+// @2022 octopoulos
 
 #pragma once
 
@@ -9,14 +9,14 @@
 namespace ui
 {
 
-class GamesWindow
+class GamesWindow : public CommonWindow
 {
 public:
-	bool isOpen = true;
-	int  isGrid = false;
+	bool isGrid = false;
 
-	void Initialize() {}
+	GamesWindow() { isOpen = manualOpen = true; }
 	void Draw();
+	void SetGrid(bool grid);
 };
 
 GamesWindow& GetGamesWindow();

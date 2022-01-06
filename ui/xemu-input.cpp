@@ -28,6 +28,7 @@
 #include "qemu/timer.h"
 #include "qemu/config-file.h"
 
+#include "ui-log.h"
 #include "xemu-input.h"
 #include "xemu-notifications.h"
 #include "xsettings.h"
@@ -35,29 +36,33 @@
 #define DEBUG_INPUT
 
 #ifdef DEBUG_INPUT
-#	define DPRINTF(fmt, ...) fprintf(stderr, fmt, ##__VA_ARGS__)
+#	define DPRINTF(fmt, ...) ui::Log(fmt, ##__VA_ARGS__)
 #else
-#	define DPRINTF(fmt, ...) do { } while (0)
+#	define DPRINTF(fmt, ...) \
+		do {                  \
+		}                     \
+		while (0)
 #endif
 
 #define XEMU_INPUT_MIN_INPUT_UPDATE_INTERVAL_US  2500
 #define XEMU_INPUT_MIN_HAPTIC_UPDATE_INTERVAL_US 2500
 
-ControllerStateList available_controllers = QTAILQ_HEAD_INITIALIZER(available_controllers);
-ControllerState*    bound_controllers[4]  = { NULL, NULL, NULL, NULL };
-int                 test_mode;
+std::vector<ControllerState> controllers;
+ControllerStateList          available_controllers = QTAILQ_HEAD_INITIALIZER(available_controllers);
+ControllerState*             bound_controllers[4]  = { NULL, NULL, NULL, NULL };
+int                          test_mode;
 
 const int axis_mapping[10][3] = {
-	{ CONTROLLER_AXIS_LTRIG, 32767, 0 },
-	{ CONTROLLER_AXIS_RTRIG, 32767, 0 },
-	{ CONTROLLER_AXIS_LSTICK_X, -32768, 0 },
-	{ CONTROLLER_AXIS_LSTICK_Y, 32767, 1 },
-	{ CONTROLLER_AXIS_LSTICK_X, 32767, 0 },
-	{ CONTROLLER_AXIS_LSTICK_Y, -32768, 1 },
-	{ CONTROLLER_AXIS_RSTICK_X, -32768, 0 },
-	{ CONTROLLER_AXIS_RSTICK_Y, 32767, 1 },
-	{ CONTROLLER_AXIS_RSTICK_X, 32767, 0 },
-	{ CONTROLLER_AXIS_RSTICK_Y, -32768, 1 },
+	{CONTROLLER_AXIS_LTRIG,     32767,  0},
+	{ CONTROLLER_AXIS_RTRIG,    32767,  0},
+	{ CONTROLLER_AXIS_LSTICK_X, -32768, 0},
+	{ CONTROLLER_AXIS_LSTICK_Y, 32767,  1},
+	{ CONTROLLER_AXIS_LSTICK_X, 32767,  0},
+	{ CONTROLLER_AXIS_LSTICK_Y, -32768, 1},
+	{ CONTROLLER_AXIS_RSTICK_X, -32768, 0},
+	{ CONTROLLER_AXIS_RSTICK_Y, 32767,  1},
+	{ CONTROLLER_AXIS_RSTICK_X, 32767,  0},
+	{ CONTROLLER_AXIS_RSTICK_Y, -32768, 1},
 };
 
 void xemu_input_init(void)
@@ -180,7 +185,7 @@ int xemu_input_get_controller_default_bind_port(ControllerState* state, int star
 			strcpy(state->pad_smapping, xsettings.input_pad[i]);
 			ParseMappingString(state->pad_smapping, state->pad_mapping, DEFAULT_PAD_MAPPING);
 
-			DPRINTF("i=%d guid=%s mapping=%s : %s\n", i, guid, state->pad_smapping, state->key_smapping);
+			DPRINTF("i=%d guid=%s mapping=%s : %s", i, guid, state->pad_smapping, state->key_smapping);
 			return i;
 		}
 	}
@@ -192,14 +197,14 @@ void xemu_input_process_sdl_events(const SDL_Event* event)
 {
 	if (event->type == SDL_CONTROLLERDEVICEADDED)
 	{
-		DPRINTF("Controller Added: %d\n", event->cdevice.which);
+		DPRINTF("Controller Added: %d", event->cdevice.which);
 
 		// Attempt to open the added controller
 		SDL_GameController* sdl_con;
 		sdl_con = SDL_GameControllerOpen(event->cdevice.which);
 		if (sdl_con == NULL)
 		{
-			DPRINTF("Could not open joystick %d as a game controller\n", event->cdevice.which);
+			DPRINTF("Could not open joystick %d as a game controller", event->cdevice.which);
 			return;
 		}
 
@@ -218,7 +223,7 @@ void xemu_input_process_sdl_events(const SDL_Event* event)
 
 		char guid_buf[35] = { 0 };
 		SDL_JoystickGetGUIDString(new_con->sdl_joystick_guid, guid_buf, sizeof(guid_buf));
-		DPRINTF("Opened %s (%s)\n", new_con->name, guid_buf);
+		DPRINTF("Opened %s (%s)", new_con->name, guid_buf);
 
 		QTAILQ_INSERT_TAIL(&available_controllers, new_con, entry);
 
@@ -257,7 +262,7 @@ void xemu_input_process_sdl_events(const SDL_Event* event)
 	}
 	else if (event->type == SDL_CONTROLLERDEVICEREMOVED)
 	{
-		DPRINTF("Controller Removed: %d\n", event->cdevice.which);
+		DPRINTF("Controller Removed: %d", event->cdevice.which);
 		int              handled = 0;
 		ControllerState* iter;
 		ControllerState* next;
@@ -268,7 +273,7 @@ void xemu_input_process_sdl_events(const SDL_Event* event)
 
 			if (iter->sdl_joystick_id == event->cdevice.which)
 			{
-				DPRINTF("Device removed: %s\n", iter->name);
+				DPRINTF("Device removed: %s", iter->name);
 
 				// Disconnect
 				if (iter->bound >= 0)
@@ -300,10 +305,10 @@ void xemu_input_process_sdl_events(const SDL_Event* event)
 			}
 		}
 		if (!handled)
-			DPRINTF("Could not find handle for joystick instance\n");
+			DPRINTF("Could not find handle for joystick instance");
 	}
 	else if (event->type == SDL_CONTROLLERDEVICEREMAPPED)
-		DPRINTF("Controller Remapped: %d\n", event->cdevice.which);
+		DPRINTF("Controller Remapped: %d", event->cdevice.which);
 }
 
 void xemu_input_update_controller(ControllerState* state)

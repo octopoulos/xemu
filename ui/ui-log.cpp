@@ -4,8 +4,13 @@
 #include "ui-log.h"
 #include "stb_sprintf.h"
 
+extern ImFont* g_fixed_width_font;
+
 namespace ui
 {
+
+static LogWindow logWindow;
+LogWindow&       GetLogWindow() { return logWindow; }
 
 const ImVec4 colorValues[] = {
 	{1.0f,  1.0f, 1.0f, 1.0f}, // text
@@ -22,32 +27,41 @@ void LogWindow::AddLog(int color, std::string text)
 
 void LogWindow::Draw()
 {
+	if (!isOpen)
+		return;
+
 	if (!ImGui::Begin("Log", &isOpen))
 	{
 		ImGui::End();
 		return;
 	}
 
+	ImGui::PushFont(g_fixed_width_font);
 	ImGuiListClipper clipper;
 	clipper.Begin(lines.size());
 	while (clipper.Step())
 	{
-	    for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
-	    {
-            if (colors[i]) ImGui::PushStyleColor(ImGuiCol_Text, colorValues[colors[i]]);
-            ImGui::TextUnformatted(lines[i].c_str());
-            if (colors[i]) ImGui::PopStyleColor();
-	    }
+		for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
+		{
+			if (colors[i]) ImGui::PushStyleColor(ImGuiCol_Text, colorValues[colors[i]]);
+			ImGui::TextUnformatted(lines[i].c_str());
+			if (colors[i]) ImGui::PopStyleColor();
+		}
 	}
 	clipper.End();
+	ImGui::PopFont();
+
+	// auto scroll
+	if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+		ImGui::SetScrollHereY(1.0f);
 
 	ImGui::End();
 }
 
-static LogWindow logWindow;
-
-LogWindow& GetLogWindow() { return logWindow; }
-
+/**
+ * Add Log
+ * @param color 0:log, 1:error, 2:info, 3:warning
+ */
 void AddLogV(int color, const char* fmt, va_list args)
 {
 	const int   bufSize = 2048;

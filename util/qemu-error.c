@@ -196,6 +196,9 @@ static void print_loc(void)
     }
 }
 
+// util-extra
+void LogExtra(int color, const char *fmt, va_list args);
+
 /*
  * Print a message to current monitor if we have one, else to stderr.
  * @report_type is the type of message: error, warning or informational.
@@ -222,16 +225,22 @@ static void vreport(report_type type, const char *fmt, va_list ap)
 
     print_loc();
 
+    int color = 0;
     switch (type) {
     case REPORT_TYPE_ERROR:
+        color = 1;
         break;
     case REPORT_TYPE_WARNING:
+        color = 3;
         error_printf("warning: ");
         break;
     case REPORT_TYPE_INFO:
+        color = 2;
         error_printf("info: ");
         break;
     }
+
+    LogExtra(color, fmt, ap);
 
     error_vprintf(fmt, ap);
     error_printf("\n");

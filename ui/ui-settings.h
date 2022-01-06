@@ -5,14 +5,13 @@
 
 #include "ui-common.h"
 
+#include <SDL.h>
+
 namespace ui
 {
 
-class SettingsWindow
+class SettingsWindow : public CommonWindow
 {
-public:
-	bool isOpen = false;
-
 private:
 	int  changed    = 0;
 	bool clickedNow = 0;
@@ -22,10 +21,10 @@ private:
 public:
 	SettingsWindow();
 
+	void Draw();
 	void Load();
 	void Save();
 	void OpenTab(int tabMenu_);
-	void Draw();
 
 private:
 	void DrawCPU();
@@ -42,5 +41,8 @@ private:
 
 SettingsWindow& GetSettingsWindow();
 void            OpenConfig(int tab);
+void            ProcessSDL(SDL_Event* event);
+void            ProcessShortcuts();
+void            UpdateIO();
 
 } // namespace ui

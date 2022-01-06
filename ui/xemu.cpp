@@ -56,9 +56,10 @@
 
 #include "data/xemu_64x64.png.h"
 
+#include "ui-controls.h"
 #include "ui-games.h"
 #include "ui-log.h"
-#include "hw/xbox/smbus.h" // For eject, drive tray
+#include "ui-settings.h"
 #include "hw/xbox/nv2a/nv2a.h"
 
 #include <filesystem>
@@ -70,33 +71,34 @@
 // https://gpuopen.com/learn/amdpowerxpressrequesthighperformance/
 __declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 1;
 // https://docs.nvidia.com/gameworks/content/technologies/desktop/optimus.htm
-__declspec(dllexport) DWORD NvOptimusEnablement = 1;
+__declspec(dllexport) DWORD NvOptimusEnablement                  = 1;
 #endif
 
 extern "C" void tcg_register_init_ctx(void); // tcg.c
 
 // #define DEBUG_XEMU_C
-
 #ifdef DEBUG_XEMU_C
-#	define DPRINTF(...) fprintf(stderr, __VA_ARGS__)
+#	define DPRINTF(...) ui::Log(__VA_ARGS__)
 #else
 #	define DPRINTF(...)
 #endif
 
-static int             sdl2_num_outputs;
-static SDL2_Console*   sdl2_console;
-static exiso::GameInfo gameInfo;
-static int             gui_grab; // if true, all keyboard/mouse events are grabbed
-static int             gui_fullscreen;
-static SDL_Cursor*     sdl_cursor_normal;
-static SDL_Cursor*     sdl_cursor_hidden;
-static int             absolute_enabled;
-static int             guest_cursor;
-static int             guest_x;
-static int             guest_y;
-static SDL_Cursor*     guest_sprite;
-static SDL_GLContext   m_context;
-static QemuSemaphore   display_init_sem;
+extern exiso::GameInfo gameInfo;
+extern const char*     sRenderers[];
+
+static int           sdl2_num_outputs;
+static SDL2_Console* sdl2_console;
+static int           gui_grab; // if true, all keyboard/mouse events are grabbed
+static int           gui_fullscreen;
+static SDL_Cursor*   sdl_cursor_normal;
+static SDL_Cursor*   sdl_cursor_hidden;
+static int           absolute_enabled;
+static int           guest_cursor;
+static int           guest_x;
+static int           guest_y;
+static SDL_Cursor*   guest_sprite;
+static SDL_GLContext m_context;
+static QemuSemaphore display_init_sem;
 
 SDL_Window* m_window        = NULL;
 int         want_screenshot = 0;
@@ -259,25 +261,14 @@ static void set_full_screen(SDL2_Console* scon, bool set)
 	}
 }
 
-static void toggle_full_screen(SDL2_Console* scon)
-{
-	set_full_screen(scon, !gui_fullscreen);
-}
-
-int xemu_is_fullscreen()
-{
-	return gui_fullscreen;
-}
-
-void xemu_toggle_fullscreen()
-{
-	toggle_full_screen(&sdl2_console[0]);
-}
+static void toggle_full_screen(SDL2_Console* scon) { set_full_screen(scon, !gui_fullscreen); }
+int         xemu_is_fullscreen() { return gui_fullscreen; }
+void        xemu_toggle_fullscreen() { toggle_full_screen(&sdl2_console[0]); }
 
 static int get_mod_state()
 {
-    static int gui_grab_code = KMOD_LALT; // | KMOD_LCTRL;
-	SDL_Keymod mod = SDL_GetModState();
+	static int gui_grab_code = KMOD_LALT; // | KMOD_LCTRL;
+	SDL_Keymod mod           = SDL_GetModState();
 
 	if (alt_grab)
 		return (mod & gui_grab_code) == gui_grab_code;
@@ -529,7 +520,7 @@ void sdl2_poll_events(SDL2_Console* scon)
 	while (SDL_PollEvent(ev))
 	{
 		xemu_input_process_sdl_events(ev);
-		xemu_hud_process_sdl_events(ev);
+		ui::ProcessSDL(ev);
 
 		switch (ev->type)
 		{
@@ -549,7 +540,7 @@ void sdl2_poll_events(SDL2_Console* scon)
 			handle_textinput(ev);
 			break;
 		case SDL_QUIT:
-            ui::LoadedGame("");
+			ui::LoadedGame("");
 			if (scon->opts->has_window_close && !scon->opts->window_close)
 				allow_close = false;
 			if (allow_close)
@@ -846,7 +837,7 @@ static void sdl2_display_init(DisplayState* ds, DisplayOptions* o)
 	sdl2_console[0].real_window = m_window;
 	sdl2_console[0].winctx      = m_context;
 
-    static Notifier mouse_mode_notifier;
+	static Notifier mouse_mode_notifier;
 	mouse_mode_notifier.notify = sdl_mouse_mode_change;
 	qemu_add_mouse_mode_change_notifier(&mouse_mode_notifier);
 
@@ -1113,24 +1104,23 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 
 	// update title
 	{
-		static int         frame       = 0;
-		static const char* renderers[] = { "OpenGL", "Vulkan", "Null" };
+		static int         frame = 0;
 		static str2k       title;
-        static std::string uid;
-		sprintf(title, "FPS: %.2f | %s | %d x %d | %s | %s", fps, renderers[xsettings.renderer], tw, th, xemu_version, gameInfo.buffer);
+		static std::string uid;
+		sprintf(title, "FPS: %.2f | %s | %d x %d | %s | %s", fps, sRenderers[xsettings.renderer], tw, th, xemu_version, gameInfo.buffer);
 		SDL_SetWindowTitle(m_window, title);
 
-        // new game
-        if (uid != gameInfo.uid)
-        {
-            uid = gameInfo.uid;
-            frame = 0;
-        }
-        // game is loaded at 600 frames + update every 18 minutes (at 60Hz)
-        else if (frame == 600 || !(frame & 65535))
-            ui::LoadedGame(uid);
+		// new game
+		if (uid != gameInfo.uid)
+		{
+			uid   = gameInfo.uid;
+			frame = 0;
+		}
+		// game is loaded at 600 frames + update every 18 minutes (at 60Hz)
+		else if (frame == 600 || !(frame & 65535))
+			ui::LoadedGame(uid);
 
-        ++ frame;
+		++frame;
 	}
 
 	// Render framebuffer and GUI
@@ -1155,8 +1145,8 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 	glClear(GL_COLOR_BUFFER_BIT);
 	glDrawElements(GL_TRIANGLE_FAN, 4, GL_UNSIGNED_INT, NULL);
 
-    if (!want_screenshot)
-	    xemu_hud_render();
+	if (!want_screenshot)
+		xemu_hud_render();
 
 	// Release BQL before swapping (which may sleep if swap interval is not immediate)
 	qemu_mutex_unlock_iothread();
@@ -1333,12 +1323,6 @@ void sdl2_process_key(SDL2_Console* scon, SDL_KeyboardEvent* ev)
 	}
 }
 
-void LoadingGame(std::string path)
-{
-    exiso::ExtractGameInfo(path, &gameInfo, true);
-    ui::LoadedGame("");
-}
-
 int    gArgc;
 char** gArgv;
 
@@ -1386,7 +1370,7 @@ int main(int argc, char** argv)
 
 	xsettingsInit();
 	xsettingsLoad();
-	LoadingGame(xsettings.dvd_path);
+	ui::LoadingGame(xsettings.dvd_path);
 
 	sdl2_display_very_early_init(NULL);
 
@@ -1417,49 +1401,4 @@ int main(int argc, char** argv)
 		sdl2_gl_refresh(&sdl2_console[0].dcl);
 
 	// rcu_unregister_thread();
-}
-
-void xemu_eject_disc()
-{
-	xbox_smc_eject_button();
-    ui::LoadedGame("");
-
-	// Xbox software may request that the drive open, but do it now anyway
-	Error* err = NULL;
-	qmp_eject(true, "ide0-cd1", false, NULL, true, false, &err);
-	xbox_smc_update_tray_state();
-}
-
-void xemu_load_disc(const char* path, bool saveSetting)
-{
-	if (!path || !*path)
-		return;
-
-    str2k temp;
-    strcpy(temp, path);
-	LoadingGame(temp);
-
-	// add to recent list
-	auto files = xsettings.recent_files;
-	int  id    = 0;
-	while (id < 6 && strcmp(files[id], temp))
-		++id;
-
-	if (id > 0)
-	{
-		for (int i = std::min(5, id); i > 0; --i)
-			strcpy(files[i], files[i - 1]);
-		strcpy(files[0], temp);
-	}
-
-	strcpy(xsettings.dvd_path, temp);
-	if (saveSetting)
-		xsettingsSave();
-
-	// Ensure an eject sequence is always triggered so Xbox software reloads
-	xbox_smc_eject_button();
-
-	Error* err = NULL;
-	qmp_blockdev_change_medium(true, "ide0-cd1", false, NULL, temp, false, "", false, (BlockdevChangeReadOnlyMode)0, &err);
-	xbox_smc_update_tray_state();
 }
