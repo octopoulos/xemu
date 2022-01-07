@@ -1,78 +1,48 @@
-/*
- * xsettings.cpp
- *
- * Copyright (C) 2022 octopoulos
- * Copyright (C) 2021 Matt Borgerson
- *
- * This program is free software; you can redistribute it and/or modify it under the terms of
- * the GNU General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along with this program.
- * If not, see <http://www.gnu.org/licenses/>.
- */
+// xsettings.cpp
+// @2022 octopoulos
+//
+// This file is part of Shuriken.
+// Foobar is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+// Shuriken is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+// You should have received a copy of the GNU General Public License along with Shuriken. If not, see <https://www.gnu.org/licenses/>.
 
 #include <algorithm>
 #include <assert.h>
 #include <filesystem>
 #include <iostream>
 #include <map>
-#include <SDL_filesystem.h>
 #include <string>
 #include <unordered_set>
 
+#include <SDL_filesystem.h>
 #include "util/tomlplusplus/toml.hpp"
-#include "xsettings.h"
+
+#include "ui.h"
 
 using namespace std::string_literals;
 
-struct EnumMap
-{
-	int         value;
-	const char* text;
-};
+const std::string shurikenToml = "shuriken.toml";
 
-const EnumMap aspectRatioMaps[] = {
-	{ASPECT_RATIO_169,     "16:9"  },
-	{ ASPECT_RATIO_43,     "4:3"   },
-	{ ASPECT_RATIO_NATIVE, "native"},
-	{ ASPECT_RATIO_WINDOW, "window"},
-	{ -1,                  nullptr },
-};
+const char* sAspectRatios[] = { "16:9", "4:3", "Native", "Window" };
+const char* sFonts[]        = { "Proggy Clean", "Roboto Medium" };
+const char* sFrameLimits[]  = { "off", "auto", "30", "50", "59.94", "60" };
+const char* sNetBackends[]  = { "user", "udp", "pcap" };
+const char* sRenderers[]    = { "DX9", "DX11", "OpenGL", "Vulkan", "Null" };
+const char* sThemes[]       = { "Classic", "Dark", "Light", "Shuriken", "Xemu" };
 
-const EnumMap backendMaps[] = {
-	{NET_BACKEND_USER,        "user" },
-	{ NET_BACKEND_SOCKET_UDP, "udp"  },
-	{ NET_BACKEND_PCAP,       "pcap" },
-	{ -1,                     nullptr},
-};
-
-const EnumMap rendererMaps[] = {
-	{RENDERER_DX9,     "dx9"   },
-	{ RENDERER_DX11,   "dx11"  },
-	{ RENDERER_OPENGL, "opengl"},
-	{ RENDERER_VULKAN, "vulkan"},
-	{ RENDERER_NONE,   "none"  },
-	{ -1,              nullptr },
-};
-
-#define CHECK_TYPE(want)                                                                          \
-	if (type != want)                                                                             \
-	{                                                                                             \
-		std::cerr << "Wrong type for " << name << ", " << want << " instead of " << type << '\n'; \
-		return;                                                                                   \
+#define CHECK_TYPE(want)                                                       \
+	if (type != want)                                                          \
+	{                                                                          \
+		ui::LogError("Wrong type for %s, %c instead of %c", name, want, type); \
+		return;                                                                \
 	}
 
 #define X_ARRAY(section, restart, name, def, count) \
 	{ 'a', #section, restart, #name, offsetof(XSettings, name), {.defStr = def}, {.minInt = count} }
 #define X_BOOL(section, restart, name, def) \
 	{ 'b', #section, restart, #name, offsetof(XSettings, name), {.defBool = def} }
-#define X_ENUM(section, restart, name, def, enumMap) \
-	{ 'e', #section, restart, #name, offsetof(XSettings, name), {.defInt = def}, {}, {}, enumMap }
+#define X_ENUM(section, restart, name, def, names) \
+	{ 'e', #section, restart, #name, offsetof(XSettings, name), {.defInt = def}, {}, {}, names, nullptr, sizeof(names)/sizeof(names[0]) }
 #define X_FLOAT(section, restart, name, def, vmin, vmax) \
 	{ 'f', #section, restart, #name, offsetof(XSettings, name), {.defFloat = def}, {.minFloat = vmin}, {.maxFloat = vmax} }
 #define X_INT(section, restart, name, def, vmin, vmax) \
@@ -82,180 +52,153 @@ const EnumMap rendererMaps[] = {
 #define X_STRING(section, restart, name, def) \
 	{ 's', #section, restart, #name, offsetof(XSettings, name), {.defStr = def} }
 
-struct Config
+// CONFIG
+/////////
+
+const char* Config::GetArray(int index)
 {
-	char        type;
-	const char* section;
-	int         restart;
-	const char* name;
-	ptrdiff_t   offset;
-	union
-	{
-		const char* defStr;
-		int         defInt;
-		float       defFloat;
-		int         defBool;
-	};
-	union
-	{
-		int   minInt;
-		float minFloat;
-	};
-	union
-	{
-		int   maxInt;
-		float maxFloat;
-	};
-	const EnumMap* enumMap;
-	const char*    someInts;
-	void*          ptr;
-	int            size;
+    assert(ptr && index >= 0 && index < minInt);
+    return ((str2k*)ptr)[index];
+}
 
-	const char* GetArray(int index)
-	{
-		assert(ptr && index >= 0 && index < minInt);
-		return ((str2k*)ptr)[index];
-	}
+void Config::SetArray(int index, const char* val)
+{
+    assert(ptr && index < minInt);
+    CHECK_TYPE('a');
+    if (index >= 0)
+        strcpy(((str2k*)ptr)[index], val);
+    else
+    {
+        for (int i = 0; i < minInt; ++i)
+            strcpy(((str2k*)ptr)[i], val);
+    }
+}
 
-	void SetArray(int index, const char* val)
-	{
-		assert(ptr && index < minInt);
-		CHECK_TYPE('a');
-		if (index >= 0)
-			strcpy(((str2k*)ptr)[index], val);
-		else
-		{
-			for (int i = 0; i < minInt; ++i)
-				strcpy(((str2k*)ptr)[i], val);
-		}
-	}
+bool Config::GetBool()
+{
+    assert(ptr);
+    return !!*(int*)ptr;
+}
 
-	bool GetBool()
-	{
-		assert(ptr);
-		return !!*(int*)ptr;
-	}
+void Config::SetBool(bool val)
+{
+    assert(ptr);
+    CHECK_TYPE('b');
+    *(int*)ptr = val;
+}
 
-	void SetBool(bool val)
-	{
-		assert(ptr);
-		CHECK_TYPE('b');
-		*(int*)ptr = val;
-	}
+const char* Config::GetEnum()
+{
+    assert(ptr && names);
+    int val = *(int*)ptr;
+    val     = std::clamp(val, 0, count - 1);
+    return names[val];
+}
 
-	const char* GetEnum()
-	{
-		assert(ptr && enumMap);
-		int val   = *(int*)ptr;
-		int count = 0;
-		for (int i = 0; enumMap[i].text; ++i, ++count) {}
-		val = std::clamp(val, 0, count - 1);
-		return enumMap[val].text;
-	}
+void Config::SetEnum(int val)
+{
+    assert(ptr && names);
+    CHECK_TYPE('e');
+    val        = std::clamp(val, 0, count - 1);
+    *(int*)ptr = val;
+}
 
-	void SetEnum(int val)
-	{
-		assert(ptr && enumMap);
-		CHECK_TYPE('e');
-		int count = 0;
-		for (int i = 0; enumMap[i].text; ++i, ++count) {}
-		val        = std::clamp(val, 0, count - 1);
-		*(int*)ptr = val;
-	}
+void Config::SetEnum(const char* val)
+{
+    assert(ptr && names);
+    CHECK_TYPE('e');
 
-	void SetEnum(const char* val)
-	{
-		assert(ptr && enumMap);
-		CHECK_TYPE('e');
+    for (int i = 0; i < count; ++i)
+    {
+        if (!strcmp(val, names[i]))
+            *(int*)ptr = i;
+    }
+}
 
-		for (int i = 0; enumMap[i].text; ++i)
-		{
-			if (!strcmp(val, enumMap[i].text))
-				*(int*)ptr = i;
-		}
-	}
+float Config::GetFloat()
+{
+    assert(ptr);
+    return *(float*)ptr;
+}
 
-	float GetFloat()
-	{
-		assert(ptr);
-		return *(float*)ptr;
-	}
+void Config::SetFloat(float val)
+{
+    assert(ptr);
+    CHECK_TYPE('f');
+    if (minFloat < maxFloat)
+        val = std::clamp(val, minFloat, maxFloat);
+    *(float*)ptr = val;
+}
 
-	void SetFloat(float val)
-	{
-		assert(ptr);
-		CHECK_TYPE('f');
-		if (minFloat < maxFloat)
-			val = std::clamp(val, minFloat, maxFloat);
-		*(float*)ptr = val;
-	}
+int Config::GetInt()
+{
+    assert(ptr);
+    return *(int*)ptr;
+}
 
-	int GetInt()
-	{
-		assert(ptr);
-		return *(int*)ptr;
-	}
+void Config::SetInt(int val)
+{
+    assert(ptr);
+    CHECK_TYPE('i');
+    if (someInts)
+    {
+        char text[16];
+        sprintf(text, "|%d|", val);
+        if (strstr(someInts, text))
+            *(int*)ptr = val;
+    }
+    else
+    {
+        if (minInt < maxInt)
+            val = std::clamp(val, minInt, maxInt);
+        *(int*)ptr = val;
+    }
+}
 
-	void SetInt(int val)
-	{
-		assert(ptr);
-		CHECK_TYPE('i');
-		if (someInts)
-		{
-			char text[16];
-			sprintf(text, "|%d|", val);
-			if (strstr(someInts, text))
-				*(int*)ptr = val;
-		}
-		else
-		{
-			if (minInt < maxInt)
-				val = std::clamp(val, minInt, maxInt);
-			*(int*)ptr = val;
-		}
-	}
+const char* Config::GetString()
+{
+    assert(ptr);
+    return (const char*)ptr;
+}
 
-	const char* GetString()
-	{
-		assert(ptr);
-		return (const char*)ptr;
-	}
+void Config::SetString(const char* val)
+{
+    assert(ptr);
+    CHECK_TYPE('s');
+    strcpy((char*)ptr, val);
+}
 
-	void SetString(const char* val)
-	{
-		assert(ptr);
-		CHECK_TYPE('s');
-		strcpy((char*)ptr, val);
-	}
+void Config::ResetDefault()
+{
+    switch (type)
+    {
+    case 'a': SetArray(-1, defStr); break;
+    case 'b': SetBool(defInt); break;
+    case 'e': SetEnum(defInt); break;
+    case 'f': SetFloat(defFloat); break;
+    case 'i': SetInt(defInt); break;
+    case 's': SetString(defStr); break;
+    }
+}
 
-	void ResetDefault()
-	{
-		switch (type)
-		{
-		case 'a': SetArray(-1, defStr); break;
-		case 'b': SetBool(defInt); break;
-		case 'e': SetEnum(defInt); break;
-		case 'f': SetFloat(defFloat); break;
-		case 'i': SetInt(defInt); break;
-		case 's': SetString(defStr); break;
-		}
-	}
-};
+// MAPPING
+//////////
 
 static std::vector<Config> configs = {
 	// [cpu]
 
 	// [gpu]
 	X_INT2(gpu, 0, anisotropic, 0, "|0|1|2|4|8|16|"),
-	X_ENUM(gpu, 0, aspect_ratio, ASPECT_RATIO_43, aspectRatioMaps),
+	X_ENUM(gpu, 0, aspect_ratio, ASPECT_RATIO_43, sAspectRatios),
 	X_INT(gpu, 0, dither, 2, 0, 2),
 	X_BOOL(gpu, 0, fbo_nearest, 0),
+    X_ENUM(gpu, 0, frame_limit, FRAME_LIMIT_AUTO, sFrameLimits),
 	X_BOOL(gpu, 0, graph_nearest, 0),
 	X_BOOL(gpu, 0, integer_scaling, 0),
 	X_INT(gpu, 0, line_smooth, 2, 0, 2),
 	X_BOOL(gpu, 0, overlay_nearest, 0),
 	X_INT(gpu, 0, polygon_smooth, 2, 0, 2),
-	X_ENUM(gpu, 1, renderer, RENDERER_OPENGL, rendererMaps),
+	X_ENUM(gpu, 1, renderer, RENDERER_OPENGL, sRenderers),
 	X_INT(gpu, 0, resolution_scale, 1, 1, 10),
 	X_BOOL(gpu, 0, scale_nearest, 0),
 	X_BOOL(gpu, 0, shader_hint, 0),
@@ -270,7 +213,7 @@ static std::vector<Config> configs = {
 	X_ARRAY(input, 0, input_pad, DEFAULT_PAD_MAPPING, 4),
 
 	// [audio]
-	X_BOOL(audio, 0, use_dsp, 0),
+	X_BOOL(audio, 0, use_dsp, 1),
 
 	// [system]
 	X_STRING(system, 1, bootrom_path, ""),
@@ -282,11 +225,14 @@ static std::vector<Config> configs = {
 	X_INT(system, 1, memory, 64, 64, 128),
 
 	// [network]
-	X_ENUM(network, 0, net_backend, NET_BACKEND_USER, backendMaps),
+	X_ENUM(network, 0, net_backend, NET_BACKEND_USER, sNetBackends),
 	X_BOOL(network, 0, net_enabled, 0),
 	X_STRING(network, 0, net_local_addr, "0.0.0.0:9368"),
 	X_STRING(network, 0, net_pcap_iface, ""),
 	X_STRING(network, 0, net_remote_addr, "1.2.3.4:9368"),
+
+    // [advanced]
+    X_INT(advanced, 0, vblank_frequency, 60, 0, 360),
 
 	// [emulator]
 	X_BOOL(emulator, 0, performance_overlay, 0),
@@ -299,6 +245,7 @@ static std::vector<Config> configs = {
 	X_STRING(emulator, 0, window_title, ""),
 
 	// [gui]
+	X_ENUM(gui, 0, font, FONT_ROBOTO_MEDIUM, sFonts),
 	X_INT(gui, 0, guide, 1, 0, 2),
 	X_INT(gui, 0, guide_hold, 2, 0, 2),
 	X_INT(gui, 0, guide_hold_frames, 15, 1, 60),
@@ -318,6 +265,7 @@ static std::vector<Config> configs = {
 	X_STRING(gui, 0, shortcut_reset, "Ctrl+R"),
 	X_STRING(gui, 0, shortcut_screenshot, "Ctrl+S"),
 	X_BOOL(gui, 0, text_button, 1),
+	X_ENUM(gui, 0, theme, THEME_XEMU, sThemes),
 	X_FLOAT(gui, 0, ui_scale, 1.0f, 1.0f, 4.0f),
 
 	// [debug]
@@ -330,9 +278,8 @@ static std::vector<Config> configs = {
 };
 
 static std::map<std::string, Config*> configMap;
-
-static std::string settingsDir;
-static int         failedLoad;
+static std::filesystem::path          settingsDir;
+static int                            failedLoad;
 
 // global variable
 XSettings xsettings;
@@ -340,10 +287,15 @@ XSettings xsettings;
 // API
 //////
 
-Config* configFind(std::string name)
+Config* ConfigFind(std::string name)
 {
 	auto it = configMap.find(name);
-	return (it != configMap.end()) ? it->second : nullptr;
+    if (it == configMap.end())
+    {
+        ui::LogError("ConfigFind: unknown %s", name.c_str());
+        return nullptr;
+    }
+    return it->second;
 }
 
 /**
@@ -392,19 +344,27 @@ int xsettingsFailed()
 
 void* xsettingsFind(const char* name)
 {
-	auto* config = configFind(name);
+	auto* config = ConfigFind(name);
 	return config ? config->ptr : nullptr;
 }
 
 /**
- * Get or set the settings folder
+ * Get the settings folder (C++)
+ */
+std::filesystem::path xsettingsFolder()
+{
+    return settingsDir;
+}
+
+/**
+ * Get + maybe set the settings folder (C)
  * @param newFolder 0 to get
  */
-const char* xsettingsFolder(const char* newFolder)
+const char* xsettingsFolderC(const char* newFolder)
 {
 	if (newFolder)
 		settingsDir = newFolder;
-	return settingsDir.c_str();
+	return settingsDir.string().c_str();
 }
 
 /**
@@ -423,15 +383,14 @@ void xsettingsInit()
 	configs.back().size = sizeof(XSettings) - prev->offset;
 
 	// for (auto& config : configs)
-	// 	std::cerr << "config " << config.offset << ' ' << config.size << ' ' << config.type << ' ' << config.name << '\n';
+	// 	ui::Log("config %d %d %c %d %s", config.offset, config.size, config.type, config.count, config.name);
 
 	// portable mode?
 	bool isPortable = false;
 	{
 		char*                 baseDir = SDL_GetBasePath();
 		std::filesystem::path path(baseDir);
-		path += "xemu.toml";
-		if (std::filesystem::exists(path))
+		if (std::filesystem::exists(path / shurikenToml))
 		{
 			settingsDir = path.string();
 			isPortable  = true;
@@ -442,28 +401,29 @@ void xsettingsInit()
 	// user dir
 	if (!isPortable)
 	{
-		char* baseDir = SDL_GetPrefPath("xemu", "xemu");
+		char* baseDir = SDL_GetPrefPath("shuriken", "shuriken");
 		settingsDir   = baseDir;
 		SDL_free(baseDir);
 	}
 }
 
 /**
- * Load xemu.toml
+ * Load shuriken.toml
  */
 void xsettingsLoad()
 {
 	memset(&xsettings, 0, sizeof(XSettings));
 	xsettingsDefaults(0);
 
+	auto        path = settingsDir / shurikenToml;
 	toml::table doc;
 	try
 	{
-		doc = toml::parse_file(settingsDir + "xemu.toml");
+		doc = toml::parse_file(path.string());
 	}
 	catch (const toml::parse_error& err)
 	{
-		std::cerr << err << '\n';
+        ui::LogError(fmt::format("xsettingsLoad error: {} {}", path.string(), err.description()));
 		failedLoad = 1;
 		return;
 	}
@@ -477,7 +437,7 @@ void xsettingsLoad()
 				for (const auto& [key, value] : node)
 				{
 					value.visit([&key](auto& item) noexcept {
-						auto config = configFind(key);
+						auto config = ConfigFind(key);
 						if (!config)
 							return;
 
@@ -519,7 +479,7 @@ void xsettingsLoad()
 }
 
 /**
- * Save xemu.toml
+ * Save shuriken.toml
  */
 int xsettingsSave()
 {
@@ -559,8 +519,30 @@ int xsettingsSave()
 	if (section.size())
 		doc.insert_or_assign(prev_section, section);
 
-	std::ofstream out(settingsDir + "xemu.toml");
+    auto path = settingsDir / shurikenToml;
+	std::ofstream out(path.string());
 	out << doc << '\n';
 	out.close();
 	return 1;
+}
+
+// C HELPERS
+////////////
+
+void LogC(int color, const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+	ui::AddLogV(color, fmt, args);
+    va_end(args);
+}
+
+void LogCV(int color, const char* fmt, va_list args)
+{
+	ui::AddLogV(color, fmt, args);
+}
+
+void ShutDownC()
+{
+	ui::LoadedGame("");
 }

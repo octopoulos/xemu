@@ -21,6 +21,7 @@
 #include <epoxy/gl.h>
 #include <stdio.h>
 #include <math.h>
+#include "ui.h"
 #include "xemu-shaders.h"
 #include "xsettings.h"
 #include "ui/shader/xemu-logo-frag.h"
@@ -35,7 +36,7 @@ GLuint compile_shader(GLenum type, const char* src)
 	GLuint shader = glCreateShader(type);
 	if (shader == 0)
 	{
-		fprintf(stderr, "ERROR: Failed to create shader\n");
+		ui::LogError("ERROR: Failed to create shader");
 		return 0;
 	}
 	glShaderSource(shader, 1, &src, NULL);
@@ -44,11 +45,11 @@ GLuint compile_shader(GLenum type, const char* src)
 	if (status != GL_TRUE)
 	{
 		glGetShaderInfoLog(shader, sizeof(err_buf), NULL, err_buf);
-		fprintf(stderr, "ERROR: Shader compilation failed!\n\n");
-		fprintf(stderr, "[Shader Info Log]\n");
-		fprintf(stderr, "%s\n", err_buf);
-		fprintf(stderr, "[Shader Source]\n");
-		fprintf(stderr, "%s\n", src);
+		ui::LogError("ERROR: Shader compilation failed!");
+		ui::LogInfo("[Shader Info Log]");
+		ui::Log("%s", err_buf);
+		ui::LogInfo("[Shader Source]");
+		ui::Log("%s", src);
 		return 0;
 	}
 

@@ -58,6 +58,7 @@
 #include "xbox.h"
 
 #include "block/block.h"
+#include "ui/xsettings.h"
 
 #define TYPE_CHIHIRO_MACHINE MACHINE_TYPE_NAME("chihiro")
 
@@ -182,14 +183,11 @@ type_init(chihiro_register_types)
 #define COMMUNICATION_SECTORS 0x10000
 #define SECTOR_SIZE			  512
 
-	static void chihiro_ide_interface_init(const char* rom_file, const char* filesystem_file)
+static void chihiro_ide_interface_init(const char* rom_file, const char* filesystem_file)
 {
 	if (drive_get(IF_IDE, 0, 1))
 	{
-		fprintf(
-			stderr,
-			"chihiro ide interface needs to be attached "
-			"to IDE device 1 but it's already in use.");
+		LogC(LOG_ERROR, "chihiro ide interface needs to be attached to IDE device 1 but it's already in use.");
 		exit(1);
 	}
 
@@ -214,9 +212,8 @@ type_init(chihiro_register_types)
 	int rc, fd = -1;
 
 	if (!rom_file || (*rom_file == '\x00'))
-	{
 		rom_file = "fpr21042_m29w160et.bin";
-	}
+
 	char* rom_filename = qemu_find_file(QEMU_FILE_TYPE_BIOS, rom_file);
 	if (rom_filename)
 	{
@@ -255,9 +252,7 @@ type_init(chihiro_register_types)
     dinfo->unit = 1;
     dinfo->refcount = 1;
 
-    assert(!bdrv_memory_open(dinfo->bdrv, interface_space,
-                             memory_region_size(interface)));
-
+    assert(!bdrv_memory_open(dinfo->bdrv, interface_space, memory_region_size(interface)));
     drive_append(dinfo);
 #else
 	printf("Chihiro IDE not yet implemented (please fix it)\n");
@@ -298,14 +293,12 @@ static void chihiro_machine_options(MachineClass* m)
 static char* machine_get_mediaboard_rom(Object* obj, Error** errp)
 {
 	ChihiroMachineState* ms = CHIHIRO_MACHINE(obj);
-
 	return g_strdup(ms->mediaboard_rom);
 }
 
 static void machine_set_mediaboard_rom(Object* obj, const char* value, Error** errp)
 {
 	ChihiroMachineState* ms = CHIHIRO_MACHINE(obj);
-
 	g_free(ms->mediaboard_rom);
 	ms->mediaboard_rom = g_strdup(value);
 }
@@ -313,14 +306,12 @@ static void machine_set_mediaboard_rom(Object* obj, const char* value, Error** e
 static char* machine_get_mediaboard_filesystem(Object* obj, Error** errp)
 {
 	ChihiroMachineState* ms = CHIHIRO_MACHINE(obj);
-
 	return g_strdup(ms->mediaboard_filesystem);
 }
 
 static void machine_set_mediaboard_filesystem(Object* obj, const char* value, Error** errp)
 {
 	ChihiroMachineState* ms = CHIHIRO_MACHINE(obj);
-
 	g_free(ms->mediaboard_filesystem);
 	ms->mediaboard_filesystem = g_strdup(value);
 }
@@ -330,8 +321,7 @@ static inline void chihiro_machine_initfn(Object* obj)
 	object_property_add_str(obj, "mediaboard-rom", machine_get_mediaboard_rom, machine_set_mediaboard_rom);
 	object_property_set_description(obj, "mediaboard-rom", "Chihiro mediaboard ROM");
 
-	object_property_add_str(
-		obj, "mediaboard-filesystem", machine_get_mediaboard_filesystem, machine_set_mediaboard_filesystem);
+	object_property_add_str(obj, "mediaboard-filesystem", machine_get_mediaboard_filesystem, machine_set_mediaboard_filesystem);
 	object_property_set_description(obj, "mediaboard-filesystem", "Chihiro mediaboard filesystem");
 }
 

@@ -91,7 +91,7 @@ void xemu_open_web_browser(const char* url)
 	char* cmd = g_strdup_printf("xdg-open %s", url);
 	int status = system(cmd);
 	if (status < 0)
-		fprintf(stderr, "Failed to run: %s\n", cmd);
+		ui::LogError("Failed to run: %s", cmd);
 
 	free(cmd);
 }

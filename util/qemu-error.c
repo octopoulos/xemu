@@ -13,6 +13,7 @@
 #include "qemu/osdep.h"
 #include "monitor/monitor.h"
 #include "qemu/error-report.h"
+#include "ui/xsettings.h"
 
 /*
  * @report_type is the type of message: error, warning or
@@ -196,9 +197,6 @@ static void print_loc(void)
     }
 }
 
-// util-extra
-void LogExtra(int color, const char *fmt, va_list args);
-
 /*
  * Print a message to current monitor if we have one, else to stderr.
  * @report_type is the type of message: error, warning or informational.
@@ -219,29 +217,27 @@ static void vreport(report_type type, const char *fmt, va_list ap)
     }
 
     /* Only prepend guest name if -msg guest-name and -name guest=... are set */
-    if (error_with_guestname && error_guest_name && !monitor_cur()) {
+    if (error_with_guestname && error_guest_name && !monitor_cur())
         error_printf("%s ", error_guest_name);
-    }
 
     print_loc();
 
-    int color = 0;
+    int color = LOG_LOG;
     switch (type) {
     case REPORT_TYPE_ERROR:
-        color = 1;
+        color = LOG_ERROR;
         break;
     case REPORT_TYPE_WARNING:
-        color = 3;
+        color = LOG_WARNING;
         error_printf("warning: ");
         break;
     case REPORT_TYPE_INFO:
-        color = 2;
+        color = LOG_INFO;
         error_printf("info: ");
         break;
     }
 
-    LogExtra(color, fmt, ap);
-
+    LogCV(color, fmt, ap);
     error_vprintf(fmt, ap);
     error_printf("\n");
 }

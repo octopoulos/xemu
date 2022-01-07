@@ -2841,7 +2841,7 @@ void qemu_init(int argc, char** argv, char** envp)
 			argv[i] = NULL;
 			if (i < argc - 1 && argv[i + 1])
 			{
-				xsettingsFolder(argv[i + 1]);
+				xsettingsFolderC(argv[i + 1]);
 				argv[i + 1] = NULL;
 			}
 			break;
@@ -2937,7 +2937,7 @@ void qemu_init(int argc, char** argv, char** envp)
 	if (strlen(eeprom_path) == 0)
 	{
 		str2k eeprom_path;
-		sprintf(eeprom_path, "%seeprom.bin", xsettingsFolder(0));
+		sprintf(eeprom_path, "%s/eeprom.bin", xsettingsFolderC(0));
 		if (xbox_eeprom_generate(eeprom_path, XBOX_EEPROM_VERSION_R1))
 		{
 			strcpy(xsettings.eeprom_path, eeprom_path);

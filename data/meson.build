@@ -16,6 +16,5 @@ foreach e : pfiles
   genh += t[1]
 endforeach
 
-libpfile = static_library('pdata', libpfile_targets,
-                          name_suffix: 'fa')
+libpfile = static_library('pdata', libpfile_targets, name_suffix: 'fa')
 common_ss.add(declare_dependency(link_whole: libpfile))

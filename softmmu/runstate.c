@@ -59,6 +59,7 @@
 #include "sysemu/sysemu.h"
 #include "sysemu/tpm.h"
 #include "trace.h"
+#include "ui/xsettings.h"
 
 static NotifierList exit_notifiers =
     NOTIFIER_LIST_INITIALIZER(exit_notifiers);
@@ -618,12 +619,9 @@ void qemu_system_killed(int signal, pid_t pid)
     qemu_notify_event();
 }
 
-// run-extra
-void ShutDownExtra(void);
-
 void qemu_system_shutdown_request(ShutdownCause reason)
 {
-    ShutDownExtra();
+    ShutDownC();
     trace_qemu_system_shutdown_request(reason);
     replay_shutdown_request(reason);
     shutdown_requested = reason;

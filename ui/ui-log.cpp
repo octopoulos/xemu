@@ -1,16 +1,18 @@
 // ui-log.cpp
 // @2022 octopoulos
+//
+// This file is part of Shuriken.
+// Foobar is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+// Shuriken is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+// You should have received a copy of the GNU General Public License along with Shuriken. If not, see <https://www.gnu.org/licenses/>.
 
-#include "ui-log.h"
+#include "ui.h"
 #include "stb_sprintf.h"
 
-extern ImFont* g_fixed_width_font;
+extern ImFont* fixedFont;
 
 namespace ui
 {
-
-static LogWindow logWindow;
-LogWindow&       GetLogWindow() { return logWindow; }
 
 const ImVec4 colorValues[] = {
 	{1.0f,  1.0f, 1.0f, 1.0f}, // text
@@ -19,44 +21,60 @@ const ImVec4 colorValues[] = {
 	{ 1.0f, 0.8f, 0.5f, 1.0f}, // warning
 };
 
-void LogWindow::AddLog(int color, std::string text)
+class LogWindow : public CommonWindow
 {
-	colors.push_back(color);
-	lines.push_back(text);
-}
+public:
+	LogWindow() { isOpen = manualOpen = true; }
 
-void LogWindow::Draw()
-{
-	if (!isOpen)
-		return;
-
-	if (!ImGui::Begin("Log", &isOpen))
+	void AddLog(int color, std::string text)
 	{
-		ImGui::End();
-		return;
+		colors.push_back(color);
+		lines.push_back(text);
 	}
 
-	ImGui::PushFont(g_fixed_width_font);
-	ImGuiListClipper clipper;
-	clipper.Begin(lines.size());
-	while (clipper.Step())
+	void Draw()
 	{
-		for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
+		if (!isOpen)
+			return;
+
+		if (!ImGui::Begin("Log", &isOpen))
 		{
-			if (colors[i]) ImGui::PushStyleColor(ImGuiCol_Text, colorValues[colors[i]]);
-			ImGui::TextUnformatted(lines[i].c_str());
-			if (colors[i]) ImGui::PopStyleColor();
+			ImGui::End();
+			return;
 		}
+
+		ImGui::PushFont(fixedFont);
+		ImGuiListClipper clipper;
+		clipper.Begin(lines.size());
+		while (clipper.Step())
+		{
+			for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
+			{
+				if (colors[i]) ImGui::PushStyleColor(ImGuiCol_Text, colorValues[colors[i]]);
+				ImGui::TextUnformatted(lines[i].c_str());
+				if (colors[i]) ImGui::PopStyleColor();
+			}
+		}
+		clipper.End();
+		ImGui::PopFont();
+
+		// auto scroll
+		if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+			ImGui::SetScrollHereY(1.0f);
+
+		ImGui::End();
 	}
-	clipper.End();
-	ImGui::PopFont();
 
-	// auto scroll
-	if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-		ImGui::SetScrollHereY(1.0f);
+private:
+	std::vector<int>         colors;
+	std::vector<std::string> lines;
+};
 
-	ImGui::End();
-}
+static LogWindow logWindow;
+CommonWindow&    GetLogWindow() { return logWindow; }
+
+// API
+//////
 
 /**
  * Add Log

@@ -31,7 +31,6 @@ xemu_ss.add(files(
   'implot/implot_items.cpp',
 
   'xemu-custom-widgets.cpp',
-  'xemu-data.cpp',
   'xemu-hud.cpp',
   'xemu-input.cpp',
   'xemu-monitor.c',

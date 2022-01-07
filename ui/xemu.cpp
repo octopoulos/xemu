@@ -53,18 +53,16 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb/stb_image_resize.h"
 #include "stb/stb_image_write.h"
+#include "stb_sprintf.h"
 
 #include "data/xemu_64x64.png.h"
-
-#include "ui-controls.h"
-#include "ui-games.h"
-#include "ui-log.h"
-#include "ui-settings.h"
-#include "hw/xbox/nv2a/nv2a.h"
 
 #include <filesystem>
 #include <fstream>
 #include <map>
+
+#include "ui.h"
+#include "hw/xbox/nv2a/nv2a.h"
 
 #ifdef _WIN32
 // Provide hint to prefer high-performance graphics for hybrid systems
@@ -100,7 +98,7 @@ static SDL_Cursor*   guest_sprite;
 static SDL_GLContext m_context;
 static QemuSemaphore display_init_sem;
 
-SDL_Window* m_window        = NULL;
+SDL_Window* m_window        = nullptr;
 int         want_screenshot = 0;
 DecalShader blit;
 
@@ -115,7 +113,7 @@ static SDL2_Console* get_scon_from_window(uint32_t window_id)
 		if (sdl2_console[i].real_window == SDL_GetWindowFromID(window_id))
 			return &sdl2_console[i];
 	}
-	return NULL;
+	return nullptr;
 }
 
 void sdl2_window_resize(SDL2_Console* scon)
@@ -349,7 +347,7 @@ static void handle_keyup(SDL_Event* ev)
 static void handle_textinput(SDL_Event* ev)
 {
 	SDL2_Console* scon = get_scon_from_window(ev->text.windowID);
-	QemuConsole*  con  = scon ? scon->dcl.con : NULL;
+	QemuConsole*  con  = scon ? scon->dcl.con : nullptr;
 
 	if (qemu_console_is_graphic(con))
 		return;
@@ -384,7 +382,7 @@ static void handle_mousemotion(SDL_Event* ev)
 
 static void handle_mousebutton(SDL_Event* ev)
 {
-	uint32_t              buttonstate = SDL_GetMouseState(NULL, NULL);
+	uint32_t              buttonstate = SDL_GetMouseState(nullptr, nullptr);
 	SDL_MouseButtonEvent* bev;
 	SDL2_Console*         scon = get_scon_from_window(ev->button.windowID);
 
@@ -396,7 +394,7 @@ static void handle_mousebutton(SDL_Event* ev)
 	{
 		if (ev->type == SDL_MOUSEBUTTONUP && bev->button == SDL_BUTTON_LEFT)
 		{
-			/* start grabbing all events */
+			// start grabbing all events
 			sdl_grab_start(scon);
 		}
 	}
@@ -419,12 +417,9 @@ static void handle_mousewheel(SDL_Event* ev)
 	if (!scon || !qemu_console_is_graphic(scon->dcl.con))
 		return;
 
-	if (wev->y > 0)
-		btn = INPUT_BUTTON_WHEEL_UP;
-	else if (wev->y < 0)
-		btn = INPUT_BUTTON_WHEEL_DOWN;
-	else
-		return;
+	if (wev->y > 0) btn = INPUT_BUTTON_WHEEL_UP;
+	else if (wev->y < 0) btn = INPUT_BUTTON_WHEEL_DOWN;
+	else return;
 
 	qemu_input_queue_btn(scon->dcl.con, btn, true);
 	qemu_input_event_sync();
@@ -449,7 +444,6 @@ static void handle_windowevent(SDL_Event* ev)
 		info.width  = ev->window.data1;
 		info.height = ev->window.data2;
 		dpy_set_ui_info(scon->dcl.con, &info);
-
 		sdl2_redraw(scon);
 		break;
 	}
@@ -473,10 +467,8 @@ static void handle_windowevent(SDL_Event* ev)
 		if (gui_grab && !gui_fullscreen)
 			sdl_grab_end(scon);
 		break;
-	case SDL_WINDOWEVENT_RESTORED:
-		break;
-	case SDL_WINDOWEVENT_MINIMIZED:
-		break;
+	case SDL_WINDOWEVENT_RESTORED: break;
+	case SDL_WINDOWEVENT_MINIMIZED: break;
 	case SDL_WINDOWEVENT_CLOSE:
 		if (qemu_console_is_graphic(scon->dcl.con))
 		{
@@ -494,12 +486,8 @@ static void handle_windowevent(SDL_Event* ev)
 			scon->hidden = true;
 		}
 		break;
-	case SDL_WINDOWEVENT_SHOWN:
-		scon->hidden = false;
-		break;
-	case SDL_WINDOWEVENT_HIDDEN:
-		scon->hidden = true;
-		break;
+	case SDL_WINDOWEVENT_SHOWN: scon->hidden = false; break;
+	case SDL_WINDOWEVENT_HIDDEN: scon->hidden = true; break;
 	}
 }
 
@@ -677,7 +665,7 @@ static void sdl2_display_very_early_init(DisplayOptions* o)
 
 	if (SDL_Init(SDL_INIT_VIDEO))
 	{
-		fprintf(stderr, "Failed to initialize SDL video subsystem: %s\n", SDL_GetError());
+		ui::LogError("Failed to initialize SDL video subsystem: %s", SDL_GetError());
 		exit(1);
 	}
 
@@ -710,22 +698,21 @@ static void sdl2_display_very_early_init(DisplayOptions* o)
 		m_window = SDL_CreateWindow("Xemu", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, winWidth, winHeight, flags);
 		if (!m_window)
 		{
-			fprintf(stderr, "Failed to create main window\n");
+			ui::LogError("Failed to create main window");
 			SDL_Quit();
 			exit(1);
 		}
 	}
 
 	m_context = SDL_GL_CreateContext(m_window);
-
-	if (m_context != NULL && epoxy_gl_version() < 40)
+	if (m_context && epoxy_gl_version() < 40)
 	{
-		SDL_GL_MakeCurrent(NULL, NULL);
+		SDL_GL_MakeCurrent(nullptr, nullptr);
 		SDL_GL_DeleteContext(m_context);
-		m_context = NULL;
+		m_context = nullptr;
 	}
 
-	if (m_context == NULL)
+	if (!m_context)
 	{
 		SDL_ShowSimpleMessageBox(
 		    SDL_MESSAGEBOX_ERROR, "Unable to create OpenGL context",
@@ -758,7 +745,7 @@ static void sdl2_display_very_early_init(DisplayOptions* o)
 
 	// Initialize offscreen rendering context now
 	nv2a_gl_context_init();
-	SDL_GL_MakeCurrent(NULL, NULL);
+	SDL_GL_MakeCurrent(nullptr, nullptr);
 
 	// FIXME: atexit(sdl_cleanup);
 }
@@ -787,7 +774,6 @@ static void sdl2_display_init(DisplayState* ds, DisplayOptions* o)
 	memset(&info, 0, sizeof(info));
 	SDL_VERSION(&info.version);
 
-	ui::Log("sdl2_display_init gui_fullscreen=%d %d %d %d", gui_fullscreen, o->has_full_screen, o->full_screen, xsettings.start_fullscreen);
 	gui_fullscreen = (o->has_full_screen && o->full_screen) || xsettings.start_fullscreen;
 
 #if 1
@@ -810,7 +796,7 @@ static void sdl2_display_init(DisplayState* ds, DisplayOptions* o)
 	for (i = 0; i < sdl2_num_outputs; i++)
 	{
 		QemuConsole* con = qemu_console_lookup_by_index(i);
-		assert(con != NULL);
+		assert(con != nullptr);
 		if (!qemu_console_is_graphic(con) && qemu_console_get_index(con) != 0)
 			sdl2_console[i].hidden = true;
 
@@ -845,7 +831,7 @@ static void sdl2_display_init(DisplayState* ds, DisplayOptions* o)
 	sdl_cursor_normal = SDL_GetCursor();
 
 	/* Tell main thread to go ahead and create the app and enter the run loop */
-	SDL_GL_MakeCurrent(NULL, NULL);
+	SDL_GL_MakeCurrent(nullptr, nullptr);
 	qemu_sem_post(&display_init_sem);
 }
 
@@ -949,14 +935,12 @@ void SaveScreenshot(int texId, int width, int height)
 
 	glGetTextureImage(texId, 0, GL_RGB, GL_UNSIGNED_BYTE, width * height * 3, buffer.data());
 
-	std::filesystem::path basePath = xsettingsFolder(nullptr);
-
 	for (int i = 1; i <= 2; ++i)
 	{
 		if (!(want_screenshot & i))
 			continue;
 
-		auto folder = basePath / ((i & 2) ? "icons" : "screenshots");
+		auto folder = xsettingsFolder() / ((i & 2) ? "icons" : "screenshots");
 		if (!std::filesystem::is_directory(folder))
 			std::filesystem::create_directory(folder);
 
@@ -980,7 +964,7 @@ void SaveScreenshot(int texId, int width, int height)
 
 static float fps = 1.0f;
 
-static void update_fps()
+static void UpdateFps()
 {
 	static int64_t last_update = 0;
 	const float    r           = 0.1f;
@@ -1035,6 +1019,53 @@ static void sleep_ns(int64_t ns)
 #endif
 }
 
+void WaitForVSync()
+{
+	// TODO: when going to sub 60Hz, we should just pause the emulator a bit, so the GUI can run at full speed ...
+	if (xsettings.vblank_frequency < 1)
+		return;
+
+	// throttle to make sure swaps happen at 60Hz
+	static int64_t last_update = 0;
+	int64_t        deadline    = last_update + 1e9 / xsettings.vblank_frequency;
+
+	int64_t sleep_acc = 0;
+	int64_t spin_acc  = 0;
+
+#ifndef _WIN32
+	const int64_t sleep_threshold = 2000000;
+#else
+	const int64_t sleep_threshold = 250000;
+#endif
+
+	while (true)
+	{
+		int64_t now            = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+		int64_t time_remaining = deadline - now;
+		if (now < deadline)
+		{
+			if (time_remaining > sleep_threshold)
+			{
+				// try to sleep until the until reaching the sleep threshold.
+				sleep_ns(time_remaining - sleep_threshold);
+				sleep_acc += qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - now;
+			}
+			else
+			{
+				// Simply spin to avoid extra delays incurred with swapping to another process
+				// and back in the event of being within threshold to desired event.
+				++spin_acc;
+			}
+		}
+		else
+		{
+			DPRINTF("zzZz %g %ld\n", (double)sleep_acc / 1000000.0, spin_acc);
+			last_update = now;
+			break;
+		}
+	}
+}
+
 void sdl2_gl_refresh(DisplayChangeListener* dcl)
 {
 	SDL2_Console* scon = container_of(dcl, SDL2_Console, dcl);
@@ -1042,7 +1073,7 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 	bool flip_required = false;
 
 	SDL_GL_MakeCurrent(scon->real_window, scon->winctx);
-	update_fps();
+	UpdateFps();
 
 	/* XXX: Note that this bypasses the usual VGA path in order to quickly
 	 * get the surface. This is simple and fast, at the cost of accuracy.
@@ -1063,11 +1094,8 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 		flip_required = true;
 	}
 
-	/* FIXME: Finer locking. Event handlers in segments of the code expect
-	 * to be running on the main thread with the BQL. For now, acquire the
-	 * lock and perform rendering, but release before swap to avoid
-	 * possible lengthy blocking (for vsync).
-	 */
+	// FIXME: Finer locking. Event handlers in segments of the code expect to be running on the main thread with the BQL.
+	// For now, acquire the lock and perform rendering, but release before swap to avoid possible lengthy blocking (for vsync).
 	qemu_mutex_lock_main_loop();
 	qemu_mutex_lock_iothread();
 	sdl2_poll_events(scon);
@@ -1105,9 +1133,9 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 	// update title
 	{
 		static int         frame = 0;
-		static str2k       title;
+		static str256      title;
 		static std::string uid;
-		sprintf(title, "FPS: %.2f | %s | %d x %d | %s | %s", fps, sRenderers[xsettings.renderer], tw, th, xemu_version, gameInfo.buffer);
+		stbsp_sprintf(title, "FPS: %.2f | %s | %d x %d | %s | %s", fps, sRenderers[xsettings.renderer], tw, th, xemu_version, gameInfo.buffer);
 		SDL_SetWindowTitle(m_window, title);
 
 		// new game
@@ -1143,7 +1171,7 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 
 	glClearColor(0, 0, 0, 0);
 	glClear(GL_COLOR_BUFFER_BIT);
-	glDrawElements(GL_TRIANGLE_FAN, 4, GL_UNSIGNED_INT, NULL);
+	glDrawElements(GL_TRIANGLE_FAN, 4, GL_UNSIGNED_INT, nullptr);
 
 	if (!want_screenshot)
 		xemu_hud_render();
@@ -1155,7 +1183,7 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 	glFinish();
 	SDL_GL_SwapWindow(scon->real_window);
 
-	/* VGA update (see note above) + vblank */
+	// VGA update (see note above) + vblank
 	qemu_mutex_lock_main_loop();
 	qemu_mutex_lock_iothread();
 	graphic_hw_update(scon->dcl.con);
@@ -1165,48 +1193,7 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 	qemu_mutex_unlock_iothread();
 	qemu_mutex_unlock_main_loop();
 
-	/*
-	 * Throttle to make sure swaps happen at 60Hz
-	 */
-	static int64_t last_update = 0;
-	int64_t        deadline    = last_update + 16666666;
-
-	int64_t sleep_acc = 0;
-	int64_t spin_acc  = 0;
-
-#ifndef _WIN32
-	const int64_t sleep_threshold = 2000000;
-#else
-	const int64_t sleep_threshold = 250000;
-#endif
-
-	while (1)
-	{
-		int64_t now            = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
-		int64_t time_remaining = deadline - now;
-		if (now < deadline)
-		{
-			if (time_remaining > sleep_threshold)
-			{
-				// Try to sleep until the until reaching the sleep threshold.
-				sleep_ns(time_remaining - sleep_threshold);
-				sleep_acc += qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - now;
-			}
-			else
-			{
-				// Simply spin to avoid extra delays incurred with swapping to
-				// another process and back in the event of being within
-				// threshold to desired event.
-				spin_acc++;
-			}
-		}
-		else
-		{
-			DPRINTF("zzZz %g %ld\n", (double)sleep_acc / 1000000.0, spin_acc);
-			last_update = now;
-			break;
-		}
-	}
+	WaitForVSync();
 }
 
 void sdl2_gl_redraw(SDL2_Console* scon)
@@ -1330,15 +1317,13 @@ static void* call_qemu_main(void* opaque)
 {
 	int status;
 	DPRINTF("Second thread: calling qemu_main()\n");
-	status = qemu_main(gArgc, gArgv, NULL);
+	status = qemu_main(gArgc, gArgv, nullptr);
 	DPRINTF("Second thread: qemu_main() returned, exiting\n");
 	exit(status);
 }
 
 int main(int argc, char** argv)
 {
-	QemuThread thread;
-
 #ifdef _WIN32
 	if (AttachConsole(ATTACH_PARENT_PROCESS))
 	{
@@ -1350,19 +1335,20 @@ int main(int argc, char** argv)
 	else
 	{
 		// Launched without a console. Redirect stdout and stderr to a log file.
-		HANDLE logfile = CreateFileA("xemu.log", GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		const char* logFile = "shuriken.log";
+		HANDLE logfile = CreateFileA(logFile, GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
 		if (logfile != INVALID_HANDLE_VALUE)
 		{
-			freopen("xemu.log", "a", stdout);
-			freopen("xemu.log", "a", stderr);
+			freopen(logFile, "a", stdout);
+			freopen(logFile, "a", stderr);
 		}
 	}
 #endif
 
-	fprintf(stderr, "xemu_version: %s\n", xemu_version);
-	fprintf(stderr, "xemu_branch: %s\n", xemu_branch);
-	fprintf(stderr, "xemu_commit: %s\n", xemu_commit);
-	fprintf(stderr, "xemu_date: %s\n", xemu_date);
+	ui::Log("shuriken_version: %s", xemu_version);
+	ui::Log("shuriken_branch: %s", xemu_branch);
+	ui::Log("shuriken_commit: %s", xemu_commit);
+	ui::Log("shuriken_date: %s", xemu_date);
 
 	DPRINTF("Entered main()\n");
 	gArgc = argc;
@@ -1372,10 +1358,12 @@ int main(int argc, char** argv)
 	xsettingsLoad();
 	ui::LoadingGame(xsettings.dvd_path);
 
-	sdl2_display_very_early_init(NULL);
+	sdl2_display_very_early_init(nullptr);
 
 	qemu_sem_init(&display_init_sem, 0);
-	qemu_thread_create(&thread, "qemu_main", call_qemu_main, NULL, QEMU_THREAD_DETACHED);
+
+	QemuThread thread;
+	qemu_thread_create(&thread, "qemu_main", call_qemu_main, nullptr, QEMU_THREAD_DETACHED);
 
 	DPRINTF("Main thread: waiting for display_init_sem\n");
 	qemu_sem_wait(&display_init_sem);
@@ -1387,10 +1375,7 @@ int main(int argc, char** argv)
 		set_full_screen(&sdl2_console[0], gui_fullscreen);
 	}
 
-	/*
-	 * FIXME: May want to create a callback mechanism for main QEMU thread
-	 * to just run functions to avoid TLS bugs and locking issues.
-	 */
+	// FIXME: May want to create a callback mechanism for main QEMU thread to just run functions to avoid TLS bugs and locking issues.
 	tcg_register_init_ctx();
 	// rcu_register_thread();
 	qemu_set_current_aio_context(qemu_get_aio_context());

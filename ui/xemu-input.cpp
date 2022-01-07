@@ -28,20 +28,15 @@
 #include "qemu/timer.h"
 #include "qemu/config-file.h"
 
-#include "ui-log.h"
+#include "ui.h"
 #include "xemu-input.h"
 #include "xemu-notifications.h"
-#include "xsettings.h"
 
 #define DEBUG_INPUT
-
 #ifdef DEBUG_INPUT
-#	define DPRINTF(fmt, ...) ui::Log(fmt, ##__VA_ARGS__)
+#	define DPRINTF(...) ui::Log(__VA_ARGS__)
 #else
-#	define DPRINTF(fmt, ...) \
-		do {                  \
-		}                     \
-		while (0)
+#	define DPRINTF(...)
 #endif
 
 #define XEMU_INPUT_MIN_INPUT_UPDATE_INTERVAL_US  2500
@@ -71,13 +66,13 @@ void xemu_input_init(void)
 
 	if (SDL_Init(SDL_INIT_GAMECONTROLLER) < 0)
 	{
-		fprintf(stderr, "Failed to initialize SDL gamecontroller subsystem: %s\n", SDL_GetError());
+		ui::LogError("Failed to initialize SDL gamecontroller subsystem: %s", SDL_GetError());
 		exit(1);
 	}
 
 	if (SDL_Init(SDL_INIT_HAPTIC) < 0)
 	{
-		fprintf(stderr, "Failed to initialize SDL haptic subsystem: %s\n", SDL_GetError());
+		ui::LogError("Failed to initialize SDL haptic subsystem: %s", SDL_GetError());
 		exit(1);
 	}
 

@@ -12,7 +12,6 @@ specific_ss.add(when: 'CONFIG_SOFTMMU', if_true: [files(
   'physmem.c',
   'qtest.c',
   'rtc.c',
-  'run-extra.cpp',
   'runstate-action.c',
   'runstate.c',
   'vl.c',

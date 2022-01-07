@@ -24,7 +24,6 @@
 
 #include <SDL.h>
 
-// Implemented in xemu_hud.cpp
 void xemu_hud_init(SDL_Window* window, void* sdl_gl_context);
 void xemu_hud_cleanup();
 void xemu_hud_render();

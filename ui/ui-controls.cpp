@@ -1,13 +1,15 @@
 // ui-controls.cpp: Controls + Main menu + Xbox functions
 // @2022 octopoulos
+//
+// This file is part of Shuriken.
+// Foobar is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+// Shuriken is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+// You should have received a copy of the GNU General Public License along with Shuriken. If not, see <https://www.gnu.org/licenses/>.
 
-#include "ui-controls.h"
-#include "ui-file.h"
-#include "ui-games.h"
-#include "ui-log.h"
-#include "ui-settings.h"
+#include "ui.h"
 
 #include "implot/implot.h"
+#include "imgui_extra/imgui_memory_editor.h"
 
 extern "C" {
 #include "qemui/noc_file_dialog.h"
@@ -27,9 +29,10 @@ extern "C" {
 
 #include "qapi/qapi-commands-block.h"
 
-extern ImFont* g_fixed_width_font;
-extern int     g_user_asked_for_intercept;
-extern int     want_screenshot;
+extern ImFont*  fixedFont;
+extern int      g_user_asked_for_intercept;
+extern int      want_screenshot;
+extern uint64_t memoryData[4];
 
 exiso::GameInfo gameInfo;
 
@@ -39,9 +42,6 @@ void xemu_toggle_fullscreen();
 
 namespace ui
 {
-
-static ControlsWindow controlsWindow;
-ControlsWindow&       GetControlsWindow() { return controlsWindow; }
 
 // FUNCTIONS
 ////////////
@@ -168,8 +168,8 @@ void TogglePause(int status)
 	}
 }
 
-// CONTROLS
-///////////
+// CLASS
+////////
 
 static std::vector<std::string> buttonNames = {
 	"Config",
@@ -198,67 +198,78 @@ static bool SetAlpha(float alpha)
 	return true;
 }
 
-void ControlsWindow::Draw()
+class ControlsWindow : public CommonWindow
 {
-	if (!isOpen)
-		return;
+public:
+	ControlsWindow() { isOpen = manualOpen = true; }
 
-	if (!drawn)
+	void Draw()
 	{
-		const ImGuiViewport* viewport = ImGui::GetMainViewport();
-		auto&                size     = viewport->WorkSize;
-		ImGui::SetNextWindowPos(ImVec2(0, 0));
-		ImGui::SetNextWindowSize(ImVec2(size.x, 64.0f));
+		if (!isOpen)
+			return;
 
-		LoadTextures("buttons", buttonNames);
-		++drawn;
-	}
+		if (!drawn)
+		{
+			const ImGuiViewport* viewport = ImGui::GetMainViewport();
+			auto&                size     = viewport->WorkSize;
+			ImGui::SetNextWindowPos(ImVec2(0, 0));
+			ImGui::SetNextWindowSize(ImVec2(size.x, 64.0f));
 
-	if (!SetAlpha(alpha))
-		return;
+			LoadTextures("buttons", buttonNames);
+			++drawn;
+		}
 
-	if (!ImGui::Begin("Controls", &isOpen, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDecoration))
-	{
+		if (!SetAlpha(alpha))
+			return;
+
+		if (!ImGui::Begin("Controls", &isOpen, ImGuiWindowFlags_NoBackground * 0 | ImGuiWindowFlags_NoDecoration))
+		{
+			ImGui::End();
+			return;
+		}
+
+		ImGui::PushFont(fixedFont);
+		if (RowButton("Open")) LoadDisc();
+		if (RowButton("Refresh")) ScanGamesFolder();
+		if (RowButton("FullScr")) xemu_toggle_fullscreen();
+		if (RowButton("Stop")) EjectDisc();
+		if (RowButton(IsRunning() ? "Pause" : "Start")) TogglePause();
+		if (RowButton("Config")) OpenConfig(1);
+		if (RowButton("Pads")) OpenConfig(3);
+		if (RowButton("List")) SetGamesGrid(false);
+		if (RowButton("Grid")) SetGamesGrid(true);
+		ImGui::PopFont();
+
+		if (GetGamesWindow().isOpen)
+		{
+			ImGui::PushItemWidth(200);
+			float offset = (64.0f - ImGui::CalcTextSize("Scale").y) / 2;
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offset);
+			AddSliderInt("row_height", "Scale");
+			ImGui::PopItemWidth();
+			// ImGui::SameLine();
+			// ImGui::InputText("Search", search, sizeof(str2k));
+		}
+
+		// saved
 		ImGui::End();
-		return;
+		ImGui::PopStyleColor();
 	}
+};
 
-	ImGui::PushFont(g_fixed_width_font);
-	if (RowButton("Open")) LoadDisc();
-	if (RowButton("Refresh")) ScanGamesFolder();
-	if (RowButton("FullScr")) xemu_toggle_fullscreen();
-	if (RowButton("Stop")) EjectDisc();
-	if (RowButton(IsRunning() ? "Pause" : "Start")) TogglePause();
-	if (RowButton("Config")) OpenConfig(1);
-	if (RowButton("Pads")) OpenConfig(10);
-	if (RowButton("List")) GetGamesWindow().SetGrid(false);
-	if (RowButton("Grid")) GetGamesWindow().SetGrid(true);
-	ImGui::PopFont();
-
-	if (GetGamesWindow().isOpen)
-	{
-		ImGui::PushItemWidth(200);
-		float offset = (64.0f - ImGui::CalcTextSize("Scale").y) / 2;
-		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offset);
-		ImGui::SliderInt("Scale", &xsettings.row_height, 24, 176);
-		ImGui::PopItemWidth();
-		// ImGui::SameLine();
-		// ImGui::InputText("Search", search, sizeof(str2k));
-	}
-
-	// saved
-	ImGui::End();
-	ImGui::PopStyleColor();
-}
+static ControlsWindow controlsWindow;
+CommonWindow&         GetControlsWindow() { return controlsWindow; }
 
 // MAIN MENU
 ////////////
 
-static bool showImGuiDemo  = false;
-static bool showImPlotDemo = false;
+static MemoryEditor memoryEditor;
+static bool         showImGuiDemo    = false;
+static bool         showImPlotDemo   = false;
+static bool         showMemoryEditor = false;
 
 static float menuHeight = 0.0f;
-float        GetMenuHeight() { return menuHeight; }
+float GetMenuHeight() { return menuHeight; }
 
 void ShowMainMenu(float alpha)
 {
@@ -351,9 +362,10 @@ void ShowMainMenu(float alpha)
 
 		if (ImGui::BeginMenu("Utilities"))
 		{
+			ImGui::MenuItem("Memory Editor", nullptr, &showMemoryEditor);
 			// ImGui::MenuItem("Monitor", xsettings.shortcut_monitor, &monitor_window.isOpen);
-			// ImGui::MenuItem("Audio", nullptr, &apu_window.isOpen);
-			// ImGui::MenuItem("Video", nullptr, &video_window.isOpen);
+			ImGui::MenuItem("Audio", nullptr, &GetAudioWindow().isOpen);
+			ImGui::MenuItem("Video", nullptr, &GetVideoWindow().isOpen);
 
 			ImGui::Separator();
 			if (ImGui::MenuItem("Extract ISO")) exiso::DecodeXiso(FileOpenISO(""));
@@ -403,6 +415,12 @@ void Draw()
 
 	if (showImGuiDemo) ImGui::ShowDemoWindow(&showImGuiDemo);
 	if (showImPlotDemo) ImPlot::ShowDemoWindow(&showImPlotDemo);
+	if (showMemoryEditor)
+	{
+		ImGui::PushFont(fixedFont);
+		memoryEditor.DrawWindow("Memory Editor", (uint8_t*)memoryData[0], memoryData[2]);
+		ImGui::PopFont();
+	}
 }
 
 /**
@@ -417,7 +435,6 @@ void HomeGuide(bool hold)
 		return;
 
 	// if holding and we already paused with the guide => don't unpause again ... except if the pause was in game 1 frame (no windows changes)
-	bool prevRunning = IsRunning();
 	if (!hold || !xsettings.guide || (!lastChange && IsRunning()))
 		TogglePause();
 
@@ -432,11 +449,14 @@ void HomeGuide(bool hold)
 bool ShowWindows(int show)
 {
 	bool changed = 0;
-	changed |= controlsWindow.Show(show);
-	changed |= GetFileWindow().Show(show);
-	changed |= GetGamesWindow().Show(show);
-	changed |= GetLogWindow().Show(show);
-	changed |= GetSettingsWindow().Show(show);
+	changed |= controlsWindow.Show(show, true);
+	changed |= GetAudioWindow().Show(show, true);
+	changed |= GetFileWindow().Show(show, true);
+	changed |= GetGamesWindow().Show(show, true);
+	changed |= GetLogWindow().Show(show, true);
+	changed |= GetMonitorWindow().Show(show, true);
+	changed |= GetSettingsWindow().Show(show, true);
+	changed |= GetVideoWindow().Show(show, true);
 	return changed;
 }
 

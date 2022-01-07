@@ -26,6 +26,7 @@
 #include "net/net.h"
 #include "qemu/iov.h"
 #include "migration/vmstate.h"
+#include "ui/xsettings.h"
 
 #define IOPORT_SIZE 0x8
 #define MMIO_SIZE	0x400
@@ -862,7 +863,7 @@ static void nvnet_realize(PCIDevice* pci_dev, Error** errp)
 		s->packet_dump_file = fopen(s->packet_dump_path, "wb");
 		if (!s->packet_dump_file)
 		{
-			fprintf(stderr, "Failed to open %s for writing!\n", s->packet_dump_path);
+			LogC(LOG_ERROR, "Failed to open %s for writing!", s->packet_dump_path);
 			exit(1);
 		}
 	}

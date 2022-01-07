@@ -60,7 +60,6 @@
 	case (v) + (step)*3
 
 // #define DEBUG_MCPX
-
 #ifdef DEBUG_MCPX
 #	define DPRINTF(fmt, ...) fprintf(stderr, fmt, ##__VA_ARGS__)
 #else
@@ -176,13 +175,10 @@ static bool is_voice_locked(MCPXAPUState* d, uint16_t v);
 static void fe_method(MCPXAPUState* d, uint32_t method, uint32_t argument);
 static uint64_t vp_read(void* opaque, hwaddr addr, unsigned int size);
 static void vp_write(void* opaque, hwaddr addr, uint64_t val, unsigned int size);
-static void scatter_gather_rw(
-	MCPXAPUState* d, hwaddr sge_base, unsigned int max_sge, uint8_t* ptr, uint32_t addr, size_t len, bool dir);
+static void scatter_gather_rw(MCPXAPUState* d, hwaddr sge_base, unsigned int max_sge, uint8_t* ptr, uint32_t addr, size_t len, bool dir);
 static void gp_scratch_rw(void* opaque, uint8_t* ptr, uint32_t addr, size_t len, bool dir);
 static void ep_scratch_rw(void* opaque, uint8_t* ptr, uint32_t addr, size_t len, bool dir);
-static uint32_t circular_scatter_gather_rw(
-	MCPXAPUState* d, hwaddr sge_base, unsigned int max_sge, uint8_t* ptr, uint32_t base, uint32_t end, uint32_t cur,
-	size_t len, bool dir);
+static uint32_t circular_scatter_gather_rw(MCPXAPUState* d, hwaddr sge_base, unsigned int max_sge, uint8_t* ptr, uint32_t base, uint32_t end, uint32_t cur, size_t len, bool dir);
 static void gp_fifo_rw(void* opaque, uint8_t* ptr, unsigned int index, size_t len, bool dir);
 static bool ep_sink_samples(MCPXAPUState* d, uint8_t* ptr, size_t len);
 static void ep_fifo_rw(void* opaque, uint8_t* ptr, unsigned int index, size_t len, bool dir);
@@ -191,9 +187,7 @@ static uint64_t gp_read(void* opaque, hwaddr addr, unsigned int size);
 static void gp_write(void* opaque, hwaddr addr, uint64_t val, unsigned int size);
 static uint64_t ep_read(void* opaque, hwaddr addr, unsigned int size);
 static void ep_write(void* opaque, hwaddr addr, uint64_t val, unsigned int size);
-static float voice_step_envelope(
-	MCPXAPUState* d, uint16_t v, uint32_t reg_0, uint32_t reg_a, uint32_t rr_reg, uint32_t rr_mask, uint32_t lvl_reg,
-	uint32_t lvl_mask, uint32_t count_mask, uint32_t cur_mask);
+static float voice_step_envelope(MCPXAPUState* d, uint16_t v, uint32_t reg_0, uint32_t reg_a, uint32_t rr_reg, uint32_t rr_mask, uint32_t lvl_reg, uint32_t lvl_mask, uint32_t count_mask, uint32_t cur_mask);
 static hwaddr get_data_ptr(hwaddr sge_base, unsigned int max_sge, uint32_t addr);
 static void set_notify_status(MCPXAPUState* d, uint32_t v, int notifier, int status);
 static long voice_resample_callback(void* cb_data, float** data);
@@ -314,19 +308,16 @@ static void update_irq(MCPXAPUState* d)
 	if (d->regs[NV_PAPU_FECTL] & NV_PAPU_FECTL_FEMETHMODE_TRAPPED)
 		qatomic_or(&d->regs[NV_PAPU_ISTS], NV_PAPU_ISTS_FETINTSTS);
 
-	if ((d->regs[NV_PAPU_IEN] & NV_PAPU_ISTS_GINTSTS)
-		&& ((d->regs[NV_PAPU_ISTS] & ~NV_PAPU_ISTS_GINTSTS) & d->regs[NV_PAPU_IEN]))
+	if ((d->regs[NV_PAPU_IEN] & NV_PAPU_ISTS_GINTSTS) && ((d->regs[NV_PAPU_ISTS] & ~NV_PAPU_ISTS_GINTSTS) & d->regs[NV_PAPU_IEN]))
 	{
 		qatomic_or(&d->regs[NV_PAPU_ISTS], NV_PAPU_ISTS_GINTSTS);
-		// fprintf(stderr, "mcpx irq raise ien=%08x ists=%08x\n",
-		//         d->regs[NV_PAPU_IEN], d->regs[NV_PAPU_ISTS]);
+		// fprintf(stderr, "mcpx irq raise ien=%08x ists=%08x\n", d->regs[NV_PAPU_IEN], d->regs[NV_PAPU_ISTS]);
 		pci_irq_assert(&d->dev);
 	}
 	else
 	{
 		qatomic_and(&d->regs[NV_PAPU_ISTS], ~NV_PAPU_ISTS_GINTSTS);
-		// fprintf(stderr, "mcpx irq lower ien=%08x ists=%08x\n",
-		//         d->regs[NV_PAPU_IEN], d->regs[NV_PAPU_ISTS]);
+		// fprintf(stderr, "mcpx irq lower ien=%08x ists=%08x\n", d->regs[NV_PAPU_IEN], d->regs[NV_PAPU_ISTS]);
 		pci_irq_deassert(&d->dev);
 	}
 }
@@ -348,7 +339,6 @@ static uint64_t mcpx_apu_read(void* opaque, hwaddr addr, unsigned int size)
 	}
 
 	DPRINTF("mcpx apu: read [0x%" HWADDR_PRIx "] (%s) -> 0x%lx\n", addr, get_reg_str(addr), r);
-
 	return r;
 }
 
@@ -459,9 +449,7 @@ static void fe_method(MCPXAPUState* d, uint32_t method, uint32_t argument)
 		{
 			/* voice is added to the top of the selected list */
 			unsigned int top_reg = voice_list_regs[list - 1].top;
-			voice_set_mask(
-				d, selected_handle, NV_PAVS_VOICE_TAR_PITCH_LINK, NV_PAVS_VOICE_TAR_PITCH_LINK_NEXT_VOICE_HANDLE,
-				d->regs[top_reg]);
+			voice_set_mask(d, selected_handle, NV_PAVS_VOICE_TAR_PITCH_LINK, NV_PAVS_VOICE_TAR_PITCH_LINK_NEXT_VOICE_HANDLE, d->regs[top_reg]);
 			d->regs[top_reg] = selected_handle;
 		}
 		else
@@ -470,14 +458,9 @@ static void fe_method(MCPXAPUState* d, uint32_t method, uint32_t argument)
 			/* voice is added after the antecedent voice */
 			assert(antecedent_voice != 0xFFFF);
 
-			uint32_t next_handle = voice_get_mask(
-				d, antecedent_voice, NV_PAVS_VOICE_TAR_PITCH_LINK, NV_PAVS_VOICE_TAR_PITCH_LINK_NEXT_VOICE_HANDLE);
-			voice_set_mask(
-				d, selected_handle, NV_PAVS_VOICE_TAR_PITCH_LINK, NV_PAVS_VOICE_TAR_PITCH_LINK_NEXT_VOICE_HANDLE,
-				next_handle);
-			voice_set_mask(
-				d, antecedent_voice, NV_PAVS_VOICE_TAR_PITCH_LINK, NV_PAVS_VOICE_TAR_PITCH_LINK_NEXT_VOICE_HANDLE,
-				selected_handle);
+			uint32_t next_handle = voice_get_mask(d, antecedent_voice, NV_PAVS_VOICE_TAR_PITCH_LINK, NV_PAVS_VOICE_TAR_PITCH_LINK_NEXT_VOICE_HANDLE);
+			voice_set_mask(d, selected_handle, NV_PAVS_VOICE_TAR_PITCH_LINK, NV_PAVS_VOICE_TAR_PITCH_LINK_NEXT_VOICE_HANDLE, next_handle);
+			voice_set_mask(d, antecedent_voice, NV_PAVS_VOICE_TAR_PITCH_LINK, NV_PAVS_VOICE_TAR_PITCH_LINK_NEXT_VOICE_HANDLE, selected_handle);
 		}
 
 		// FIXME: Should set CBO here?
@@ -489,16 +472,14 @@ static void fe_method(MCPXAPUState* d, uint32_t method, uint32_t argument)
 		voice_set_mask(d, selected_handle, NV_PAVS_VOICE_PAR_STATE, NV_PAVS_VOICE_PAR_STATE_EACUR, ea_start);
 		if (ea_start == NV_PAVS_VOICE_PAR_STATE_EFCUR_DELAY)
 		{
-			uint16_t delay_time =
-				voice_get_mask(d, selected_handle, NV_PAVS_VOICE_CFG_ENV0, NV_PAVS_VOICE_CFG_ENV0_EA_DELAYTIME);
+			uint16_t delay_time = voice_get_mask(d, selected_handle, NV_PAVS_VOICE_CFG_ENV0, NV_PAVS_VOICE_CFG_ENV0_EA_DELAYTIME);
 			voice_set_mask(d, selected_handle, NV_PAVS_VOICE_CUR_ECNT, NV_PAVS_VOICE_CUR_ECNT_EACOUNT, delay_time * 16);
 		}
 		else if (ea_start == NV_PAVS_VOICE_PAR_STATE_EFCUR_ATTACK)
 			voice_set_mask(d, selected_handle, NV_PAVS_VOICE_CUR_ECNT, NV_PAVS_VOICE_CUR_ECNT_EACOUNT, 0);
 		else if (ea_start == NV_PAVS_VOICE_PAR_STATE_EFCUR_HOLD)
 		{
-			uint16_t hold_time =
-				voice_get_mask(d, selected_handle, NV_PAVS_VOICE_CFG_ENVA, NV_PAVS_VOICE_CFG_ENVA_EA_HOLDTIME);
+			uint16_t hold_time = voice_get_mask(d, selected_handle, NV_PAVS_VOICE_CFG_ENVA, NV_PAVS_VOICE_CFG_ENVA_EA_HOLDTIME);
 			voice_set_mask(d, selected_handle, NV_PAVS_VOICE_CUR_ECNT, NV_PAVS_VOICE_CUR_ECNT_EACOUNT, hold_time * 16);
 		}
 		// FIXME: Will count be overwritten in other cases too?
@@ -507,16 +488,14 @@ static void fe_method(MCPXAPUState* d, uint32_t method, uint32_t argument)
 		voice_set_mask(d, selected_handle, NV_PAVS_VOICE_PAR_STATE, NV_PAVS_VOICE_PAR_STATE_EFCUR, ef_start);
 		if (ef_start == NV_PAVS_VOICE_PAR_STATE_EFCUR_DELAY)
 		{
-			uint16_t delay_time =
-				voice_get_mask(d, selected_handle, NV_PAVS_VOICE_CFG_ENV1, NV_PAVS_VOICE_CFG_ENV0_EA_DELAYTIME);
+			uint16_t delay_time = voice_get_mask(d, selected_handle, NV_PAVS_VOICE_CFG_ENV1, NV_PAVS_VOICE_CFG_ENV0_EA_DELAYTIME);
 			voice_set_mask(d, selected_handle, NV_PAVS_VOICE_CUR_ECNT, NV_PAVS_VOICE_CUR_ECNT_EFCOUNT, delay_time * 16);
 		}
 		else if (ef_start == NV_PAVS_VOICE_PAR_STATE_EFCUR_ATTACK)
 			voice_set_mask(d, selected_handle, NV_PAVS_VOICE_CUR_ECNT, NV_PAVS_VOICE_CUR_ECNT_EFCOUNT, 0);
 		else if (ef_start == NV_PAVS_VOICE_PAR_STATE_EFCUR_HOLD)
 		{
-			uint16_t hold_time =
-				voice_get_mask(d, selected_handle, NV_PAVS_VOICE_CFG_ENVF, NV_PAVS_VOICE_CFG_ENVA_EA_HOLDTIME);
+			uint16_t hold_time = voice_get_mask(d, selected_handle, NV_PAVS_VOICE_CFG_ENVF, NV_PAVS_VOICE_CFG_ENVA_EA_HOLDTIME);
 			voice_set_mask(d, selected_handle, NV_PAVS_VOICE_CUR_ECNT, NV_PAVS_VOICE_CUR_ECNT_EFCOUNT, hold_time * 16);
 		}
 		// FIXME: Will count be overwritten in other cases too?
@@ -542,15 +521,11 @@ static void fe_method(MCPXAPUState* d, uint32_t method, uint32_t argument)
 		uint16_t rr;
 		rr = voice_get_mask(d, selected_handle, NV_PAVS_VOICE_TAR_LFO_ENV, NV_PAVS_VOICE_TAR_LFO_ENV_EA_RELEASERATE);
 		voice_set_mask(d, selected_handle, NV_PAVS_VOICE_CUR_ECNT, NV_PAVS_VOICE_CUR_ECNT_EACOUNT, rr * 16);
-		voice_set_mask(
-			d, selected_handle, NV_PAVS_VOICE_PAR_STATE, NV_PAVS_VOICE_PAR_STATE_EACUR,
-			NV_PAVS_VOICE_PAR_STATE_EFCUR_RELEASE);
+		voice_set_mask(d, selected_handle, NV_PAVS_VOICE_PAR_STATE, NV_PAVS_VOICE_PAR_STATE_EACUR,	NV_PAVS_VOICE_PAR_STATE_EFCUR_RELEASE);
 
 		rr = voice_get_mask(d, selected_handle, NV_PAVS_VOICE_CFG_MISC, NV_PAVS_VOICE_CFG_MISC_EF_RELEASERATE);
 		voice_set_mask(d, selected_handle, NV_PAVS_VOICE_CUR_ECNT, NV_PAVS_VOICE_CUR_ECNT_EFCOUNT, rr * 16);
-		voice_set_mask(
-			d, selected_handle, NV_PAVS_VOICE_PAR_STATE, NV_PAVS_VOICE_PAR_STATE_EFCUR,
-			NV_PAVS_VOICE_PAR_STATE_EFCUR_RELEASE);
+		voice_set_mask(d, selected_handle, NV_PAVS_VOICE_PAR_STATE, NV_PAVS_VOICE_PAR_STATE_EFCUR,	NV_PAVS_VOICE_PAR_STATE_EFCUR_RELEASE);
 
 		if (!locked)
 			voice_lock(d, selected_handle, false);
@@ -561,9 +536,7 @@ static void fe_method(MCPXAPUState* d, uint32_t method, uint32_t argument)
 		voice_off(d, argument & NV1BA0_PIO_VOICE_OFF_HANDLE);
 		break;
 	case NV1BA0_PIO_VOICE_PAUSE:
-		voice_set_mask(
-			d, argument & NV1BA0_PIO_VOICE_PAUSE_HANDLE, NV_PAVS_VOICE_PAR_STATE, NV_PAVS_VOICE_PAR_STATE_PAUSED,
-			(argument & NV1BA0_PIO_VOICE_PAUSE_ACTION) != 0);
+		voice_set_mask(d, argument & NV1BA0_PIO_VOICE_PAUSE_HANDLE, NV_PAVS_VOICE_PAR_STATE, NV_PAVS_VOICE_PAR_STATE_PAUSED, (argument & NV1BA0_PIO_VOICE_PAUSE_ACTION) != 0);
 		break;
 	case NV1BA0_PIO_SET_CURRENT_VOICE:
 		d->regs[NV_PAPU_FECV] = argument;
@@ -608,9 +581,7 @@ static void fe_method(MCPXAPUState* d, uint32_t method, uint32_t argument)
 		voice_set_mask(d, d->regs[NV_PAPU_FECV], NV_PAVS_VOICE_TAR_FCB, 0xFFFFFFFF, argument);
 		break;
 	case NV1BA0_PIO_SET_VOICE_TAR_PITCH:
-		voice_set_mask(
-			d, d->regs[NV_PAPU_FECV], NV_PAVS_VOICE_TAR_PITCH_LINK, NV_PAVS_VOICE_TAR_PITCH_LINK_PITCH,
-			(argument & NV1BA0_PIO_SET_VOICE_TAR_PITCH_STEP) >> 16);
+		voice_set_mask(d, d->regs[NV_PAPU_FECV], NV_PAVS_VOICE_TAR_PITCH_LINK, NV_PAVS_VOICE_TAR_PITCH_LINK_PITCH,	(argument & NV1BA0_PIO_SET_VOICE_TAR_PITCH_STEP) >> 16);
 		break;
 	case NV1BA0_PIO_SET_VOICE_CFG_BUF_BASE:
 		voice_set_mask(d, d->regs[NV_PAPU_FECV], NV_PAVS_VOICE_CUR_PSL_START, NV_PAVS_VOICE_CUR_PSL_START_BA, argument);
@@ -635,9 +606,7 @@ static void fe_method(MCPXAPUState* d, uint32_t method, uint32_t argument)
 		// handle range (or that is also wrong)
 		hwaddr sge_address = d->regs[NV_PAPU_VPSGEADDR] + d->inbuf_sge_handle * 8;
 		stl_le_phys(&address_space_memory, sge_address, argument & NV1BA0_PIO_SET_CURRENT_INBUF_SGE_OFFSET_PARAMETER);
-		DPRINTF(
-			"Wrote inbuf SGE[0x%X] = 0x%08X\n", d->inbuf_sge_handle,
-			argument & NV1BA0_PIO_SET_CURRENT_INBUF_SGE_OFFSET_PARAMETER);
+		DPRINTF("Wrote inbuf SGE[0x%X] = 0x%08X\n", d->inbuf_sge_handle, argument & NV1BA0_PIO_SET_CURRENT_INBUF_SGE_OFFSET_PARAMETER);
 		break;
 	}
 		CASE_4(NV1BA0_PIO_SET_OUTBUF_BA, 8)
@@ -671,9 +640,7 @@ static void fe_method(MCPXAPUState* d, uint32_t method, uint32_t argument)
 		// But how does it know which outbuf is being written?!
 		hwaddr sge_address = d->regs[NV_PAPU_VPSGEADDR] + d->outbuf_sge_handle * 8;
 		stl_le_phys(&address_space_memory, sge_address, argument & NV1BA0_PIO_SET_CURRENT_OUTBUF_SGE_OFFSET_PARAMETER);
-		DPRINTF(
-			"Wrote outbuf SGE[0x%X] = 0x%08X\n", d->outbuf_sge_handle,
-			argument & NV1BA0_PIO_SET_CURRENT_OUTBUF_SGE_OFFSET_PARAMETER);
+		DPRINTF("Wrote outbuf SGE[0x%X] = 0x%08X\n", d->outbuf_sge_handle, argument & NV1BA0_PIO_SET_CURRENT_OUTBUF_SGE_OFFSET_PARAMETER);
 		break;
 	}
 	case NV1BA0_PIO_SET_VOICE_SSL_A:
@@ -684,9 +651,7 @@ static void fe_method(MCPXAPUState* d, uint32_t method, uint32_t argument)
 		d->vp.ssl[current_voice].base[ssl] = GET_MASK(argument, NV1BA0_PIO_SET_VOICE_SSL_A_BASE);
 		d->vp.ssl[current_voice].count[ssl] = GET_MASK(argument, NV1BA0_PIO_SET_VOICE_SSL_A_COUNT);
 		// d->vp.ssl[current_voice].ssl_index = 0;
-		DPRINTF(
-			"SSL%c Base = %x, Count = %d\n", 'A' + ssl, d->vp.ssl[current_voice].base[ssl],
-			d->vp.ssl[current_voice].count[ssl]);
+		DPRINTF("SSL%c Base = %x, Count = %d\n", 'A' + ssl, d->vp.ssl[current_voice].base[ssl],	d->vp.ssl[current_voice].count[ssl]);
 		break;
 	}
 	// FIXME: Refactor into above
@@ -698,9 +663,7 @@ static void fe_method(MCPXAPUState* d, uint32_t method, uint32_t argument)
 		d->vp.ssl[current_voice].base[ssl] = GET_MASK(argument, NV1BA0_PIO_SET_VOICE_SSL_A_BASE);
 		d->vp.ssl[current_voice].count[ssl] = GET_MASK(argument, NV1BA0_PIO_SET_VOICE_SSL_A_COUNT);
 		// d->vp.ssl[current_voice].ssl_index = 0;
-		DPRINTF(
-			"SSL%c Base = %x, Count = %d\n", 'A' + ssl, d->vp.ssl[current_voice].base[ssl],
-			d->vp.ssl[current_voice].count[ssl]);
+		DPRINTF("SSL%c Base = %x, Count = %d\n", 'A' + ssl, d->vp.ssl[current_voice].base[ssl],	d->vp.ssl[current_voice].count[ssl]);
 		break;
 	}
 	case NV1BA0_PIO_SET_CURRENT_SSL:
@@ -716,12 +679,9 @@ static void fe_method(MCPXAPUState* d, uint32_t method, uint32_t argument)
 		// FIXME: Entries are 64b, assuming they are stored
 		// like this <[offset,length],...>
 		assert((method & 0x3) == 0);
-		hwaddr addr =
-			d->regs[NV_PAPU_VPSSLADDR] + (d->vp.ssl_base_page * 8) + (method - NV1BA0_PIO_SET_SSL_SEGMENT_OFFSET);
+		hwaddr addr = d->regs[NV_PAPU_VPSSLADDR] + (d->vp.ssl_base_page * 8) + (method - NV1BA0_PIO_SET_SSL_SEGMENT_OFFSET);
 		stl_le_phys(&address_space_memory, addr, argument);
-		DPRINTF(
-			"  ssl_segment[%x + %x].%s = %x\n", d->vp.ssl_base_page, (method - NV1BA0_PIO_SET_SSL_SEGMENT_OFFSET) / 8,
-			method & 4 ? "length" : "offset", argument);
+		DPRINTF("  ssl_segment[%x + %x].%s = %x\n", d->vp.ssl_base_page, (method - NV1BA0_PIO_SET_SSL_SEGMENT_OFFSET) / 8, method & 4 ? "length" : "offset", argument);
 		break;
 	}
 	case NV1BA0_PIO_SET_HRTF_SUBMIXES:
@@ -839,8 +799,7 @@ static const MemoryRegionOps vp_ops = {
 	.write = vp_write,
 };
 
-static void scatter_gather_rw(
-	MCPXAPUState* d, hwaddr sge_base, unsigned int max_sge, uint8_t* ptr, uint32_t addr, size_t len, bool dir)
+static void scatter_gather_rw(MCPXAPUState* d, hwaddr sge_base, unsigned int max_sge, uint8_t* ptr, uint32_t addr, size_t len, bool dir)
 {
 	unsigned int page_entry = addr / TARGET_PAGE_SIZE;
 	unsigned int offset_in_page = addr % TARGET_PAGE_SIZE;
@@ -895,9 +854,7 @@ static void ep_scratch_rw(void* opaque, uint8_t* ptr, uint32_t addr, size_t len,
 	scatter_gather_rw(d, d->regs[NV_PAPU_EPSADDR], d->regs[NV_PAPU_EPSMAXSGE], ptr, addr, len, dir);
 }
 
-static uint32_t circular_scatter_gather_rw(
-	MCPXAPUState* d, hwaddr sge_base, unsigned int max_sge, uint8_t* ptr, uint32_t base, uint32_t end, uint32_t cur,
-	size_t len, bool dir)
+static uint32_t circular_scatter_gather_rw(MCPXAPUState* d, hwaddr sge_base, unsigned int max_sge, uint8_t* ptr, uint32_t base, uint32_t end, uint32_t cur, size_t len, bool dir)
 {
 	while (len > 0)
 	{
@@ -906,10 +863,7 @@ static uint32_t circular_scatter_gather_rw(
 		if (bytes_to_copy > len)
 			bytes_to_copy = len;
 
-		DPRINTF(
-			"circular scatter gather %s in range 0x%x - 0x%x at 0x%x of "
-			"length 0x%x / 0x%lx bytes\n",
-			dir ? "write" : "read", base, end, cur, bytes_to_copy, len);
+		DPRINTF("circular scatter gather %s in range 0x%x - 0x%x at 0x%x of length 0x%x / 0x%lx bytes\n", dir ? "write" : "read", base, end, cur, bytes_to_copy, len);
 
 		assert((cur >= base) && ((cur + bytes_to_copy) <= end));
 		scatter_gather_rw(d, sge_base, max_sge, ptr, cur, bytes_to_copy, dir);
@@ -961,8 +915,7 @@ static void gp_fifo_rw(void* opaque, uint8_t* ptr, unsigned int index, size_t le
 	if (cur < base)
 		cur = base;
 
-	cur = circular_scatter_gather_rw(
-		d, d->regs[NV_PAPU_GPFADDR], d->regs[NV_PAPU_GPFMAXSGE], ptr, base, end, cur, len, dir);
+	cur = circular_scatter_gather_rw(d, d->regs[NV_PAPU_GPFADDR], d->regs[NV_PAPU_GPFMAXSGE], ptr, base, end, cur, len, dir);
 
 	SET_MASK(d->regs[cur_reg], NV_PAPU_GPOFCUR0_VALUE, cur);
 }
@@ -1024,8 +977,7 @@ static void ep_fifo_rw(void* opaque, uint8_t* ptr, unsigned int index, size_t le
 	if (cur < base)
 		cur = base;
 
-	cur = circular_scatter_gather_rw(
-		d, d->regs[NV_PAPU_EPFADDR], d->regs[NV_PAPU_EPFMAXSGE], ptr, base, end, cur, len, dir);
+	cur = circular_scatter_gather_rw(d, d->regs[NV_PAPU_EPFADDR], d->regs[NV_PAPU_EPFMAXSGE], ptr, base, end, cur, len, dir);
 
 	SET_MASK(d->regs[cur_reg], NV_PAPU_GPOFCUR0_VALUE, cur);
 }
@@ -1034,9 +986,7 @@ static void proc_rst_write(DSPState* dsp, uint32_t oldval, uint32_t val)
 {
 	if (!(val & NV_PAPU_GPRST_GPRST) || !(val & NV_PAPU_GPRST_GPDSPRST))
 		dsp_reset(dsp);
-	else if (
-		(!(oldval & NV_PAPU_GPRST_GPRST) || !(oldval & NV_PAPU_GPRST_GPDSPRST))
-		&& ((val & NV_PAPU_GPRST_GPRST) && (val & NV_PAPU_GPRST_GPDSPRST)))
+	else if ((!(oldval & NV_PAPU_GPRST_GPRST) || !(oldval & NV_PAPU_GPRST_GPDSPRST)) && ((val & NV_PAPU_GPRST_GPRST) && (val & NV_PAPU_GPRST_GPDSPRST)))
 		dsp_bootstrap(dsp);
 }
 
@@ -1308,8 +1258,7 @@ static float voice_step_envelope(
 			cur++;
 			voice_set_mask(d, v, NV_PAVS_VOICE_PAR_STATE, cur_mask, cur);
 			uint16_t hold_time = voice_get_mask(d, v, reg_a, NV_PAVS_VOICE_CFG_ENVA_EA_HOLDTIME);
-			count = hold_time * 16; // FIXME: Skip next phase if count is 0?
-									// [other instances too]
+			count = hold_time * 16; // FIXME: Skip next phase if count is 0? [other instances too]
 		}
 		else
 			count++;
@@ -1368,9 +1317,7 @@ static float voice_step_envelope(
 	case NV_PAVS_VOICE_PAR_STATE_EFCUR_SUSTAIN:
 	{
 		uint8_t sustain_level = voice_get_mask(d, v, reg_a, NV_PAVS_VOICE_CFG_ENVA_EA_SUSTAINLEVEL);
-		voice_set_mask(
-			d, v, NV_PAVS_VOICE_CUR_ECNT, count_mask,
-			0x00); // FIXME: is this only set to 0 once or forced to zero?
+		voice_set_mask(d, v, NV_PAVS_VOICE_CUR_ECNT, count_mask, 0x00); // FIXME: is this only set to 0 once or forced to zero?
 		voice_set_mask(d, v, lvl_reg, lvl_mask, sustain_level);
 		return sustain_level / 255.0f;
 	}
@@ -1447,8 +1394,7 @@ static long voice_resample_callback(void* cb_data, float** data)
 		if (!active)
 			break;
 
-		int count = voice_get_samples(
-			d, v, (float(*)[2]) & filter->resample_buf[2 * sample_count], NUM_SAMPLES_PER_FRAME - sample_count);
+		int count = voice_get_samples(d, v, (float(*)[2]) & filter->resample_buf[2 * sample_count], NUM_SAMPLES_PER_FRAME - sample_count);
 		if (count < 0)
 			break;
 
@@ -1690,8 +1636,7 @@ static int voice_get_samples(MCPXAPUState* d, uint32_t v, float samples[][2], in
 	unsigned int channels = stereo ? 2 : 1;
 	unsigned int sample_size = voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT, NV_PAVS_VOICE_CFG_FMT_SAMPLE_SIZE);
 	unsigned int container_sizes[4] = { 1, 2, 0, 4 }; /* B8, B16, ADPCM, B32 */
-	unsigned int container_size_index =
-		voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT, NV_PAVS_VOICE_CFG_FMT_CONTAINER_SIZE);
+	unsigned int container_size_index =	voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT, NV_PAVS_VOICE_CFG_FMT_CONTAINER_SIZE);
 	unsigned int container_size = container_sizes[container_size_index];
 	bool stream = voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT, NV_PAVS_VOICE_CFG_FMT_DATA_TYPE);
 	bool paused = voice_get_mask(d, v, NV_PAVS_VOICE_PAR_STATE, NV_PAVS_VOICE_PAR_STATE_PAUSED);
@@ -1700,8 +1645,7 @@ static int voice_get_samples(MCPXAPUState* d, uint32_t v, float samples[][2], in
 	uint32_t cbo = voice_get_mask(d, v, NV_PAVS_VOICE_PAR_OFFSET, NV_PAVS_VOICE_PAR_OFFSET_CBO);
 	uint32_t lbo = voice_get_mask(d, v, NV_PAVS_VOICE_CUR_PSH_SAMPLE, NV_PAVS_VOICE_CUR_PSH_SAMPLE_LBO);
 	uint32_t ba = voice_get_mask(d, v, NV_PAVS_VOICE_CUR_PSL_START, NV_PAVS_VOICE_CUR_PSL_START_BA);
-	unsigned int samples_per_block =
-		1 + voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT, NV_PAVS_VOICE_CFG_FMT_SAMPLES_PER_BLOCK);
+	unsigned int samples_per_block = 1 + voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT, NV_PAVS_VOICE_CFG_FMT_SAMPLES_PER_BLOCK);
 	bool persist = voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT, NV_PAVS_VOICE_CFG_FMT_PERSIST);
 	bool multipass = voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT, NV_PAVS_VOICE_CFG_FMT_MULTIPASS);
 	bool linked = voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT, NV_PAVS_VOICE_CFG_FMT_LINKED); /* FIXME? */
@@ -1783,10 +1727,7 @@ static int voice_get_samples(MCPXAPUState* d, uint32_t v, float samples[][2], in
 				voice_off(d, v);
 			}
 			else
-			{
-				set_notify_status(
-					d, v, MCPX_HW_NOTIFIER_SSLA_DONE + d->vp.ssl[v].ssl_index, NV1BA0_NOTIFICATION_STATUS_DONE_SUCCESS);
-			}
+				set_notify_status(d, v, MCPX_HW_NOTIFIER_SSLA_DONE + d->vp.ssl[v].ssl_index, NV1BA0_NOTIFICATION_STATUS_DONE_SUCCESS);
 			return -1;
 		}
 
@@ -1865,8 +1806,7 @@ static int voice_get_samples(MCPXAPUState* d, uint32_t v, float samples[][2], in
 					hwaddr addr = segment_offset + linear_addr;
 					int max_seg_byte = (seg_len >> 6) * block_size;
 					assert(linear_addr + block_size <= max_seg_byte);
-					memcpy(adpcm_block, &d->ram_ptr[addr],
-						   block_size); // FIXME: Use idiomatic DMA function
+					memcpy(adpcm_block, &d->ram_ptr[addr], block_size); // FIXME: Use idiomatic DMA function
 				}
 				else
 				{
@@ -1948,8 +1888,7 @@ static int voice_get_samples(MCPXAPUState* d, uint32_t v, float samples[][2], in
 				DPRINTF("SSL%c\n", 'A' + next_index);
 				d->vp.ssl[v].ssl_index = next_index;
 				d->vp.ssl[v].ssl_seg = 0;
-				set_notify_status(
-					d, v, MCPX_HW_NOTIFIER_SSLA_DONE + ssl_index, NV1BA0_NOTIFICATION_STATUS_DONE_SUCCESS);
+				set_notify_status(d, v, MCPX_HW_NOTIFIER_SSLA_DONE + ssl_index, NV1BA0_NOTIFICATION_STATUS_DONE_SUCCESS);
 			}
 		}
 		else
@@ -2032,8 +1971,7 @@ static void se_frame(MCPXAPUState* d)
 			}
 
 			uint16_t v = d->regs[current];
-			d->regs[next] =
-				voice_get_mask(d, v, NV_PAVS_VOICE_TAR_PITCH_LINK, NV_PAVS_VOICE_TAR_PITCH_LINK_NEXT_VOICE_HANDLE);
+			d->regs[next] =	voice_get_mask(d, v, NV_PAVS_VOICE_TAR_PITCH_LINK, NV_PAVS_VOICE_TAR_PITCH_LINK_NEXT_VOICE_HANDLE);
 			if (!voice_get_mask(d, v, NV_PAVS_VOICE_PAR_STATE, NV_PAVS_VOICE_PAR_STATE_ACTIVE_VOICE))
 				fe_method(d, SE2FE_IDLE_VOICE, v);
 			else
@@ -2249,7 +2187,6 @@ static void mcpx_apu_reset(MCPXAPUState* d)
 static void mcpx_apu_vm_state_change(void* opaque, bool running, RunState state)
 {
 	MCPXAPUState* d = opaque;
-
 	if (state == RUN_STATE_SAVE_VM)
 		qemu_mutex_lock(&d->lock);
 	else if (state == RUN_STATE_RESTORE_VM)
@@ -2325,7 +2262,8 @@ const VMStateDescription vmstate_vp_dsp_core_state = {
 			// #ifdef DSP_DISASM_REG_PC
 			// VMSTATE_UINT32(pc_save, dsp_core_t),
 			// #endif
-			VMSTATE_END_OF_LIST() }
+			VMSTATE_END_OF_LIST(),
+		}
 };
 
 const VMStateDescription vmstate_vp_dsp_state = {
@@ -2336,7 +2274,7 @@ const VMStateDescription vmstate_vp_dsp_state = {
 	.fields = (VMStateField[]) { VMSTATE_STRUCT(core, DSPState, 1, vmstate_vp_dsp_core_state, dsp_core_t),
 								 VMSTATE_STRUCT(dma, DSPState, 1, vmstate_vp_dsp_dma_state, DSPDMAState),
 								 VMSTATE_INT32(save_cycles, DSPState), VMSTATE_UINT32(interrupts, DSPState),
-								 VMSTATE_END_OF_LIST() }
+								 VMSTATE_END_OF_LIST(), }
 };
 
 const VMStateDescription vmstate_vp_ssl_data = {
@@ -2347,7 +2285,7 @@ const VMStateDescription vmstate_vp_ssl_data = {
 	.fields = (VMStateField[]) { VMSTATE_UINT32_ARRAY(base, MCPXAPUVPSSLData, MCPX_HW_SSLS_PER_VOICE),
 								 VMSTATE_UINT8_ARRAY(count, MCPXAPUVPSSLData, MCPX_HW_SSLS_PER_VOICE),
 								 VMSTATE_INT32(ssl_index, MCPXAPUVPSSLData), VMSTATE_INT32(ssl_seg, MCPXAPUVPSSLData),
-								 VMSTATE_END_OF_LIST() }
+								 VMSTATE_END_OF_LIST(), }
 };
 
 static const VMStateDescription vmstate_mcpx_apu = {
@@ -2415,8 +2353,7 @@ static void* mcpx_apu_frame_thread(void* arg)
 	{
 		int xcntmode = GET_MASK(qatomic_read(&d->regs[NV_PAPU_SECTL]), NV_PAPU_SECTL_XCNTMODE);
 		uint32_t fectl = qatomic_read(&d->regs[NV_PAPU_FECTL]);
-		if (xcntmode == NV_PAPU_SECTL_XCNTMODE_OFF || (fectl & NV_PAPU_FECTL_FEMETHMODE_TRAPPED)
-			|| (fectl & NV_PAPU_FECTL_FEMETHMODE_HALTED))
+		if (xcntmode == NV_PAPU_SECTL_XCNTMODE_OFF || (fectl & NV_PAPU_FECTL_FEMETHMODE_TRAPPED) || (fectl & NV_PAPU_FECTL_FEMETHMODE_HALTED))
 			d->set_irq = true;
 
 		if (d->set_irq)
@@ -2431,8 +2368,7 @@ static void* mcpx_apu_frame_thread(void* arg)
 
 		xcntmode = GET_MASK(qatomic_read(&d->regs[NV_PAPU_SECTL]), NV_PAPU_SECTL_XCNTMODE);
 		fectl = qatomic_read(&d->regs[NV_PAPU_FECTL]);
-		if (xcntmode == NV_PAPU_SECTL_XCNTMODE_OFF || (fectl & NV_PAPU_FECTL_FEMETHMODE_TRAPPED)
-			|| (fectl & NV_PAPU_FECTL_FEMETHMODE_HALTED))
+		if (xcntmode == NV_PAPU_SECTL_XCNTMODE_OFF || (fectl & NV_PAPU_FECTL_FEMETHMODE_TRAPPED) || (fectl & NV_PAPU_FECTL_FEMETHMODE_HALTED))
 		{
 			qemu_cond_wait(&d->cond, &d->lock);
 			continue;
@@ -2516,9 +2452,7 @@ void mcpx_apu_init(PCIBus* bus, int devfn, MemoryRegion* ram)
 	qemu_cond_init(&d->cond);
 	qemu_add_vm_change_state_handler(mcpx_apu_vm_state_change, d);
 
-	/* Until DSP is more performant, a switch to decide whether or not we should
-	 * use the full audio pipeline or not.
-	 */
+	// Until DSP is more performant, a switch to decide whether or not we should use the full audio pipeline or not.
 	if (xsettings.use_dsp)
 	{
 		d->mon = MCPX_APU_DEBUG_MON_GP_OR_EP;

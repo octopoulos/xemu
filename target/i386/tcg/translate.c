@@ -31,11 +31,11 @@
 #include "helper-tcg.h"
 
 #include "exec/log.h"
+#include "ui/xsettings.h"
 
 static int g_use_hard_fpu;
 
 #if defined(XBOX) && defined(__x86_64__)
-#include "ui/xsettings.h"
 #define MAP_GEN_HELPER_SOFT_HARD(name) \
     (g_use_hard_fpu ? gen_helper_##name##__hard : gen_helper_##name##__soft)
 #define gen_helper_flds_FT0       MAP_GEN_HELPER_SOFT_HARD(flds_FT0)

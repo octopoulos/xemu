@@ -84,7 +84,7 @@ bool CompatibilityReport::Send()
 #	ifdef CPPHTTPLIB_OPENSSL_SUPPORT
 	    auto result = cli.get_openssl_verify_result();
 	    if (result)
-	      fprintf(stderr, "verify error: %s\n", X509_verify_cert_error_string(result));
+			ui::LogError("verify error: %s", X509_verify_cert_error_string(result));
 #	endif
 #endif
 

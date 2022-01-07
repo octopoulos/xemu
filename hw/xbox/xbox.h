@@ -35,22 +35,22 @@ void xbox_init_common(MachineState* machine, PCIBus** pci_bus_out, ISABus** isa_
 
 typedef struct XboxMachineState
 {
-	/*< private >*/
+	//< private >
 	PCMachineState parent_obj;
 
-	/*< public >*/
+	//< public >
 	char* bootrom;
 	char* avpack;
-	bool short_animation;
+	bool  short_animation;
 	char* smc_version;
 } XboxMachineState;
 
 typedef struct XboxMachineClass
 {
-	/*< private >*/
+	//< private >
 	PCMachineClass parent_class;
 
-	/*< public >*/
+	//< public >
 } XboxMachineClass;
 
 #endif

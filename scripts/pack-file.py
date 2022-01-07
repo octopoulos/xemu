@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import sys
 from io import StringIO
 from typing import Union, TextIO
 import os.path
@@ -38,13 +37,10 @@ def main():
 	with open(args.hout, 'w') as f:
 		f.write(
 f'''\
-#ifndef DATA_{ident.upper()}_H
-#define DATA_{ident.upper()}_H
+#pragma once
 
 extern const unsigned int {ident}_size;
 extern const unsigned char {ident}_data[];
-
-#endif
 '''
 			)
 

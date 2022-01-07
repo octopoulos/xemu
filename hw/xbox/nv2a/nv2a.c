@@ -26,19 +26,19 @@
 
 void nv2a_update_irq(NV2AState* d)
 {
-	/* PFIFO */
+	// PFIFO
 	if (d->pfifo.pending_interrupts & d->pfifo.enabled_interrupts)
 		d->pmc.pending_interrupts |= NV_PMC_INTR_0_PFIFO;
 	else
 		d->pmc.pending_interrupts &= ~NV_PMC_INTR_0_PFIFO;
 
-	/* PCRTC */
+	// PCRTC
 	if (d->pcrtc.pending_interrupts & d->pcrtc.enabled_interrupts)
 		d->pmc.pending_interrupts |= NV_PMC_INTR_0_PCRTC;
 	else
 		d->pmc.pending_interrupts &= ~NV_PMC_INTR_0_PCRTC;
 
-	/* PGRAPH */
+	// PGRAPH
 	if (d->pgraph.pending_interrupts & d->pgraph.enabled_interrupts)
 		d->pmc.pending_interrupts |= NV_PMC_INTR_0_PGRAPH;
 	else
@@ -74,7 +74,7 @@ void* nv_dma_map(NV2AState* d, hwaddr dma_obj_address, hwaddr* len)
 {
 	DMAObject dma = nv_dma_load(d, dma_obj_address);
 
-	/* TODO: Handle targets and classes properly */
+	// TODO: Handle targets and classes properly
 	NV2A_XPRINTF(
 		DBG_DMA, "dma_map %" HWADDR_PRIx " - %x, %x, %" HWADDR_PRIx " %" HWADDR_PRIx "\n", dma_obj_address,
 		dma.dma_class, dma.dma_target, dma.address, dma.limit);
@@ -126,18 +126,12 @@ void nv2a_reg_log_read(int block, hwaddr addr, uint64_t val)
 	{
 		hwaddr naddr = blocktable[block].offset + addr;
 		if (naddr < ARRAY_SIZE(nv2a_reg_names) && nv2a_reg_names[naddr])
-		{
 			NV2A_DPRINTF("%s: read [%s] -> 0x%" PRIx64 "\n", blocktable[block].name, nv2a_reg_names[naddr], val);
-		}
 		else
-		{
 			NV2A_DPRINTF("%s: read [%" HWADDR_PRIx "] -> 0x%" PRIx64 "\n", blocktable[block].name, addr, val);
-		}
 	}
 	else
-	{
 		NV2A_DPRINTF("(%d?): read [%" HWADDR_PRIx "] -> 0x%" PRIx64 "\n", block, addr, val);
-	}
 }
 
 void nv2a_reg_log_write(int block, hwaddr addr, uint64_t val)
@@ -146,18 +140,12 @@ void nv2a_reg_log_write(int block, hwaddr addr, uint64_t val)
 	{
 		hwaddr naddr = blocktable[block].offset + addr;
 		if (naddr < ARRAY_SIZE(nv2a_reg_names) && nv2a_reg_names[naddr])
-		{
 			NV2A_DPRINTF("%s: [%s] = 0x%" PRIx64 "\n", blocktable[block].name, nv2a_reg_names[naddr], val);
-		}
 		else
-		{
 			NV2A_DPRINTF("%s: [%" HWADDR_PRIx "] = 0x%" PRIx64 "\n", blocktable[block].name, addr, val);
-		}
 	}
 	else
-	{
 		NV2A_DPRINTF("(%d?): [%" HWADDR_PRIx "] = 0x%" PRIx64 "\n", block, addr, val);
-	}
 }
 #endif
 
@@ -166,7 +154,6 @@ static int nv2a_get_bpp(VGACommonState* s)
 	NV2AState* d = container_of(s, NV2AState, vga);
 
 	int depth = s->cr[0x28] & 3;
-
 	int bpp;
 	switch (depth)
 	{
@@ -186,7 +173,7 @@ static int nv2a_get_bpp(VGACommonState* s)
 		bpp = 32;
 		break;
 	default:
-		/* This is only a fallback path */
+		// This is only a fallback path
 		bpp = depth * 8;
 		fprintf(stderr, "Unknown VGA depth: %d\n", depth);
 		assert(false);
@@ -208,8 +195,7 @@ static void nv2a_get_offsets(VGACommonState* s, uint32_t* pline_offset, uint32_t
 	start_addr = d->pcrtc.start / 4;
 	*pstart_addr = start_addr;
 
-	line_compare = s->cr[VGA_CRTC_LINE_COMPARE] | ((s->cr[VGA_CRTC_OVERFLOW] & 0x10) << 4)
-		| ((s->cr[VGA_CRTC_MAX_SCAN] & 0x40) << 3);
+	line_compare = s->cr[VGA_CRTC_LINE_COMPARE] | ((s->cr[VGA_CRTC_OVERFLOW] & 0x10) << 4) | ((s->cr[VGA_CRTC_MAX_SCAN] & 0x40) << 3);
 	*pline_compare = line_compare;
 }
 
@@ -227,18 +213,16 @@ static void nv2a_vga_gfx_update(void* opaque)
 
 static void nv2a_init_memory(NV2AState* d, MemoryRegion* ram)
 {
-	/* xbox is UMA - vram *is* ram */
+	// xbox is UMA - vram *is* ram
 	d->vram = ram;
 
-	/* PCI exposed vram */
+	// PCI exposed vram
 	memory_region_init_alias(&d->vram_pci, OBJECT(d), "nv2a-vram-pci", d->vram, 0, memory_region_size(d->vram));
 	pci_register_bar(PCI_DEVICE(d), 1, PCI_BASE_ADDRESS_MEM_PREFETCH, &d->vram_pci);
 
-	/* RAMIN - should be in vram somewhere, but not quite sure where atm */
+	// RAMIN - should be in vram somewhere, but not quite sure where atm
 	memory_region_init_ram(&d->ramin, OBJECT(d), "nv2a-ramin", 0x100000, &error_fatal);
-	/* memory_region_init_alias(&d->ramin, "nv2a-ramin", &d->vram,
-						 memory_region_size(d->vram) - 0x100000,
-						 0x100000); */
+	// memory_region_init_alias(&d->ramin, "nv2a-ramin", &d->vram, memory_region_size(d->vram) - 0x100000, 0x100000);
 
 	memory_region_add_subregion(&d->mmio, 0x700000, &d->ramin);
 
@@ -249,7 +233,7 @@ static void nv2a_init_memory(NV2AState* d, MemoryRegion* ram)
 	memory_region_set_log(d->vram, true, DIRTY_MEMORY_NV2A_TEX);
 	memory_region_set_dirty(d->vram, 0, memory_region_size(d->vram));
 
-	/* hacky. swap out vga's vram */
+	// hacky. swap out vga's vram
 	memory_region_destroy(&d->vga.vram);
 	// memory_region_unref(&d->vga.vram); // FIXME: Is ths right?
 	memory_region_init_alias(&d->vga.vram, OBJECT(d), "vga.vram", d->vram, 0, memory_region_size(d->vram));
@@ -258,7 +242,7 @@ static void nv2a_init_memory(NV2AState* d, MemoryRegion* ram)
 
 	pgraph_init(d);
 
-	/* fire up pfifo */
+	// fire up pfifo
 	qemu_thread_create(&d->pfifo.thread, "nv2a.pfifo_thread", pfifo_thread, d, QEMU_THREAD_JOINABLE);
 }
 
@@ -284,9 +268,8 @@ static void nv2a_reset(NV2AState* d)
 	nv2a_lock_fifo(d);
 	bool halted = qatomic_read(&d->pfifo.halt);
 	if (!halted)
-	{
 		qatomic_set(&d->pfifo.halt, true);
-	}
+
 	qemu_event_reset(&d->pgraph.flush_complete);
 	qatomic_set(&d->pgraph.flush_pending, true);
 	nv2a_unlock_fifo(d);
@@ -295,23 +278,21 @@ static void nv2a_reset(NV2AState* d)
 	qemu_mutex_lock_iothread();
 	nv2a_lock_fifo(d);
 	if (!halted)
-	{
 		qatomic_set(&d->pfifo.halt, false);
-	}
 
 	memset(d->pfifo.regs, 0, sizeof(d->pfifo.regs));
 	memset(d->pgraph.regs, 0, sizeof(d->pgraph.regs));
 
 	d->pcrtc.start = 0;
-	d->pramdac.core_clock_coeff = 0x00011C01; /* 189MHz...? */
+	d->pramdac.core_clock_coeff = 0x00011C01; // 189MHz...?
 	d->pramdac.core_clock_freq = 233333324;
 	d->pramdac.memory_clock_coeff = 0;
-	d->pramdac.video_clock_coeff = 0x0003C20D; /* 25182Khz...? */
+	d->pramdac.video_clock_coeff = 0x0003C20D; // 25182Khz...?
 
 	d->pfifo.regs[NV_PFIFO_CACHE1_STATUS] |= NV_PFIFO_CACHE1_STATUS_LOW_MARK;
 
 	vga_common_reset(&d->vga);
-	/* seems to start in color mode */
+	// seems to start in color mode
 	d->vga.msr = VGA_MIS_COLOR;
 
 	d->pgraph.waiting_for_nop = false;
@@ -330,12 +311,12 @@ static void nv2a_realize(PCIDevice* dev, Error** errp)
 {
 	NV2AState* d = NV2A_DEVICE(dev);
 
-	/* setting subsystem ids again, see comment in nv2a_class_init() */
+	// setting subsystem ids again, see comment in nv2a_class_init()
 	pci_set_word(dev->config + PCI_SUBSYSTEM_VENDOR_ID, 0);
 	pci_set_word(dev->config + PCI_SUBSYSTEM_ID, 0);
 	dev->config[PCI_INTERRUPT_PIN] = 0x01;
 
-	/* legacy VGA shit */
+	// legacy VGA shit
 	VGACommonState* vga = &d->vga;
 	vga->vram_size_mb = 64;
 
@@ -347,7 +328,7 @@ static void nv2a_realize(PCIDevice* dev, Error** errp)
 	d->hw_ops.gfx_update = nv2a_vga_gfx_update;
 	vga->con = graphic_console_init(DEVICE(dev), 0, &d->hw_ops, vga);
 
-	/* mmio */
+	// mmio
 	memory_region_init(&d->mmio, OBJECT(dev), "nv2a-mmio", 0x1000000);
 	pci_register_bar(PCI_DEVICE(d), 0, PCI_BASE_ADDRESS_SPACE_MEMORY, &d->mmio);
 
@@ -355,8 +336,7 @@ static void nv2a_realize(PCIDevice* dev, Error** errp)
 	{
 		if (!blocktable[i].name)
 			continue;
-		memory_region_init_io(
-			&d->block_mmio[i], OBJECT(dev), &blocktable[i].ops, d, blocktable[i].name, blocktable[i].size);
+		memory_region_init_io(&d->block_mmio[i], OBJECT(dev), &blocktable[i].ops, d, blocktable[i].name, blocktable[i].size);
 		memory_region_add_subregion(&d->mmio, blocktable[i].offset, &d->block_mmio[i]);
 	}
 
@@ -369,7 +349,6 @@ static void nv2a_exitfn(PCIDevice* dev)
 {
 	NV2AState* d;
 	d = NV2A_DEVICE(dev);
-
 	d->exiting = true;
 
 	qemu_cond_broadcast(&d->pfifo.fifo_cond);
@@ -385,8 +364,7 @@ static void qdev_nv2a_reset(DeviceState* dev)
 }
 
 // Note: This is handled as a VM state change and not as a `pre_save` callback
-// because we want to halt the FIFO before any VM state is saved/restored to
-// avoid corruption.
+// because we want to halt the FIFO before any VM state is saved/restored to avoid corruption.
 static void nv2a_vm_state_change(void* opaque, bool running, RunState state)
 {
 	NV2AState* d = opaque;
@@ -514,9 +492,7 @@ static const VMStateDescription vmstate_nv2a = {
 			VMSTATE_BOOL_ARRAY(pgraph.ltctxb_dirty, NV2AState, NV2A_LTCTXB_COUNT),
 			VMSTATE_UINT32_2DARRAY(pgraph.ltc1, NV2AState, NV2A_LTC1_COUNT, 4),
 			VMSTATE_BOOL_ARRAY(pgraph.ltc1_dirty, NV2AState, NV2A_LTC1_COUNT),
-			VMSTATE_STRUCT_ARRAY(
-				pgraph.vertex_attributes, NV2AState, NV2A_VERTEXSHADER_ATTRIBUTES, 1,
-				vmstate_nv2a_pgraph_vertex_attributes, VertexAttribute),
+			VMSTATE_STRUCT_ARRAY(pgraph.vertex_attributes, NV2AState, NV2A_VERTEXSHADER_ATTRIBUTES, 1, vmstate_nv2a_pgraph_vertex_attributes, VertexAttribute),
 			VMSTATE_UINT32(pgraph.inline_array_length, NV2AState),
 			VMSTATE_UINT32_ARRAY(pgraph.inline_array, NV2AState, NV2A_MAX_BATCH_LENGTH),
 			VMSTATE_UINT32(pgraph.inline_elements_length, NV2AState), // fixme
@@ -549,9 +525,8 @@ static void nv2a_class_init(ObjectClass* klass, void* data)
 	k->device_id = PCI_DEVICE_ID_NVIDIA_GEFORCE_NV2A;
 	k->revision = 0xA1;
 	k->class_id = PCI_CLASS_DISPLAY_VGA;
-	/* When both subsystem ids are set to 0, QEMU sets them to its own
-	 * default values. However we set them anyway in case upstream decides
-	 * to change this behavior. */
+	// When both subsystem ids are set to 0, QEMU sets them to its own default values.
+    // However we set them anyway in case upstream decides
 	k->subsystem_vendor_id = 0;
 	k->subsystem_id = 0;
 	k->realize = nv2a_realize;

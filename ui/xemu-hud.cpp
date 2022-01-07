@@ -50,13 +50,9 @@
 #include "imgui/backends/imgui_impl_sdl.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 #include "implot/implot.h"
-#include "hw/xbox/nv2a/intercept.h"
 
-#include "ui-controls.h"
-#include "ui-file.h"
-#include "ui-games.h"
-#include "ui-log.h"
-#include "ui-settings.h"
+#include "hw/xbox/nv2a/intercept.h"
+#include "ui.h"
 
 extern "C" {
 #include "qemui/noc_file_dialog.h"
@@ -80,7 +76,7 @@ extern "C" {
 
 extern FBO* logo_fbo;
 
-ImFont* g_fixed_width_font;
+ImFont* fixedFont;
 bool    g_trigger_style_update = true;
 
 class NotificationManager
@@ -255,11 +251,8 @@ static int PushWindowTransparencySettings(bool transparent, float alpha_transpar
 	return 5;
 }
 
-class MonitorWindow
+class MonitorWindow : public ui::CommonWindow
 {
-public:
-	bool isOpen = false;
-
 private:
 	char                  InputBuf[256];
 	ImVector<char*>       Items;
@@ -310,7 +303,7 @@ public:
 			ImGui::BeginChild("ScrollingRegion", ImVec2(0, -footer_height_to_reserve), false, ImGuiWindowFlags_HorizontalScrollbar); // Leave room for 1 separator + 1 InputText
 
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1)); // Tighten spacing
-			ImGui::PushFont(g_fixed_width_font);
+			ImGui::PushFont(fixedFont);
 			ImGui::TextUnformatted(xemu_get_monitor_buffer());
 			ImGui::PopFont();
 
@@ -326,7 +319,7 @@ public:
 			bool reclaim_focus = ImGui::IsWindowAppearing();
 
 			ImGui::SetNextItemWidth(-1);
-			ImGui::PushFont(g_fixed_width_font);
+			ImGui::PushFont(fixedFont);
 			if (ImGui::InputText("##text", InputBuf, IM_ARRAYSIZE(InputBuf), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory, &TextEditCallbackStub, (void*)this))
 			{
 				char* s = InputBuf;
@@ -412,15 +405,8 @@ private:
 	}
 };
 
-#define MAX_STRING_LEN \
-	2048 // FIXME: Completely arbitrary and only used here
-	     // to give a buffer to ImGui for each field
-
-class AboutWindow
+class AboutWindow : public ui::CommonWindow
 {
-public:
-	bool isOpen;
-
 private:
 	char build_info_text[256];
 
@@ -438,8 +424,6 @@ public:
 		// FIXME: Show driver
 		// FIXME: Show BIOS/BootROM hash
 	}
-
-	~AboutWindow() {}
 
 	void Draw()
 	{
@@ -478,15 +462,15 @@ public:
 		ImGui::Text("%s", xemu_version);
 
 		ImGui::SetCursorPosX(10 * xsettings.ui_scale);
-		ImGui::Dummy(ImVec2(0, 20 * xsettings.ui_scale));
+		ui::AddSpace(20);
 
 		const char* msg = "Visit https://xemu.app for more information";
 		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize(msg).x) / 2);
 		Hyperlink(msg, "https://xemu.app");
 
-		ImGui::Dummy(ImVec2(0, 40 * xsettings.ui_scale));
+		ui::AddSpace(40);
 
-		ImGui::PushFont(g_fixed_width_font);
+		ImGui::PushFont(fixedFont);
 		ImGui::InputTextMultiline("##build_info", build_info_text, sizeof(build_info_text), ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * 6), ImGuiInputTextFlags_ReadOnly);
 		ImGui::PopFont();
 
@@ -673,15 +657,15 @@ public:
 			{
 #if defined(_WIN32)
 				ImGui::Columns(1);
-				ImGui::Dummy(ImVec2(0, 20 * xsettings.ui_scale));
+				ui::AddSpace(20);
 				const char* msg = "WinPcap/npcap library could not be loaded.\nTo use this attachment, please install npcap.";
 				ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetColumnWidth() - xsettings.ui_scale * ImGui::CalcTextSize(msg).x) / 2);
 				ImGui::Text("%s", msg);
-				ImGui::Dummy(ImVec2(0, 10 * xsettings.ui_scale));
+				ui::AddSpace(10);
 				ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 120 * xsettings.ui_scale) / 2);
 				if (ImGui::Button("Install npcap", ImVec2(120 * xsettings.ui_scale, 0)))
 					xemu_open_web_browser("https://nmap.org/npcap/");
-				ImGui::Dummy(ImVec2(0, 10 * xsettings.ui_scale));
+				ui::AddSpace(10);
 #endif
 			}
 			else
@@ -730,9 +714,10 @@ public:
 
 		ImGui::Columns(1);
 
-		ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().WindowPadding.y));
+		ui::AddSpace(20);
+		ui::AddSpace();
 		ImGui::Separator();
-		ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().WindowPadding.y));
+		ui::AddSpace();
 
 		Hyperlink("Help", "https://xemu.app/docs/networking/");
 
@@ -877,9 +862,9 @@ public:
 		    "collection, archival, and publication of information as outlined "
 		    "in 'Privacy Disclosure' below.");
 
-		ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().WindowPadding.y));
+		ui::AddSpace();
 		ImGui::Separator();
-		ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().WindowPadding.y));
+		ui::AddSpace();
 
 		ImGui::Columns(2, "", false);
 		ImGui::SetColumnWidth(0, ImGui::GetWindowWidth() * 0.25);
@@ -890,7 +875,7 @@ public:
 		ImGui::NextColumn();
 		float item_width = ImGui::GetColumnWidth() * 0.75 - 20 * xsettings.ui_scale;
 		ImGui::SetNextItemWidth(item_width);
-		ImGui::PushFont(g_fixed_width_font);
+		ImGui::PushFont(fixedFont);
 		if (ImGui::InputText("###UserToken", token_buf, sizeof(token_buf), 0))
 		{
 			report.token = token_buf;
@@ -926,7 +911,7 @@ public:
 
 		if (ImGui::TreeNode("Report Details"))
 		{
-			ImGui::PushFont(g_fixed_width_font);
+			ImGui::PushFont(fixedFont);
 			if (dirty)
 			{
 				serialized_report = report.GetSerializedReport();
@@ -957,9 +942,9 @@ public:
 			ImGui::TreePop();
 		}
 
-		ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().WindowPadding.y));
+		ui::AddSpace();
 		ImGui::Separator();
-		ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().WindowPadding.y));
+		ui::AddSpace();
 
 		if (did_send)
 		{
@@ -999,11 +984,9 @@ float mix(float a, float b, float t)
 	return a * (1.0 - t) + (b - a) * t;
 }
 
-class DebugApuWindow
+class DebugApuWindow : public ui::CommonWindow
 {
 public:
-	bool isOpen = false;
-
 	DebugApuWindow() {}
 	~DebugApuWindow() {}
 
@@ -1034,7 +1017,7 @@ public:
 		int voice_mute    = -1;
 
 		// Color buttons, demonstrate using PushID() to add unique identifier in the ID stack, and changing style.
-		ImGui::PushFont(g_fixed_width_font);
+		ImGui::PushFont(fixedFont);
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2, 2));
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 4));
@@ -1096,7 +1079,7 @@ public:
 			ImGui::Text(voice->stereo ? "Stereo" : "Mono");
 
 			ImGui::Separator();
-			ImGui::PushFont(g_fixed_width_font);
+			ImGui::PushFont(fixedFont);
 
 			const char* noyes[2] = { "NO", "YES" };
 			ImGui::Text(
@@ -1141,7 +1124,7 @@ public:
 		ImGui::SetColumnWidth(0, ImGui::GetCursorPosX());
 		ImGui::NextColumn();
 
-		ImGui::PushFont(g_fixed_width_font);
+		ImGui::PushFont(fixedFont);
 		ImGui::Text("Frames:      %04d", dbg->frames_processed);
 		ImGui::Text("GP Cycles:   %04d", dbg->gp.cycles);
 		ImGui::Text("EP Cycles:   %04d", dbg->ep.cycles);
@@ -1208,10 +1191,9 @@ struct ScrollingBuffer
 	}
 };
 
-class DebugVideoWindow
+class DebugVideoWindow : public ui::CommonWindow
 {
 public:
-	bool isOpen;
 	bool transparent;
 
 	DebugVideoWindow()
@@ -1340,9 +1322,9 @@ public:
 		ImGui::Text("Would you like xemu to check for updates on startup?");
 		ImGui::SetNextItemWidth(-1.0f);
 
-		ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().WindowPadding.y));
+		ui::AddSpace();
 		ImGui::Separator();
-		ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().WindowPadding.y));
+		ui::AddSpace();
 
 		float w  = (130) * xsettings.ui_scale;
 		float bw = w + (10) * xsettings.ui_scale;
@@ -1408,9 +1390,9 @@ public:
 		if (updater.is_updating())
 			ImGui::ProgressBar(updater.get_update_progress_percentage() / 100.0f, ImVec2(-1.0f, 0.0f));
 
-		ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().WindowPadding.y));
+		ui::AddSpace();
 		ImGui::Separator();
-		ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().WindowPadding.y));
+		ui::AddSpace();
 
 		float w  = (130) * xsettings.ui_scale;
 		float bw = w + (10) * xsettings.ui_scale;
@@ -1508,16 +1490,16 @@ public:
 		ImGui::Text("%s", xemu_version);
 
 		ImGui::SetCursorPosX(10 * xsettings.ui_scale);
-		ImGui::Dummy(ImVec2(0, 20 * xsettings.ui_scale));
+		ui::AddSpace(20);
 
 		const char* msg = "To get started, please configure machine settings.";
 		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize(msg).x) / 2);
 		ImGui::Text("%s", msg);
 
-		ImGui::Dummy(ImVec2(0, 20 * xsettings.ui_scale));
+		ui::AddSpace(20);
 		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 120 * xsettings.ui_scale) / 2);
 		if (ImGui::Button("Settings", ImVec2(120 * xsettings.ui_scale, 0))) ui::GetSettingsWindow().Show();
-		ImGui::Dummy(ImVec2(0, 20 * xsettings.ui_scale));
+		ui::AddSpace(20);
 
 		msg = "Visit https://xemu.app for more information";
 		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize(msg).x) / 2);
@@ -1573,7 +1555,7 @@ static void InitializeStyle()
 	font_cfg.OversampleV  = 1;
 	font_cfg.PixelSnapH   = true;
 	font_cfg.SizePixels   = 13.0f * xsettings.ui_scale;
-	g_fixed_width_font    = io.Fonts->AddFontDefault(&font_cfg);
+	fixedFont             = io.Fonts->AddFontDefault(&font_cfg);
 
 	ImGui_ImplOpenGL3_CreateFontsTexture();
 
@@ -1592,58 +1574,7 @@ static void InitializeStyle()
 	ImGui::GetStyle()       = style;
 	ImGui::GetStyle().ScaleAllSizes(xsettings.ui_scale);
 
-	// Set default theme, override
-	ImGui::StyleColorsDark();
-
-	ImVec4* colors                         = ImGui::GetStyle().Colors;
-	colors[ImGuiCol_Border]                = ImVec4(0.11f, 0.11f, 0.11f, 0.60f);
-	colors[ImGuiCol_BorderShadow]          = ImVec4(0.16f, 0.16f, 0.16f, 0.00f);
-	colors[ImGuiCol_Button]                = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
-	colors[ImGuiCol_ButtonActive]          = ImVec4(0.26f, 0.66f, 0.23f, 1.00f);
-	colors[ImGuiCol_ButtonHovered]         = ImVec4(0.28f, 0.71f, 0.25f, 1.00f);
-	colors[ImGuiCol_CheckMark]             = ImVec4(0.26f, 0.66f, 0.23f, 1.00f);
-	colors[ImGuiCol_ChildBg]               = ImVec4(0.16f, 0.16f, 0.16f, 0.58f);
-	colors[ImGuiCol_DragDropTarget]        = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
-	colors[ImGuiCol_FrameBg]               = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
-	colors[ImGuiCol_FrameBgActive]         = ImVec4(0.28f, 0.71f, 0.25f, 1.00f);
-	colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.28f, 0.71f, 0.25f, 0.78f);
-	colors[ImGuiCol_Header]                = ImVec4(0.28f, 0.71f, 0.25f, 0.76f);
-	colors[ImGuiCol_HeaderActive]          = ImVec4(0.26f, 0.66f, 0.23f, 1.00f);
-	colors[ImGuiCol_HeaderHovered]         = ImVec4(0.28f, 0.71f, 0.25f, 0.86f);
-	colors[ImGuiCol_MenuBarBg]             = ImVec4(0.14f, 0.14f, 0.14f, 0.00f);
-	colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.16f, 0.16f, 0.16f, 0.73f);
-	colors[ImGuiCol_NavHighlight]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-	colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
-	colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
-	colors[ImGuiCol_PlotHistogram]         = ImVec4(0.86f, 0.93f, 0.89f, 0.63f);
-	colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(0.28f, 0.71f, 0.25f, 1.00f);
-	colors[ImGuiCol_PlotLines]             = ImVec4(0.86f, 0.93f, 0.89f, 0.63f);
-	colors[ImGuiCol_PlotLinesHovered]      = ImVec4(0.28f, 0.71f, 0.25f, 1.00f);
-	colors[ImGuiCol_PopupBg]               = ImVec4(0.16f, 0.16f, 0.16f, 0.90f);
-	colors[ImGuiCol_ResizeGrip]            = ImVec4(0.47f, 0.83f, 0.49f, 0.04f);
-	colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.28f, 0.71f, 0.25f, 1.00f);
-	colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.28f, 0.71f, 0.25f, 0.78f);
-	colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
-	colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.20f, 0.51f, 0.18f, 1.00f);
-	colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.28f, 0.71f, 0.25f, 1.00f);
-	colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.28f, 0.71f, 0.25f, 0.78f);
-	colors[ImGuiCol_Separator]             = ImVec4(0.11f, 0.11f, 0.11f, 0.60f);
-	colors[ImGuiCol_SeparatorActive]       = ImVec4(0.25f, 0.75f, 0.10f, 1.00f);
-	colors[ImGuiCol_SeparatorHovered]      = ImVec4(0.13f, 0.87f, 0.16f, 0.78f);
-	colors[ImGuiCol_SliderGrab]            = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
-	colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.26f, 0.66f, 0.23f, 1.00f);
-	colors[ImGuiCol_Tab]                   = ImVec4(0.26f, 0.67f, 0.23f, 0.95f);
-	colors[ImGuiCol_TabActive]             = ImVec4(0.26f, 0.66f, 0.23f, 1.00f);
-	colors[ImGuiCol_TabHovered]            = ImVec4(0.28f, 0.71f, 0.25f, 0.86f);
-	colors[ImGuiCol_TabUnfocused]          = ImVec4(0.21f, 0.54f, 0.19f, 0.99f);
-	colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(0.24f, 0.60f, 0.21f, 1.00f);
-	colors[ImGuiCol_Text]                  = ImVec4(0.86f, 0.93f, 0.89f, 0.78f);
-	colors[ImGuiCol_TextDisabled]          = ImVec4(0.86f, 0.93f, 0.89f, 0.28f);
-	colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.28f, 0.71f, 0.25f, 0.43f);
-	colors[ImGuiCol_TitleBg]               = ImVec4(0.20f, 0.51f, 0.18f, 1.00f);
-	colors[ImGuiCol_TitleBgActive]         = ImVec4(0.26f, 0.66f, 0.23f, 1.00f);
-	colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(0.16f, 0.16f, 0.16f, 0.75f);
-	colors[ImGuiCol_WindowBg]              = ImVec4(0.06f, 0.06f, 0.06f, 0.98f);
+	ui::UpdateTheme();
 }
 
 /* External interface, called from ui/xemu.c which handles SDL main loop */
@@ -1752,8 +1683,8 @@ void xemu_hud_render()
 			if (t >= 1.0) alpha = 0.0;
 		}
 
-		ui::ControlsWindow& controlsWindow = ui::GetControlsWindow();
-		controlsWindow.alpha               = alpha;
+		auto controlsWindow  = ui::GetControlsWindow();
+		controlsWindow.alpha = alpha;
 		// controlsWindow.Show(alpha > 0.0f);
 
 		ui::ShowMainMenu(alpha);
@@ -1782,7 +1713,7 @@ void xemu_hud_render()
 	if (ImGui::BeginPopupModal("Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::Text("%s", g_errors[0]);
-		ImGui::Dummy(ImVec2(0, 16));
+		ui::AddSpace(16);
 		ImGui::SetItemDefaultFocus();
 		ImGui::SetCursorPosX(ImGui::GetWindowWidth() - (120 + 10));
 		if (ImGui::Button("Ok", ImVec2(120, 0)))
@@ -1809,3 +1740,13 @@ void xemu_queue_error_message(const char* msg)
 {
 	g_errors.push_back(strdup(msg));
 }
+
+namespace ui
+{
+
+CommonWindow& GetAboutWindow() { return about_window; }
+CommonWindow& GetAudioWindow() { return apu_window; }
+CommonWindow& GetMonitorWindow() { return monitor_window; }
+CommonWindow& GetVideoWindow() { return video_window; }
+
+} // namespace ui

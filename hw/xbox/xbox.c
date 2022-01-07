@@ -40,6 +40,7 @@
 #include "sysemu/arch_init.h"
 #include "exec/memory.h"
 #include "exec/address-spaces.h"
+#include "exec/ramblock.h"
 #include "cpu.h"
 
 #include "qapi/error.h"
@@ -57,21 +58,24 @@
 
 #include "hw/xbox/xbox.h"
 #include "smbus.h"
+#include "ui/xsettings.h"
 
 #define MAX_IDE_BUS 2
 
-/* FIXME: Clean this up and propagate errors to UI */
+uint64_t memoryData[4] = { 0 };
+
+// FIXME: Clean this up and propagate errors to UI
 static void xbox_flash_init(MachineState* ms, MemoryRegion* rom_memory)
 {
 	const uint32_t rom_start = 0xFF000000;
-	const char* bios_name;
+	const char*    bios_name;
 
-	/* Locate BIOS ROM image */
+	// Locate BIOS ROM image
 	bios_name = ms->firmware ? ms->firmware : "bios.bin";
 
-	int failed_to_load_bios = 1;
-	char* filename = qemu_find_file(QEMU_FILE_TYPE_BIOS, bios_name);
-	uint32_t bios_size = 256 * 1024;
+	int      failed_to_load_bios = 1;
+	char*    filename            = qemu_find_file(QEMU_FILE_TYPE_BIOS, bios_name);
+	uint32_t bios_size           = 256 * 1024;
 
 	if (filename != NULL)
 	{
@@ -79,7 +83,7 @@ static void xbox_flash_init(MachineState* ms, MemoryRegion* rom_memory)
 		if ((bios_file_size > 0) && ((bios_file_size % 65536) == 0))
 		{
 			failed_to_load_bios = 0;
-			bios_size = bios_file_size;
+			bios_size           = bios_file_size;
 		}
 	}
 
@@ -88,9 +92,9 @@ static void xbox_flash_init(MachineState* ms, MemoryRegion* rom_memory)
 
 	if (!failed_to_load_bios && (filename != NULL))
 	{
-		/* Read BIOS ROM into memory */
+		// Read BIOS ROM into memory
 		failed_to_load_bios = 1;
-		int fd = qemu_open(filename, O_RDONLY | O_BINARY, NULL);
+		int fd              = qemu_open(filename, O_RDONLY | O_BINARY, NULL);
 		if (fd >= 0)
 		{
 			int rc = read(fd, bios_data, bios_size);
@@ -104,22 +108,20 @@ static void xbox_flash_init(MachineState* ms, MemoryRegion* rom_memory)
 
 	if (failed_to_load_bios)
 	{
-		fprintf(stderr, "Failed to load BIOS '%s'\n", filename);
+		LogC(LOG_ERROR, "Failed to load BIOS '%s'", filename);
 		memset(bios_data, 0xff, bios_size);
 	}
 	if (filename != NULL)
-	{
 		g_free(filename);
-	}
 
-	/* Create BIOS region */
+	// Create BIOS region
 	MemoryRegion* bios;
 	bios = g_malloc(sizeof(*bios));
 	assert(bios != NULL);
 	memory_region_init_rom(bios, NULL, "xbox.bios", bios_size, &error_fatal);
 	rom_add_blob_fixed("xbox.bios", bios_data, bios_size, rom_start);
 
-	/* Mirror ROM from 0xff000000 - 0xffffffff */
+	// Mirror ROM from 0xff000000 - 0xffffffff
 	uint32_t map_loc;
 	for (map_loc = rom_start; map_loc >= rom_start; map_loc += bios_size)
 	{
@@ -157,7 +159,7 @@ static void xbox_flash_init(MachineState* ms, MemoryRegion* rom_memory)
 		int bootrom_size = get_image_size(filename);
 		if (bootrom_size != 512)
 		{
-			fprintf(stderr, "MCPX bootrom should be 512 bytes, got %d\n", bootrom_size);
+			LogC(LOG_ERROR, "MCPX bootrom should be 512 bytes, got %d", bootrom_size);
 			exit(1);
 			return;
 		}
@@ -177,11 +179,10 @@ static void xbox_flash_init(MachineState* ms, MemoryRegion* rom_memory)
 	rom_add_blob_fixed("xbox.mcpx", bios_data, bios_size, -bios_size);
 	memory_region_add_subregion_overlap(rom_memory, -bios_size, mcpx, 1);
 
-	g_free(bios_data); /* duplicated by `rom_add_blob_fixed` */
+	g_free(bios_data); // duplicated by `rom_add_blob_fixed`
 }
 
-static void xbox_memory_init(
-	PCMachineState* pcms, MemoryRegion* system_memory, MemoryRegion* rom_memory, MemoryRegion** ram_memory)
+static void xbox_memory_init(PCMachineState* pcms, MemoryRegion* system_memory, MemoryRegion* rom_memory, MemoryRegion** ram_memory)
 {
 	// int linux_boot, i;
 	MemoryRegion* ram; //, *option_rom_mr;
@@ -191,12 +192,20 @@ static void xbox_memory_init(
 
 	// linux_boot = (machine->kernel_filename != NULL);
 
-	/* Allocate RAM.  We allocate it as a single memory region and use
-	 * aliases to address portions of it, mostly for backwards compatibility
-	 * with older qemus that used qemu_ram_alloc().
-	 */
+	// Allocate RAM.  We allocate it as a single memory region and use aliases to address portions of it,
+    // mostly for backwards compatibility with older qemus that used qemu_ram_alloc().
 	ram = g_malloc(sizeof(*ram));
 	memory_region_init_ram(ram, NULL, "xbox.ram", machine->ram_size, &error_fatal);
+
+    {
+        RAMBlock *block = ram->ram_block;
+        // LogC(LOG_WARNING, "sizeof(*ram)=%llu ram_size=%lld ram_block=%p ram=%d host=%p offset=%lld used_length=%lld max_length=%lld",
+        //     sizeof(*ram), (uint64_t)ram->size, (void*)block, ram->ram, block->host, block->offset, block->used_length, block->max_length);
+        memoryData[0] = (uint64_t)block->host;
+        memoryData[1] = block->offset;
+        memoryData[2] = block->used_length;
+        memoryData[3] = block->max_length;
+    }
 
 	*ram_memory = ram;
 	memory_region_add_subregion(system_memory, 0, ram);
@@ -205,7 +214,7 @@ static void xbox_memory_init(
 	pc_system_flash_cleanup_unused(pcms);
 }
 
-/* PC hardware initialisation */
+// PC hardware initialisation
 static void xbox_init(MachineState* machine)
 {
 	xbox_init_common(machine, NULL, NULL);
@@ -213,13 +222,11 @@ static void xbox_init(MachineState* machine)
 
 void xbox_init_common(MachineState* machine, PCIBus** pci_bus_out, ISABus** isa_bus_out)
 {
-	PCMachineState* pcms = PC_MACHINE(machine);
-	PCMachineClass* pcmc = PC_MACHINE_GET_CLASS(pcms);
-	X86MachineState* x86ms = X86_MACHINE(machine);
-	MemoryRegion* system_memory = get_system_memory();
+	PCMachineState*  pcms          = PC_MACHINE(machine);
+	PCMachineClass*  pcmc          = PC_MACHINE_GET_CLASS(pcms);
+	X86MachineState* x86ms         = X86_MACHINE(machine);
+	MemoryRegion*    system_memory = get_system_memory();
 	// MemoryRegion *system_io = get_system_io();
-
-	int i;
 
 	PCIBus* pci_bus;
 	ISABus* isa_bus;
@@ -232,9 +239,9 @@ void xbox_init_common(MachineState* machine, PCIBus** pci_bus_out, ISABus** isa_
 	// DriveInfo *hd[MAX_IDE_BUS * MAX_IDE_DEVS];
 	// BusState *idebus[MAX_IDE_BUS];
 	ISADevice* rtc_state;
-	ISADevice* pit = NULL;
-	int pit_isa_irq = 0;
-	qemu_irq pit_alt_irq = NULL;
+	ISADevice* pit         = NULL;
+	int        pit_isa_irq = 0;
+	qemu_irq   pit_alt_irq = NULL;
 	// ISADevice *pit;
 
 	MemoryRegion* ram_memory;
@@ -247,9 +254,7 @@ void xbox_init_common(MachineState* machine, PCIBus** pci_bus_out, ISABus** isa_
 	x86_cpus_init(x86ms, pcmc->default_cpu_version);
 
 	if (kvm_enabled() && pcmc->kvmclock_enabled)
-	{
 		kvmclock_create(pcmc->kvmclock_create_always);
-	}
 
 	pci_memory = g_new(MemoryRegion, 1);
 	memory_region_init(pci_memory, NULL, "pci", UINT64_MAX);
@@ -257,14 +262,12 @@ void xbox_init_common(MachineState* machine, PCIBus** pci_bus_out, ISABus** isa_
 
 	// pc_guest_info_init(pcms);
 
-	/* allocate ram and load rom/bios */
+	// allocate ram and load rom/bios
 	xbox_memory_init(pcms, system_memory, rom_memory, &ram_memory);
 
 	gsi_state = pc_gsi_create(&x86ms->gsi, pcmc->pci_enabled);
 
-	xbox_pci_init(
-		x86ms->gsi, get_system_memory(), get_system_io(), pci_memory, ram_memory, rom_memory, &pci_bus, &isa_bus,
-		&smbus, &agp_bus);
+	xbox_pci_init(x86ms->gsi, get_system_memory(), get_system_io(), pci_memory, ram_memory, rom_memory, &pci_bus, &isa_bus, &smbus, &agp_bus);
 
 	pcms->bus = pci_bus;
 
@@ -273,22 +276,16 @@ void xbox_init_common(MachineState* machine, PCIBus** pci_bus_out, ISABus** isa_
 	pc_i8259_create(isa_bus, gsi_state->i8259_irq);
 
 	if (tcg_enabled())
-	{
 		x86_register_ferr_irq(x86ms->gsi[13]);
-	}
 
-	/* init basic PC hardware */
+	// init basic PC hardware
 	pcms->pit_enabled = 1; // XBOX_FIXME: What's the right way to do this?
-	rtc_state = mc146818_rtc_init(isa_bus, 2000, NULL);
+	rtc_state         = mc146818_rtc_init(isa_bus, 2000, NULL);
 
 	if (kvm_pit_in_kernel())
-	{
 		pit = kvm_pit_init(isa_bus, 0x40);
-	}
 	else
-	{
 		pit = i8254_pit_init(isa_bus, 0x40, pit_isa_irq, pit_alt_irq);
-	}
 
 	i8257_dma_init(isa_bus, 0);
 
@@ -301,24 +298,24 @@ void xbox_init_common(MachineState* machine, PCIBus** pci_bus_out, ISABus** isa_
 
 	// xbox bios wants this bit pattern set to mark the data as valid
 	uint8_t bits = 0x55;
-	for (i = 0x10; i < 0x70; i++)
+	for (int i = 0x10; i < 0x70; i++)
 	{
 		rtc_set_memory(rtc_state, i, bits);
 		bits = ~bits;
 	}
 	bits = 0x55;
-	for (i = 0x80; i < 0x100; i++)
+	for (int i = 0x80; i < 0x100; i++)
 	{
 		rtc_set_memory(rtc_state, i, bits);
 		bits = ~bits;
 	}
 
-	/* smbus devices */
+	// smbus devices
 	smbus_xbox_smc_init(smbus, 0x10);
 	smbus_cx25871_init(smbus, 0x45);
 	smbus_adm1032_init(smbus, 0x4c);
 
-	/* USB */
+	// USB
 	PCIDevice* usb1 = pci_new(PCI_DEVFN(3, 0), "pci-ohci");
 	qdev_prop_set_uint32(&usb1->qdev, "num-ports", 4);
 	pci_realize_and_unref(usb1, pci_bus, &error_fatal);
@@ -327,10 +324,9 @@ void xbox_init_common(MachineState* machine, PCIBus** pci_bus_out, ISABus** isa_
 	qdev_prop_set_uint32(&usb0->qdev, "num-ports", 4);
 	pci_realize_and_unref(usb0, pci_bus, &error_fatal);
 
-	/* Ethernet! */
+	// Ethernet!
 	PCIDevice* nvnet = pci_new(PCI_DEVFN(4, 0), "nvnet");
-
-	for (i = 0; i < nb_nics; i++)
+	for (int i = 0; i < nb_nics; i++)
 	{
 		NICInfo* nd = &nd_table[i];
 		qemu_check_nic_model(nd, "nvnet");
@@ -338,55 +334,50 @@ void xbox_init_common(MachineState* machine, PCIBus** pci_bus_out, ISABus** isa_
 		pci_realize_and_unref(nvnet, pci_bus, &error_fatal);
 	}
 
-	/* APU! */
+	// APU!
 	mcpx_apu_init(pci_bus, PCI_DEVFN(5, 0), ram_memory);
 
-	/* ACI! */
+	// ACI!
 	pci_create_simple(pci_bus, PCI_DEVFN(6, 0), "mcpx-aci");
 
-	/* GPU! */
+	// GPU!
 	nv2a_init(agp_bus, PCI_DEVFN(0, 0), ram_memory);
 
-	if (pci_bus_out)
-	{
-		*pci_bus_out = pci_bus;
-	}
-	if (isa_bus_out)
-	{
-		*isa_bus_out = isa_bus;
-	}
+	if (pci_bus_out) *pci_bus_out = pci_bus;
+	if (isa_bus_out) *isa_bus_out = isa_bus;
 }
 
 static void xbox_machine_options(MachineClass* m)
 {
 	PCMachineClass* pcmc = PC_MACHINE_CLASS(m);
-	m->desc = "Microsoft Xbox";
-	m->max_cpus = 1;
+	m->desc              = "Microsoft Xbox";
+	m->max_cpus          = 1;
 	m->option_rom_has_mr = true;
-	m->rom_file_has_mr = false;
-	m->no_floppy = 1, m->no_cdrom = 1, m->no_sdcard = 1, m->default_cpu_type = X86_CPU_TYPE_NAME("pentium3");
-	m->is_default = true;
+	m->rom_file_has_mr   = false;
+	m->no_floppy         = 1;
+	m->no_cdrom          = 1;
+	m->no_sdcard         = 1;
+	m->default_cpu_type  = X86_CPU_TYPE_NAME("pentium3");
+	m->is_default        = true;
 
-	pcmc->pci_enabled = true;
-	pcmc->has_acpi_build = false;
-	pcmc->smbios_defaults = false;
-	pcmc->gigabyte_align = false;
-	pcmc->smbios_legacy_mode = true;
+	pcmc->pci_enabled         = true;
+	pcmc->has_acpi_build      = false;
+	pcmc->smbios_defaults     = false;
+	pcmc->gigabyte_align      = false;
+	pcmc->smbios_legacy_mode  = true;
 	pcmc->has_reserved_memory = false;
-	pcmc->default_nic_model = "nvnet";
+	pcmc->default_nic_model   = "nvnet";
 }
 
 static char* machine_get_bootrom(Object* obj, Error** errp)
 {
 	XboxMachineState* ms = XBOX_MACHINE(obj);
-
 	return g_strdup(ms->bootrom);
 }
 
 static void machine_set_bootrom(Object* obj, const char* value, Error** errp)
 {
 	XboxMachineState* ms = XBOX_MACHINE(obj);
-
 	g_free(ms->bootrom);
 	ms->bootrom = g_strdup(value);
 }
@@ -394,7 +385,6 @@ static void machine_set_bootrom(Object* obj, const char* value, Error** errp)
 static char* machine_get_avpack(Object* obj, Error** errp)
 {
 	XboxMachineState* ms = XBOX_MACHINE(obj);
-
 	return g_strdup(ms->avpack);
 }
 
@@ -416,7 +406,6 @@ static void machine_set_avpack(Object* obj, const char* value, Error** errp)
 static void machine_set_short_animation(Object* obj, bool value, Error** errp)
 {
 	XboxMachineState* ms = XBOX_MACHINE(obj);
-
 	ms->short_animation = value;
 }
 
@@ -429,7 +418,6 @@ static bool machine_get_short_animation(Object* obj, Error** errp)
 static char* machine_get_smc_version(Object* obj, Error** errp)
 {
 	XboxMachineState* ms = XBOX_MACHINE(obj);
-
 	return g_strdup(ms->smc_version);
 }
 
@@ -454,8 +442,7 @@ static inline void xbox_machine_initfn(Object* obj)
 	object_property_set_description(obj, "bootrom", "Xbox bootrom file");
 
 	object_property_add_str(obj, "avpack", machine_get_avpack, machine_set_avpack);
-	object_property_set_description(
-		obj, "avpack", "Xbox video connector: composite, scart, svideo, vga, rfu, hdtv (default), none");
+	object_property_set_description(obj, "avpack", "Xbox video connector: composite, scart, svideo, vga, rfu, hdtv (default), none");
 	object_property_set_str(obj, "avpack", "hdtv", &error_fatal);
 
 	object_property_add_bool(obj, "short-animation", machine_get_short_animation, machine_set_short_animation);
@@ -475,17 +462,19 @@ static void xbox_machine_class_init(ObjectClass* oc, void* data)
 }
 
 static const TypeInfo pc_machine_type_xbox = {
-	.name = TYPE_XBOX_MACHINE,
-	.parent = TYPE_PC_MACHINE,
-	.abstract = false,
+	.name          = TYPE_XBOX_MACHINE,
+	.parent        = TYPE_PC_MACHINE,
+	.abstract      = false,
 	.instance_size = sizeof(XboxMachineState),
 	.instance_init = xbox_machine_initfn,
-	.class_size = sizeof(XboxMachineClass),
-	.class_init = xbox_machine_class_init,
+	.class_size    = sizeof(XboxMachineClass),
+	.class_init    = xbox_machine_class_init,
 	.interfaces =
-		(InterfaceInfo[]) { // { TYPE_HOTPLUG_HANDLER },
-							// { TYPE_NMI },
-							{} },
+	    (InterfaceInfo[]) {
+            // { TYPE_HOTPLUG_HANDLER },
+	        // { TYPE_NMI },
+	        {},
+        },
 };
 
 static void pc_machine_init_xbox(void)

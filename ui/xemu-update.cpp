@@ -21,8 +21,8 @@
 #include <stdlib.h>
 #include <SDL_filesystem.h>
 
+#include "ui.h"
 #include "util/miniz/miniz.h"
-
 #include "xemu-update.h"
 #include "xemu-version.h"
 
@@ -37,8 +37,6 @@ FIXME
 
 #define CPPHTTPLIB_OPENSSL_SUPPORT 1
 #include "httplib.h"
-
-#define DPRINTF(fmt, ...) fprintf(stderr, fmt, ##__VA_ARGS__);
 
 Updater::Updater()
 {
@@ -145,7 +143,7 @@ void Updater::update_internal()
 	mz_zip_zero_struct(&zip);
 	if (!mz_zip_reader_init_mem(&zip, res->body.data(), res->body.size(), 0))
 	{
-		DPRINTF("mz_zip_reader_init_mem failed\n");
+		ui::LogError("mz_zip_reader_init_mem failed");
 		m_status = UPDATER_ERROR;
 		return;
 	}
@@ -156,19 +154,19 @@ void Updater::update_internal()
 		mz_zip_archive_file_stat fstat;
 		if (!mz_zip_reader_file_stat(&zip, file_idx, &fstat))
 		{
-			DPRINTF("mz_zip_reader_file_stat failed for file #%d\n", file_idx);
+			ui::LogError("mz_zip_reader_file_stat failed for file #%d", file_idx);
 			goto errored;
 		}
 
 		if (fstat.m_filename[strlen(fstat.m_filename) - 1] == '/')
 		{
 			/* FIXME: mkdirs */
-			DPRINTF("FIXME: subdirs not handled yet\n");
+			ui::LogError("FIXME: subdirs not handled yet");
 			goto errored;
 		}
 
 		char* dst_path = g_strdup_printf("%s%s", SDL_GetBasePath(), fstat.m_filename);
-		DPRINTF("extracting %s to %s\n", fstat.m_filename, dst_path);
+		ui::Log("extracting %s to %s", fstat.m_filename, dst_path);
 
 		if (!strcmp(fstat.m_filename, "xemu.exe"))
 		{
@@ -180,7 +178,7 @@ void Updater::update_internal()
 
 		if (!mz_zip_reader_extract_to_file(&zip, file_idx, dst_path, 0))
 		{
-			DPRINTF("mz_zip_reader_extract_to_file failed to create %s\n", dst_path);
+			ui::LogError("mz_zip_reader_extract_to_file failed to create %s", dst_path);
 			g_free(dst_path);
 			goto errored;
 		}
@@ -203,8 +201,8 @@ extern char** gArgv;
 void Updater::restart_to_updated()
 {
 	char* target_exec = g_strdup_printf("%s%s", SDL_GetBasePath(), "xemu.exe");
-	DPRINTF("Restarting to updated executable %s\n", target_exec);
+	ui::Log("Restarting to updated executable %s", target_exec);
 	_execv(target_exec, gArgv);
-	DPRINTF("Launching updated executable failed\n");
+	ui::LogError("Launching updated executable failed");
 	exit(1);
 }
