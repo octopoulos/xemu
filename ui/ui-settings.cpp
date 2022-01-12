@@ -40,7 +40,11 @@ private:
 	int  tabMenu    = 0;
 
 public:
-	SettingsWindow() { memcpy(&prevSettings, &xsettings, sizeof(XSettings)); }
+	SettingsWindow()
+	{
+		name = "Settings";
+		memcpy(&prevSettings, &xsettings, sizeof(XSettings));
+	}
 
 	void Load() { memcpy(&prevSettings, &xsettings, sizeof(XSettings)); }
 
@@ -55,9 +59,9 @@ public:
 
 	void OpenTab(int tabMenu_)
 	{
-		tabMenu    = tabMenu_;
-		isOpen     = true;
-		manualOpen = true;
+		tab     = tabMenu_;
+		tabMenu = tabMenu_;
+		isOpen  = true;
 	}
 
 	/**
@@ -66,11 +70,9 @@ public:
 
 	void Draw()
 	{
-		if (!isOpen)
-			return;
-
-		ImGui::SetNextWindowContentSize(ImVec2(800.0f * xsettings.ui_scale, 600.0f * xsettings.ui_scale));
-		if (!ImGui::Begin("Settings", &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+		CHECK_DRAW();
+		ImGui::SetNextWindowSize(ImVec2(900.0f * xsettings.ui_scale, 600.0f * xsettings.ui_scale));
+		if (!ImGui::Begin("Settings", &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking))
 		{
 			ImGui::End();
 			return;
@@ -78,88 +80,119 @@ public:
 
 		if (ImGui::IsWindowAppearing()) Load();
 
-		clickedNow = false;
+		const char* tabNames[] = {
+			"CPU",
+			"GPU",
+			"Audio",
+			"",
+			"Pads",
+			"System",
+			"Network",
+			"Advanced",
+			"Emulator",
+			"GUI",
+			"Debug",
+			"",
+			"Shortcuts",
+			"Theme Editor",
+			nullptr,
+		};
 
-		if (ImGui::BeginTabBar("Settings#tabs"))
+		ImGui::BeginChild("main", ImVec2(0, -ImGui::GetFrameHeightWithSpacing()));
 		{
-			const char* tabNames[] = {
-				"CPU",
-				"GPU",
-				"Audio",
-				"Pads",
-				"System",
-				"Network",
-				"Advanced",
-				"Emulator",
-				"GUI",
-				"Debug",
-				nullptr,
-			};
+			clickedNow = false;
 
-			for (int i = 0; tabNames[i]; ++i)
-				if (ImGui::BeginTabItem(tabNames[i]))
+			// left
+			{
+				ImGui::BeginChild("left pane", ImVec2(150, 0), true);
+				for (int i = 0, j = 0;; ++i)
 				{
-					if (tab != i)
+					auto text = tabNames[i];
+					if (!text)
+						break;
+					else if (!*text)
+						ImGui::Separator();
+					else
 					{
-						clickedNow = true;
-						tab        = i;
-						tabMenu    = i;
+						if (ImGui::Selectable(text, tab == j))
+						{
+							clickedNow = true;
+							tab        = j;
+							tabMenu    = j;
+						}
+						++j;
 					}
-					ImGui::EndTabItem();
+				}
+				ImGui::EndChild();
+			}
+			ImGui::SameLine();
+
+			// right
+			{
+				ImGui::BeginGroup();
+				ImGui::BeginChild("item view");
+				AddSpace(0);
+
+				switch (tabMenu)
+				{
+				case 0: DrawCPU(); break;
+				case 1: DrawGPU(); break;
+				case 2: DrawAudio(); break;
+				case 3: DrawPads(); break;
+				case 4: DrawSystem(); break;
+				case 5: DrawNetwork(); break;
+				case 6: DrawAdvanced(); break;
+				case 7: DrawEmulator(); break;
+				case 8: DrawGUI(); break;
+				case 9: DrawDebug(); break;
+				case 10: DrawShortcuts(); break;
+				default: break;
 				}
 
-			ImGui::EndTabBar();
+				ImGui::EndChild();
+				ImGui::EndGroup();
+			}
 		}
+		ImGui::EndChild();
 
-		AddSpace(0);
-
-		switch (tabMenu)
+		// footer
 		{
-		case 0: DrawCPU(); break;
-		case 1: DrawGPU(); break;
-		case 2: DrawAudio(); break;
-		case 3: DrawPads(); break;
-		case 4: DrawSystem(); break;
-		case 5: DrawNetwork(); break;
-		case 6: DrawAdvanced(); break;
-		case 7: DrawEmulator(); break;
-		case 8: DrawGUI(); break;
-		case 9: DrawDebug(); break;
-		default: break;
-		}
+			ImGui::TextUnformatted("Description");
 
-		ImGui::TextUnformatted("Description");
-
-		ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 60);
-
-		if (ImGui::Button("Restore Defaults"))
-		{
-			memcpy(&xsettings, &prevSettings, sizeof(XSettings));
-			changed = 0;
-		}
-		ImGui::SameLine();
-		ImGui::SetItemDefaultFocus();
-		if (ImGui::Button("Save"))
-		{
-			Save();
-			isOpen = false;
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Close"))
-		{
-			if ((changed = xsettingsCompare(&prevSettings))) {}
-			memcpy(&xsettings, &prevSettings, sizeof(XSettings));
-			isOpen = false;
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Apply")) {}
-
-		if (changed & 2)
-		{
-			const char* msg = "Restart to apply changes";
-			ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize(msg).x) / 2.0);
-			ImGui::TextUnformatted(msg);
+			auto style = ImGui::GetStyle();
+			auto size  = ImGui::CalcTextSize("OK");
+			// ImGui::SetCursorPosY(ImGui::GetWindowHeight() - size.y - style.FramePadding.y * 2 - style.WindowPadding.y);
 			ImGui::SameLine();
+
+			if (ImGui::Button("Restore Defaults"))
+			{
+				memcpy(&xsettings, &prevSettings, sizeof(XSettings));
+				changed = 0;
+			}
+			ImGui::SameLine();
+			ImGui::SetItemDefaultFocus();
+			if (ImGui::Button("Save"))
+			{
+				Save();
+				isOpen = false;
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Close"))
+			{
+				if ((changed = xsettingsCompare(&prevSettings))) {}
+				memcpy(&xsettings, &prevSettings, sizeof(XSettings));
+				isOpen = false;
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Apply")) {}
+
+			if (changed & 2)
+			{
+				const char* msg = "Restart to apply changes";
+				ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize(msg).x) / 2.0);
+				ImGui::TextUnformatted(msg);
+				ImGui::SameLine();
+			}
 		}
 
 		ImGui::End();
@@ -176,25 +209,11 @@ private:
 	void DrawEmulator();
 	void DrawGUI();
 	void DrawDebug();
+	void DrawShortcuts();
 };
 
 static SettingsWindow settingsWindow;
 CommonWindow&         GetSettingsWindow() { return settingsWindow; }
-
-static void FilePicker(const char* name, char* buf, size_t len, const char* filters)
-{
-	ImGui::PushID(name);
-	ImGui::InputText("##file", buf, len);
-
-	ImGui::SameLine();
-	if (ImGui::Button("..."))
-	{
-		auto selected = FileOpen(filters, buf);
-		if (selected.size() && selected != buf)
-			strcpy(buf, selected.c_str());
-	}
-	ImGui::PopID();
-}
 
 void SettingsWindow::DrawCPU()
 {
@@ -229,15 +248,11 @@ void SettingsWindow::DrawGPU()
 
 	// AddSpace();
 	ImGui::NextColumn();
-	ImGui::Checkbox("FBO Nearest", (bool*)&xsettings.fbo_nearest);
 	ImGui::Checkbox("Graph Nearest", (bool*)&xsettings.graph_nearest);
 	ImGui::Checkbox("Overlay Nearest", (bool*)&xsettings.overlay_nearest);
 	ImGui::Checkbox("Scale Nearest", (bool*)&xsettings.scale_nearest);
-	ImGui::Checkbox("Shader Nearest", (bool*)&xsettings.shader_nearest);
 	ImGui::Checkbox("Surface part Nearest", (bool*)&xsettings.surface_part_nearest);
 	ImGui::Checkbox("Surface texture Nearest", (bool*)&xsettings.surface_texture_nearest);
-
-	ImGui::EndColumns();
 }
 
 void SettingsWindow::DrawAudio()
@@ -259,32 +274,32 @@ struct AxisButtonPos
 };
 const struct AxisButtonPos ab_buttons[] = {
   // buttons
-	{0,   498, 240, 1, 1, CONTROLLER_BUTTON_A         },
-	{ 1,  498, 198, 1, 1, CONTROLLER_BUTTON_B         },
-	{ 2,  470, 223, 1, 2, CONTROLLER_BUTTON_X         },
-	{ 3,  470, 180, 1, 2, CONTROLLER_BUTTON_Y         },
-	{ 4,  0,   390, 1, 2, CONTROLLER_BUTTON_DPAD_LEFT },
-	{ 5,  16,  350, 1, 0, CONTROLLER_BUTTON_DPAD_UP   },
-	{ 6,  28,  390, 1, 1, CONTROLLER_BUTTON_DPAD_RIGHT},
-	{ 7,  16,  430, 1, 0, CONTROLLER_BUTTON_DPAD_DOWN },
-	{ 8,  222, 470, 1, 2, CONTROLLER_BUTTON_BACK      },
-	{ 9,  270, 470, 1, 1, CONTROLLER_BUTTON_START     },
-	{ 10, 435, 70,  1, 1, CONTROLLER_BUTTON_WHITE     },
-	{ 11, 465, 110, 1, 1, CONTROLLER_BUTTON_BLACK     },
-	{ 12, 16,  190, 1, 0, CONTROLLER_BUTTON_LSTICK    },
-	{ 13, 468, 470, 1, 0, CONTROLLER_BUTTON_RSTICK    },
-	{ 14, 246, 240, 1, 0, CONTROLLER_BUTTON_GUIDE     },
+	{0,   498, 240, 1, 1, PAD_BUTTON_A         },
+	{ 1,  498, 198, 1, 1, PAD_BUTTON_B         },
+	{ 2,  470, 223, 1, 2, PAD_BUTTON_X         },
+	{ 3,  470, 180, 1, 2, PAD_BUTTON_Y         },
+	{ 4,  0,   390, 1, 2, PAD_BUTTON_DPAD_LEFT },
+	{ 5,  16,  350, 1, 0, PAD_BUTTON_DPAD_UP   },
+	{ 6,  28,  390, 1, 1, PAD_BUTTON_DPAD_RIGHT},
+	{ 7,  16,  430, 1, 0, PAD_BUTTON_DPAD_DOWN },
+	{ 8,  222, 470, 1, 2, PAD_BUTTON_BACK      },
+	{ 9,  270, 470, 1, 1, PAD_BUTTON_START     },
+	{ 10, 435, 70,  1, 1, PAD_BUTTON_WHITE     },
+	{ 11, 465, 110, 1, 1, PAD_BUTTON_BLACK     },
+	{ 12, 16,  190, 1, 0, PAD_BUTTON_LSTICK    },
+	{ 13, 468, 470, 1, 0, PAD_BUTTON_RSTICK    },
+	{ 14, 246, 240, 1, 0, PAD_BUTTON_GUIDE     },
  // axes
-	{ 22, 222, 30,  2, 2, CONTROLLER_AXIS_LTRIG       },
-	{ 23, 270, 30,  2, 1, CONTROLLER_AXIS_RTRIG       },
-	{ 24, 0,   110, 2, 2, CONTROLLER_AXIS_LSTICK_X    },
-	{ 25, 16,  70,  2, 0, CONTROLLER_AXIS_LSTICK_Y    },
-	{ 26, 28,  110, 2, 1, CONTROLLER_AXIS_LSTICK_X    },
-	{ 27, 16,  150, 2, 0, CONTROLLER_AXIS_LSTICK_Y    },
-	{ 28, 452, 390, 2, 2, CONTROLLER_AXIS_RSTICK_X    },
-	{ 29, 468, 350, 2, 0, CONTROLLER_AXIS_RSTICK_Y    },
-	{ 30, 480, 390, 2, 1, CONTROLLER_AXIS_RSTICK_X    },
-	{ 31, 468, 430, 2, 0, CONTROLLER_AXIS_RSTICK_Y    },
+	{ 22, 222, 30,  2, 2, PAD_AXIS_LTRIG       },
+	{ 23, 270, 30,  2, 1, PAD_AXIS_RTRIG       },
+	{ 24, 0,   110, 2, 2, PAD_AXIS_LSTICK_X    },
+	{ 25, 16,  70,  2, 0, PAD_AXIS_LSTICK_Y    },
+	{ 26, 28,  110, 2, 1, PAD_AXIS_LSTICK_X    },
+	{ 27, 16,  150, 2, 0, PAD_AXIS_LSTICK_Y    },
+	{ 28, 452, 390, 2, 2, PAD_AXIS_RSTICK_X    },
+	{ 29, 468, 350, 2, 0, PAD_AXIS_RSTICK_Y    },
+	{ 30, 480, 390, 2, 1, PAD_AXIS_RSTICK_X    },
+	{ 31, 468, 430, 2, 0, PAD_AXIS_RSTICK_Y    },
 };
 
 static AxisButtonPos* selectedInput  = nullptr;
@@ -310,12 +325,20 @@ void SettingsWindow::DrawPads()
 	if (ImGui::BeginTabBar("Pads#tabs"))
 	{
 		for (int i = 0; i < 4; ++i)
-			if (ImGui::BeginTabItem(fmt::format("player {}", i + 1).c_str()))
+			if (ImGui::BeginTabItem(fmt::format("Player {}", i + 1).c_str()))
 			{
 				active = i;
 				ImGui::EndTabItem();
 			}
 
+		if (ImGui::BeginTabItem("Advanced"))
+		{
+			const char* homeActions[] = { "disable", "pause", "pause + windows" };
+			ImGui::Combo("Guide", &xsettings.guide, homeActions, IM_ARRAYSIZE(homeActions));
+			ImGui::Combo("Guide [Hold]", &xsettings.guide_hold, homeActions, IM_ARRAYSIZE(homeActions));
+			AddSliderInt("guide_hold_time", "Hold after", "%d ms");
+			ImGui::EndTabItem();
+		}
 		ImGui::EndTabBar();
 	}
 
@@ -592,7 +615,7 @@ void SettingsWindow::DrawSystem()
 	const char* rom_file_filters  = ".bin Files\0*.bin\0.rom Files\0*.rom\0All Files\0*.*\0";
 	const char* qcow_file_filters = ".qcow2 Files\0*.qcow2\0All Files\0*.*\0";
 
-	static ImGuiTableFlags tFlags = ImGuiTableFlags_SizingFixedFit;
+	static ImGuiTableFlags tFlags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable;
 
 	static std::vector<std::tuple<const char*, str2k*, const char*>> paths = {
 		{"Flash (BIOS) File",     &xsettings.flash_path,   rom_file_filters },
@@ -615,6 +638,7 @@ void SettingsWindow::DrawSystem()
 			ImGui::TableSetColumnIndex(0);
 			ImGui::Text(text);
 			ImGui::TableSetColumnIndex(1);
+			ImGui::SetNextItemWidth(400.0f);
 			ImGui::InputText("", *value, sizeof(str2k));
 			ImGui::TableSetColumnIndex(2);
 			ImGui::Button("...");
@@ -622,6 +646,9 @@ void SettingsWindow::DrawSystem()
 		}
 		ImGui::EndTable();
 	}
+
+	ImGui::Columns(2, "", false);
+	ImGui::SetColumnWidth(0, ImGui::GetWindowWidth() / 2);
 
 	const char* sMemories[] = { "64 MB", "128 MB" };
 	AddCombo("memory", "System Memory", sMemories, { 64, 128 });
@@ -631,11 +658,17 @@ void SettingsWindow::DrawNetwork() { ImGui::Text("%s %d %d", "Network", tab, tab
 
 void SettingsWindow::DrawAdvanced()
 {
+	ImGui::Columns(2, "", false);
+	ImGui::SetColumnWidth(0, ImGui::GetWindowWidth() / 2);
+
 	AddSliderInt("vblank_frequency", "Vblank Frequency", "%dHz");
 }
 
 void SettingsWindow::DrawEmulator()
 {
+	ImGui::Columns(2, "", false);
+	ImGui::SetColumnWidth(0, ImGui::GetWindowWidth() / 2);
+
 	ImGui::Checkbox("Skip startup animation", (bool*)&xsettings.short_animation);
 	ImGui::Checkbox("Check for updates on startup", (bool*)&xsettings.check_for_update);
 	ImGui::Checkbox("Boot game at startup", (bool*)&xsettings.startup_game);
@@ -659,7 +692,7 @@ void SettingsWindow::DrawGUI()
 	ImGui::SetColumnWidth(0, ImGui::GetWindowWidth() / 2);
 
 	if (AddCombo("theme", "Theme")) UpdateTheme();
-	if (AddCombo("font", "Font")) UpdateFont();
+	// if (AddCombo("font", "Font")) UpdateFont();
 
 	{
 		static float prev_delta = 0;
@@ -680,25 +713,29 @@ void SettingsWindow::DrawGUI()
 	}
 
 	ImGui::Checkbox("Text under Buttons", (bool*)&xsettings.text_button);
-	{
-		const char* homeActions[] = { "disable", "pause", "pause + windows" };
-		ImGui::Combo("Guide", &xsettings.guide, homeActions, IM_ARRAYSIZE(homeActions));
-		ImGui::Combo("Guide [Hold]", &xsettings.guide_hold, homeActions, IM_ARRAYSIZE(homeActions));
-	}
-	AddSliderInt("guide_hold_frames", "Hold after", "%d frames");
 	ImGui::Checkbox("Hide UI when Running Game", (bool*)&xsettings.run_no_ui);
+}
 
-	// shortcuts
-	ImGui::NextColumn();
+void SettingsWindow::DrawDebug()
+{
+	ImGui::Columns(2, "", false);
+	ImGui::SetColumnWidth(0, ImGui::GetWindowWidth() / 2);
 
+	ImGui::InputTextMultiline("Intercept Filter", xsettings.intercept_filter, 2048);
+}
+
+void SettingsWindow::DrawShortcuts()
+{
 	static std::vector<std::pair<std::string, char*>> names = {
 		{"Actions:",    nullptr                      },
 		{ "Boot Disc",  xsettings.shortcut_open      },
 		{ "Eject Disc", xsettings.shortcut_eject     },
 		{ "Fullscreen", xsettings.shortcut_fullscreen},
 		{ "Intercept",  xsettings.shortcut_intercept },
+		{ "Load State", xsettings.shortcut_loadstate },
 		{ "Pause",      xsettings.shortcut_pause     },
 		{ "Reset",      xsettings.shortcut_reset     },
+		{ "Save State", xsettings.shortcut_savestate },
 		{ "Screenshot", xsettings.shortcut_screenshot},
 		{ "Windows:",   nullptr                      },
 		{ "Controls",   xsettings.shortcut_controls  },
@@ -710,28 +747,31 @@ void SettingsWindow::DrawGUI()
 		{ "Pads",       xsettings.shortcut_pads      },
 	};
 
+	ImGui::Columns(2, "", false);
+	ImGui::SetColumnWidth(0, ImGui::GetWindowWidth() / 2);
+
 	for (auto& [name, buffer] : names)
 	{
 		if (!buffer)
+		{
+			if (name == "Windows:")
+				ImGui::NextColumn();
 			ImGui::TextUnformatted(name.c_str());
+		}
 		else
 			ImGui::InputText(name.c_str(), buffer, sizeof(str32));
 	}
-
-	ImGui::EndColumns();
-}
-
-void SettingsWindow::DrawDebug()
-{
-	ImGui::Text("%s %d %d", "Debug", tab, tabMenu);
-
-	ImGui::InputTextMultiline("Intercept Filter", xsettings.intercept_filter, 2048);
 }
 
 // API
 //////
 
-void OpenConfig(int tab) { settingsWindow.OpenTab(tab); }
+void OpenConfig(int tab)
+{
+	// if (IsRunning()) TogglePause();
+	ShowWindows(true, false);
+	settingsWindow.OpenTab(tab);
+}
 
 void ProcessSDL(void* event_)
 {
@@ -759,14 +799,14 @@ void ProcessShortcuts()
 
 void UpdateFont()
 {
-
 }
 
 void UpdateIO()
 {
-	static int homeFrame                    = 0;
-	uint32_t   buttons                      = 0;
-	int16_t    axis[CONTROLLER_AXIS__COUNT] = { 0 };
+	int16_t     axis[PAD_AXIS__COUNT] = { 0 };
+	uint32_t    buttons               = 0;
+	static int  homeFrame             = 0;
+	static auto homeStart             = std::chrono::steady_clock::now();
 
 	// Allow any controller to navigate
 	ControllerState* iter;
@@ -775,7 +815,7 @@ void UpdateIO()
 		if (iter->type != INPUT_DEVICE_SDL_GAMECONTROLLER)
 			continue;
 		buttons |= iter->buttons;
-		for (int i = 0; i < CONTROLLER_AXIS__COUNT; i++)
+		for (int i = 0; i < PAD_AXIS__COUNT; i++)
 		{
 			if ((iter->axis[i] > 3276) || (iter->axis[i] < -3276))
 				axis[i] = iter->axis[i];
@@ -785,17 +825,30 @@ void UpdateIO()
 	auto& io = ImGui::GetIO();
 
 	// home button => toggle the game list + pause/unpause the game
-	if ((buttons & CONTROLLER_BUTTON_GUIDE) || io.KeysDown[SDL_SCANCODE_ESCAPE])
+	auto now = std::chrono::steady_clock::now();
+	if ((buttons & PAD_BUTTON_GUIDE) || io.KeysDown[SDL_SCANCODE_ESCAPE])
 	{
-		if (!homeFrame)
-			HomeGuide(false);
-		else if (homeFrame == xsettings.guide_hold_frames)
-			HomeGuide(true);
-		// io.NavInputs[ImGuiNavInput_Menu] = 1.0f;
-		++homeFrame;
+		if (homeFrame >= 0)
+		{
+			++homeFrame;
+			if (homeFrame == 1)
+				HomeGuide(false);
+			else
+			{
+				auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - homeStart).count();
+				if (elapsed >= xsettings.guide_hold_time)
+				{
+					HomeGuide(true);
+					homeFrame = -1; // special value to stop checking
+				}
+			}
+		}
 	}
 	else
+	{
 		homeFrame = 0;
+		homeStart = now;
+	}
 
 	// Override SDL2 implementation gamecontroller interface
 	io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableGamepad;
@@ -830,23 +883,23 @@ void UpdateIO()
 		if (vn > 1.0f) vn = 1.0f;                                              \
 		if (vn > 0.0f && io.NavInputs[NAV_NO] < vn) io.NavInputs[NAV_NO] = vn; \
 	}
-		const int thumb_dead_zone = 8000;                                  // SDL_gamecontroller.h suggests using this value.
-		MAP_BUTTON(ImGuiNavInput_Activate, CONTROLLER_BUTTON_A);           // Cross / A
-		MAP_BUTTON(ImGuiNavInput_Cancel, CONTROLLER_BUTTON_B);             // Circle / B
-		MAP_BUTTON(ImGuiNavInput_Input, CONTROLLER_BUTTON_Y);              // Triangle / Y
-		MAP_BUTTON(ImGuiNavInput_DpadLeft, CONTROLLER_BUTTON_DPAD_LEFT);   // D-Pad Left
-		MAP_BUTTON(ImGuiNavInput_DpadRight, CONTROLLER_BUTTON_DPAD_RIGHT); // D-Pad Right
-		MAP_BUTTON(ImGuiNavInput_DpadUp, CONTROLLER_BUTTON_DPAD_UP);       // D-Pad Up
-		MAP_BUTTON(ImGuiNavInput_DpadDown, CONTROLLER_BUTTON_DPAD_DOWN);   // D-Pad Down
-		MAP_BUTTON(ImGuiNavInput_FocusPrev, CONTROLLER_BUTTON_WHITE);      // L1 / LB
-		MAP_BUTTON(ImGuiNavInput_FocusNext, CONTROLLER_BUTTON_BLACK);      // R1 / RB
-		MAP_BUTTON(ImGuiNavInput_TweakSlow, CONTROLLER_BUTTON_WHITE);      // L1 / LB
-		MAP_BUTTON(ImGuiNavInput_TweakFast, CONTROLLER_BUTTON_BLACK);      // R1 / RB
+		const int thumb_dead_zone = 8000;                           // SDL_gamecontroller.h suggests using this value.
+		MAP_BUTTON(ImGuiNavInput_Activate, PAD_BUTTON_A);           // Cross / A
+		MAP_BUTTON(ImGuiNavInput_Cancel, PAD_BUTTON_B);             // Circle / B
+		MAP_BUTTON(ImGuiNavInput_Input, PAD_BUTTON_Y);              // Triangle / Y
+		MAP_BUTTON(ImGuiNavInput_DpadLeft, PAD_BUTTON_DPAD_LEFT);   // D-Pad Left
+		MAP_BUTTON(ImGuiNavInput_DpadRight, PAD_BUTTON_DPAD_RIGHT); // D-Pad Right
+		MAP_BUTTON(ImGuiNavInput_DpadUp, PAD_BUTTON_DPAD_UP);       // D-Pad Up
+		MAP_BUTTON(ImGuiNavInput_DpadDown, PAD_BUTTON_DPAD_DOWN);   // D-Pad Down
+		MAP_BUTTON(ImGuiNavInput_FocusPrev, PAD_BUTTON_WHITE);      // L1 / LB
+		MAP_BUTTON(ImGuiNavInput_FocusNext, PAD_BUTTON_BLACK);      // R1 / RB
+		MAP_BUTTON(ImGuiNavInput_TweakSlow, PAD_BUTTON_WHITE);      // L1 / LB
+		MAP_BUTTON(ImGuiNavInput_TweakFast, PAD_BUTTON_BLACK);      // R1 / RB
 
-		MAP_ANALOG(ImGuiNavInput_LStickLeft, CONTROLLER_AXIS_LSTICK_X, -thumb_dead_zone, -32768);
-		MAP_ANALOG(ImGuiNavInput_LStickRight, CONTROLLER_AXIS_LSTICK_X, +thumb_dead_zone, +32767);
-		MAP_ANALOG(ImGuiNavInput_LStickUp, CONTROLLER_AXIS_LSTICK_Y, +thumb_dead_zone, +32767);
-		MAP_ANALOG(ImGuiNavInput_LStickDown, CONTROLLER_AXIS_LSTICK_Y, -thumb_dead_zone, -32767);
+		MAP_ANALOG(ImGuiNavInput_LStickLeft, PAD_AXIS_LSTICK_X, -thumb_dead_zone, -32768);
+		MAP_ANALOG(ImGuiNavInput_LStickRight, PAD_AXIS_LSTICK_X, +thumb_dead_zone, +32767);
+		MAP_ANALOG(ImGuiNavInput_LStickUp, PAD_AXIS_LSTICK_Y, +thumb_dead_zone, +32767);
+		MAP_ANALOG(ImGuiNavInput_LStickDown, PAD_AXIS_LSTICK_Y, -thumb_dead_zone, -32767);
 	}
 
 	if (selectedInput && selectedType == INPUT_DEVICE_SDL_KEYBOARD)
@@ -855,88 +908,6 @@ void UpdateIO()
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
 	ProcessShortcuts();
-}
-
-// THEMES
-/////////
-
-static void SetThemeShuriken()
-{
-	ImGui::StyleColorsDark();
-}
-
-static void SetThemeXemu()
-{
-	ImVec4* colors = ImGui::GetStyle().Colors;
-
-	colors[ImGuiCol_Text]                  = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
-	colors[ImGuiCol_TextDisabled]          = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
-	// colors[ImGuiCol_TextDisabled]          = ImVec4(0.86f, 0.93f, 0.89f, 0.28f);
-	colors[ImGuiCol_WindowBg]              = ImVec4(0.06f, 0.06f, 0.06f, 0.98f);
-	colors[ImGuiCol_ChildBg]               = ImVec4(0.16f, 0.16f, 0.16f, 0.58f);
-	colors[ImGuiCol_PopupBg]               = ImVec4(0.16f, 0.16f, 0.16f, 0.90f);
-	colors[ImGuiCol_Border]                = ImVec4(0.11f, 0.11f, 0.11f, 0.60f);
-	colors[ImGuiCol_BorderShadow]          = ImVec4(0.16f, 0.16f, 0.16f, 0.00f);
-	colors[ImGuiCol_FrameBg]               = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
-	colors[ImGuiCol_FrameBgHovered]        = ImVec4(0.28f, 0.71f, 0.25f, 0.78f);
-	colors[ImGuiCol_FrameBgActive]         = ImVec4(0.28f, 0.71f, 0.25f, 1.00f);
-	colors[ImGuiCol_TitleBg]               = ImVec4(0.20f, 0.51f, 0.18f, 1.00f);
-	colors[ImGuiCol_TitleBgActive]         = ImVec4(0.26f, 0.66f, 0.23f, 1.00f);
-	colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(0.16f, 0.16f, 0.16f, 0.75f);
-	colors[ImGuiCol_MenuBarBg]             = ImVec4(0.14f, 0.14f, 0.14f, 0.00f);
-	colors[ImGuiCol_ScrollbarBg]           = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
-	colors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.20f, 0.51f, 0.18f, 1.00f);
-	colors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.28f, 0.71f, 0.25f, 0.78f);
-	colors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.28f, 0.71f, 0.25f, 1.00f);
-	colors[ImGuiCol_CheckMark]             = ImVec4(0.26f, 0.66f, 0.23f, 1.00f);
-	colors[ImGuiCol_SliderGrab]            = ImVec4(0.26f, 0.26f, 0.26f, 1.00f);
-	colors[ImGuiCol_SliderGrabActive]      = ImVec4(0.26f, 0.66f, 0.23f, 1.00f);
-	colors[ImGuiCol_Button]                = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
-	colors[ImGuiCol_ButtonHovered]         = ImVec4(0.28f, 0.71f, 0.25f, 1.00f);
-	colors[ImGuiCol_ButtonActive]          = ImVec4(0.26f, 0.66f, 0.23f, 1.00f);
-	colors[ImGuiCol_Header]                = ImVec4(0.28f, 0.71f, 0.25f, 0.76f);
-	colors[ImGuiCol_HeaderHovered]         = ImVec4(0.28f, 0.71f, 0.25f, 0.86f);
-	colors[ImGuiCol_HeaderActive]          = ImVec4(0.26f, 0.66f, 0.23f, 1.00f);
-	colors[ImGuiCol_Separator]             = colors[ImGuiCol_Border];
-	colors[ImGuiCol_SeparatorHovered]      = ImVec4(0.13f, 0.87f, 0.16f, 0.78f);
-	colors[ImGuiCol_SeparatorActive]       = ImVec4(0.25f, 0.75f, 0.10f, 1.00f);
-	colors[ImGuiCol_ResizeGrip]            = ImVec4(0.47f, 0.83f, 0.49f, 0.04f);
-	colors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.28f, 0.71f, 0.25f, 0.78f);
-	colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.28f, 0.71f, 0.25f, 1.00f);
-	colors[ImGuiCol_Tab]                   = ImLerp(colors[ImGuiCol_Header], colors[ImGuiCol_TitleBgActive], 0.80f);
-	colors[ImGuiCol_TabHovered]            = colors[ImGuiCol_HeaderHovered];
-	colors[ImGuiCol_TabActive]             = ImLerp(colors[ImGuiCol_HeaderActive], colors[ImGuiCol_TitleBgActive], 0.60f);
-	colors[ImGuiCol_TabUnfocused]          = ImLerp(colors[ImGuiCol_Tab], colors[ImGuiCol_TitleBg], 0.80f);
-	colors[ImGuiCol_TabUnfocusedActive]    = ImLerp(colors[ImGuiCol_TabActive], colors[ImGuiCol_TitleBg], 0.40f);
-	colors[ImGuiCol_DockingPreview]        = colors[ImGuiCol_HeaderActive] * ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
-	colors[ImGuiCol_DockingEmptyBg]        = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
-	colors[ImGuiCol_PlotLines]             = ImVec4(0.86f, 0.93f, 0.89f, 0.63f);
-	colors[ImGuiCol_PlotLinesHovered]      = ImVec4(0.28f, 0.71f, 0.25f, 1.00f);
-	colors[ImGuiCol_PlotHistogram]         = ImVec4(0.86f, 0.93f, 0.89f, 0.63f);
-	colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(0.28f, 0.71f, 0.25f, 1.00f);
-	colors[ImGuiCol_TableHeaderBg]         = ImVec4(0.19f, 0.19f, 0.20f, 1.00f);
-	colors[ImGuiCol_TableBorderStrong]     = ImVec4(0.31f, 0.31f, 0.35f, 1.00f); // Prefer using Alpha=1.0 here
-	colors[ImGuiCol_TableBorderLight]      = ImVec4(0.23f, 0.23f, 0.25f, 1.00f); // Prefer using Alpha=1.0 here
-	colors[ImGuiCol_TableRowBg]            = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-	colors[ImGuiCol_TableRowBgAlt]         = ImVec4(1.00f, 1.00f, 1.00f, 0.06f);
-	colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.28f, 0.71f, 0.25f, 0.43f);
-	colors[ImGuiCol_DragDropTarget]        = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
-	colors[ImGuiCol_NavHighlight]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-	colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
-	colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
-	colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.16f, 0.16f, 0.16f, 0.73f);
-}
-
-void UpdateTheme()
-{
-	switch (xsettings.theme)
-	{
-	case THEME_CLASSIC: ImGui::StyleColorsClassic(); break;
-	case THEME_DARK: ImGui::StyleColorsDark(); break;
-	case THEME_LIGHT: ImGui::StyleColorsLight(); break;
-	case THEME_SHURIKEN: SetThemeShuriken(); break;
-	case THEME_XEMU: SetThemeXemu(); break;
-	}
 }
 
 } // namespace ui

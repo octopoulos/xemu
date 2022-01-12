@@ -1140,7 +1140,7 @@
     { 'name': 'curses', 'if': 'defined(CONFIG_CURSES)' },
     { 'name': 'cocoa', 'if': 'defined(CONFIG_COCOA)' },
     { 'name': 'spice-app', 'if': 'defined(CONFIG_SPICE)'},
-    { 'name': 'xemu' } ] }
+    { 'name': 'shuriken' } ] }
 
 ##
 # @DisplayOptions:

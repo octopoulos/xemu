@@ -21,6 +21,7 @@
 
 #include "xemu-net.h"
 #include "xsettings.h"
+#include "ui.h"
 
 #include "qemu/osdep.h"
 #include "qemu-common.h"
@@ -94,7 +95,7 @@ void xemu_net_enable(void)
 	{
 		qemu_opts_del(opts);
 		// error_propagate(errp, local_err);
-		xemu_queue_error_message(error_get_pretty(local_err));
+		ui::LogError(error_get_pretty(local_err));
 		error_report_err(local_err);
 		return;
 	}
@@ -112,7 +113,7 @@ void xemu_net_enable(void)
 	{
 		qemu_opts_del(opts);
 		// error_propagate(errp, local_err);
-		xemu_queue_error_message(error_get_pretty(local_err));
+		ui::LogError(error_get_pretty(local_err));
 		error_report_err(local_err);
 	}
 }
@@ -125,8 +126,7 @@ static void remove_netdev(const char* name)
 	nc = qemu_find_netdev(name);
 	if (!nc)
 	{
-		// error_set(errp, ERROR_CLASS_DEVICE_NOT_FOUND,
-		//           "Device '%s' not found", name);
+		// error_set(errp, ERROR_CLASS_DEVICE_NOT_FOUND, "Device '%s' not found", name);
 		return;
 	}
 

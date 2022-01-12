@@ -72,7 +72,7 @@ GLuint compile_shader(GLenum type, const char* src);
 void   create_decal_shader(DecalShader& s, enum SHADER_TYPE type);
 GLuint load_texture(unsigned char* data, int width, int height, int channels);
 GLuint load_texture_from_file(const char* name, int flip);
-GLuint load_texture_from_memory(const unsigned char* buf, unsigned int size);
+GLuint load_texture_from_memory(const uint8_t* buf, uint32_t size, int flip);
 FBO*   create_fbo(int width, int height);
 void   render_to_default_fb(void);
 GLuint render_to_fbo(FBO* fbo);

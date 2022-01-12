@@ -934,10 +934,10 @@ bool GLTF_Texture(rapidjson::Value& material, T& tex, std::string middleFix, int
 {
 	int imageId = -1;
 	{
-		u64  hash   = 0;
-		auto dataIt = hashImages.find(hash);
-
-		if (dataIt == hashImages.end())
+		u64 hash = 0;
+		if (auto dataIt = hashImages.find(hash); dataIt != hashImages.end())
+			imageId = dataIt->second;
+		else
 		{
 			std::string baseName;
 			{
@@ -950,8 +950,6 @@ bool GLTF_Texture(rapidjson::Value& material, T& tex, std::string middleFix, int
 			imageId          = images.Size() - 1;
 			hashImages[hash] = imageId;
 		}
-		else
-			imageId = dataIt->second;
 	}
 
 	if (imageId >= 0)
@@ -961,9 +959,9 @@ bool GLTF_Texture(rapidjson::Value& material, T& tex, std::string middleFix, int
 		{
 			// https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html#schema-reference-sampler
 			u64 hash = 0;
-
-			auto samplerIt = hashSamplers.find(hash);
-			if (samplerIt == hashSamplers.end())
+			if (auto samplerIt = hashSamplers.find(hash); samplerIt != hashSamplers.end())
+				samplerId = samplerIt->second;
+			else
 			{
 				rapidjson::Value sampler(rapidjson::kObjectType);
 				samplers.PushBack(sampler, allocator);
@@ -971,8 +969,6 @@ bool GLTF_Texture(rapidjson::Value& material, T& tex, std::string middleFix, int
 				samplerId          = samplers.Size() - 1;
 				hashSamplers[hash] = samplerId;
 			}
-			else
-				samplerId = samplerIt->second;
 		}
 
 		// b) texture
@@ -981,8 +977,9 @@ bool GLTF_Texture(rapidjson::Value& material, T& tex, std::string middleFix, int
 			auto string = fmt::format("{},{}", samplerId, imageId);
 			u64  hash   = 0;
 
-			auto textureIt = hashTextures.find(hash);
-			if (textureIt == hashTextures.end())
+			if (auto textureIt = hashTextures.find(hash); textureIt != hashTextures.end())
+				textureId = textureIt->second;
+			else
 			{
 				rapidjson::Value texture(rapidjson::kObjectType);
 				texture.AddMember("sampler", samplerId, allocator);
@@ -992,8 +989,6 @@ bool GLTF_Texture(rapidjson::Value& material, T& tex, std::string middleFix, int
 				textureId          = textures.Size() - 1;
 				hashTextures[hash] = textureId;
 			}
-			else
-				textureId = textureIt->second;
 		}
 
 		// c) material

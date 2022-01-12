@@ -27,6 +27,8 @@
 #include "ui/shader/xemu-logo-frag.h"
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STBI_ONLY_PNG
+#define STBI_MINGW_ENABLE_SSE2
 #include "stb/stb_image.h"
 
 GLuint compile_shader(GLenum type, const char* src)
@@ -132,16 +134,11 @@ void create_decal_shader(DecalShader& s, SHADER_TYPE type)
 	    "}\n";
 
 	const char* frag_src = NULL;
-	if (type == SHADER_TYPE_MASK)
-		frag_src = mask_frag_src;
-	else if (type == SHADER_TYPE_BLIT)
-		frag_src = image_frag_src;
-	else if (type == SHADER_TYPE_BLIT_GAMMA)
-		frag_src = image_gamma_frag_src;
-	else if (type == SHADER_TYPE_LOGO)
-		frag_src = xemu_logo_frag_src;
-	else
-		assert(0);
+	if (type == SHADER_TYPE_MASK) frag_src = mask_frag_src;
+	else if (type == SHADER_TYPE_BLIT) frag_src = image_frag_src;
+	else if (type == SHADER_TYPE_BLIT_GAMMA) frag_src = image_gamma_frag_src;
+	else if (type == SHADER_TYPE_LOGO) frag_src = xemu_logo_frag_src;
+	else assert(0);
 
 	GLuint frag = compile_shader(GL_FRAGMENT_SHADER, frag_src);
 	assert(frag != 0);
@@ -182,11 +179,11 @@ void create_decal_shader(DecalShader& s, SHADER_TYPE type)
 	glGenBuffers(1, &s.vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, s.vbo);
 	const GLfloat verts[6][4] = {
-		// x      y      s      t
-		{ -1.0f, -1.0f, 0.0f, 0.0f }, // BL
-		{ -1.0f, 1.0f, 0.0f, 1.0f },  // TL
-		{ 1.0f, 1.0f, 1.0f, 1.0f },   // TR
-		{ 1.0f, -1.0f, 1.0f, 0.0f },  // BR
+        // x      y      s      t
+		{-1.0f,  -1.0f, 0.0f, 0.0f}, // BL
+		{ -1.0f, 1.0f,  0.0f, 1.0f}, // TL
+		{ 1.0f,  1.0f,  1.0f, 1.0f}, // TR
+		{ 1.0f,  -1.0f, 1.0f, 0.0f}, // BR
 	};
 	glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_COPY);
 
@@ -210,7 +207,7 @@ void create_decal_shader(DecalShader& s, SHADER_TYPE type)
 	}
 }
 
-GLuint load_texture(unsigned char* data, int width, int height, int channels)
+static GLuint GenerateTexture(unsigned char* data, int width, int height)
 {
 	GLuint tex;
 	glGenTextures(1, &tex);
@@ -219,8 +216,8 @@ GLuint load_texture(unsigned char* data, int width, int height, int channels)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, xsettings.shader_nearest ? GL_NEAREST : GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, xsettings.shader_nearest ? GL_NEAREST : GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 	return tex;
 }
@@ -234,22 +231,22 @@ GLuint load_texture_from_file(const char* name, int flip)
 	unsigned char* data = stbi_load(name, &width, &height, &channels, 4);
 	assert(data != NULL);
 
-	GLuint tex = load_texture(data, width, height, channels);
+	GLuint tex = GenerateTexture(data, width, height);
 	stbi_image_free(data);
 
 	return tex;
 }
 
-GLuint load_texture_from_memory(const unsigned char* buf, unsigned int size)
+GLuint load_texture_from_memory(const uint8_t* buf, uint32_t size, int flip)
 {
 	// Flip vertically so textures are loaded according to GL convention.
-	stbi_set_flip_vertically_on_load(1);
+	stbi_set_flip_vertically_on_load(flip);
 
 	int            width, height, channels = 0;
 	unsigned char* data = stbi_load_from_memory(buf, size, &width, &height, &channels, 4);
 	assert(data != NULL);
 
-	GLuint tex = load_texture(data, width, height, channels);
+	GLuint tex = GenerateTexture(data, width, height);
 	stbi_image_free(data);
 
 	return tex;
@@ -316,18 +313,8 @@ FBO* create_fbo(int width, int height)
 
 	fbo->w = width;
 	fbo->h = height;
+	fbo->tex = GenerateTexture(nullptr, width, height);
 
-	// Allocate the texture
-	glGenTextures(1, &fbo->tex);
-	glBindTexture(GL_TEXTURE_2D, fbo->tex);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, xsettings.fbo_nearest ? GL_NEAREST : GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, xsettings.fbo_nearest ? GL_NEAREST : GL_LINEAR);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fbo->w, fbo->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-
-	// Allocate the framebuffer object
 	glGenFramebuffers(1, &fbo->fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo->fbo);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo->tex, 0);

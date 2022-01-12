@@ -1,15 +1,15 @@
 /*
     extract-xiso.cpp
-	v1.1
+    v1.1
 
     C++ rewrite WIP @2022 by octopoulos:
         - faster
         - less OS specific code (more portable)
         - has additional features
 
-	TODO:
-	    - redo path/name extractions with filesystem::path instead
-	    - add a GUI
+    TODO:
+        - redo path/name extractions with filesystem::path instead
+        - add a GUI
 
     Original extract-xiso.c
     An xdvdfs .iso (xbox iso) file extraction and creation tool by in <in@fishtank.com>
@@ -42,6 +42,11 @@
 
 #include <fmt/core.h>
 #include "extract-xiso.h"
+
+#define HAS_UI
+#ifdef HAS_UI
+#	include "ui.h"
+#endif
 
 //#define SAVE_PNG
 #ifdef SAVE_PNG
@@ -106,10 +111,10 @@
 #		define S_ISREG(x) ((x)&_S_IFREG)
 #	endif
 
-#	define lseek       _lseeki64
+#	define lseek _lseeki64
 #endif
 
-using u8 = uint8_t;
+using u8  = uint8_t;
 using u16 = uint16_t;
 using u32 = uint32_t;
 using u64 = uint64_t;
@@ -136,25 +141,54 @@ namespace exiso
 #define exiso_version  "1.1 (2022-01-01)"
 #define VERSION_LENGTH 16
 
-#define XLOG(format, ...) \
-	do \
-	{ \
-		if (!s_quiet) \
-			fmt::print(format, ##__VA_ARGS__); \
-	} \
+#ifdef HAS_UI
+#	define FMT_ERROR(...) ui::LogError(fmt::format(__VA_ARGS__))
+#	define FMT_ONE(...)   ui::Log(fmt::format(__VA_ARGS__))
+#	define FMT_PRINT(...) ui::Log(fmt::format(__VA_ARGS__))
+#else
+#	define FMT_ERROR(...)                   \
+		do                                   \
+		{                                    \
+			fmt::print(stderr, __VA_ARGS__); \
+			fmt::print(stderr, "\n");        \
+		}                                    \
+		while (0)
+#	define FMT_ONE(...) fmt::print(__VA_ARGS__);
+#	define FMT_PRINT(...)           \
+		do                           \
+		{                            \
+			fmt::print(__VA_ARGS__); \
+			fmt::print("\n");        \
+		}                            \
+		while (0)
+#endif
+
+#define XLOG(format, ...)                   \
+	do                                      \
+	{                                       \
+		if (!s_quiet)                       \
+			FMT_PRINT(format, __VA_ARGS__); \
+	}                                       \
 	while (0)
 
-#define XERROR(format, ...) \
-	do \
-	{ \
-		if (!s_quieter) \
-		{ \
-			fmt::print(stderr, "{} ", __LINE__); \
-			fmt::print(stderr, format, ##__VA_ARGS__); \
-			fmt::print(stderr, "\n"); \
-		} \
-		err = 1; \
-	} \
+#define XONE(format, ...)                 \
+	do                                    \
+	{                                     \
+		if (!s_quiet)                     \
+			FMT_ONE(format, __VA_ARGS__); \
+	}                                     \
+	while (0)
+
+#define XERROR(format, ...)                 \
+	do                                      \
+	{                                       \
+		if (!s_quieter)                     \
+		{                                   \
+			FMT_ERROR("{} ", __LINE__);     \
+			FMT_ERROR(format, __VA_ARGS__); \
+		}                                   \
+		err = 1;                            \
+	}                                       \
 	while (0)
 
 #define GLOBAL_LSEEK_OFFSET 0x0FD90000ul
@@ -327,13 +361,15 @@ static s64 s_xbox_disc_lseek = 0;
 
 std::string PadLeft(std::string str, size_t length, char pad = ' ')
 {
-	str.insert(str.begin(), length - str.size(), pad);
+	if (length > str.size())
+		str.insert(str.begin(), length - str.size(), pad);
 	return str;
 }
 
 std::string PadRight(std::string str, size_t length, char pad = ' ')
 {
-	str.insert(str.end(), length - str.size(), pad);
+	if (length > str.size())
+		str.insert(str.end(), length - str.size(), pad);
 	return str;
 }
 
@@ -341,7 +377,7 @@ bool TryChangeDir(std::string path, int& err, const std::source_location locatio
 {
 	if (!err && _chdir(path.c_str()) == -1)
 	{
-		fmt::print(stderr, "{}:{}:{} - cannot chdir {}: {}\n", location.function_name(), location.line(), location.column(), path, _strerror_s(errorBuffer, 512, nullptr));
+		FMT_ERROR("{}:{}:{} - cannot chdir {}: {}", location.function_name(), location.line(), location.column(), path, _strerror_s(errorBuffer, 512, nullptr));
 		err = 1;
 	}
 	return !err;
@@ -351,7 +387,7 @@ bool TryMakeDir(std::string path, int& err, const std::source_location location 
 {
 	if (!err && !std::filesystem::create_directory(path))
 	{
-		fmt::print(stderr, "{}:{}:{} - cannot create dir {}: {}\n", location.function_name(), location.line(), location.column(), path, _strerror_s(errorBuffer, 512, nullptr));
+		FMT_ERROR("{}:{}:{} - cannot create dir {}: {}", location.function_name(), location.line(), location.column(), path, _strerror_s(errorBuffer, 512, nullptr));
 		err = 1;
 	}
 	return !err;
@@ -365,14 +401,14 @@ bool TryMakeDir(std::string path, int& err, const std::source_location location 
 	int file = _open(path.c_str(), flags, permission);
 	if (file == -1)
 	{
-		fmt::print(stderr, "{}:{}:{} - open error {}: {}\n", location.function_name(), location.line(), location.column(), path, _strerror_s(errorBuffer, 512, nullptr));
+		FMT_ERROR("{}:{}:{} - open error {}: {}", location.function_name(), location.line(), location.column(), path, _strerror_s(errorBuffer, 512, nullptr));
 		err = 1;
 	}
 
 	return file;
 }
 
-inline bool TryRead(int file, char* buffer, int length, int& err, int* counter=nullptr, const std::source_location location = std::source_location::current())
+inline bool TryRead(int file, char* buffer, int length, int& err, int* counter = nullptr, const std::source_location location = std::source_location::current())
 {
 	if (err)
 		return false;
@@ -387,13 +423,13 @@ inline bool TryRead(int file, char* buffer, int length, int& err, int* counter=n
 	}
 	else if (count != length)
 	{
-		fmt::print(stderr, "{}:{}:{} - read error: {}\n", location.function_name(), location.line(), location.column(), _strerror_s(errorBuffer, 512, nullptr));
+		FMT_ERROR("{}:{}:{} - read error: {}", location.function_name(), location.line(), location.column(), _strerror_s(errorBuffer, 512, nullptr));
 		err = 1;
 	}
 	return !err;
 }
 
-inline bool TrySeek(int file, s64 pos, int mode, int& err, s64* newPos=nullptr, const std::source_location location = std::source_location::current())
+inline bool TrySeek(int file, s64 pos, int mode, int& err, s64* newPos = nullptr, const std::source_location location = std::source_location::current())
 {
 	if (err)
 		return false;
@@ -403,7 +439,7 @@ inline bool TrySeek(int file, s64 pos, int mode, int& err, s64* newPos=nullptr, 
 		*newPos = result;
 	if (result == -1)
 	{
-		fmt::print(stderr, "{}:{}:{} - seek error: {}\n", location.function_name(), location.line(), location.column(), _strerror_s(errorBuffer, 512, nullptr));
+		FMT_ERROR("{}:{}:{} - seek error: {}", location.function_name(), location.line(), location.column(), _strerror_s(errorBuffer, 512, nullptr));
 		err = 1;
 	}
 	return !err;
@@ -424,7 +460,7 @@ inline bool TryWrite(int file, char* buffer, int length, int& err, int* counter 
 	}
 	else if (count != length)
 	{
-		fmt::print(stderr, "{}:{}:{} - write error: {}\n", location.function_name(), location.line(), location.column(), _strerror_s(errorBuffer, 512, nullptr));
+		FMT_ERROR("{}:{}:{} - write error: {}", location.function_name(), location.line(), location.column(), _strerror_s(errorBuffer, 512, nullptr));
 		err = 1;
 	}
 	return !err;
@@ -648,26 +684,20 @@ int avl_traverse_depth_first(dir_node_avl* in_root, traversal_callback in_callba
 	{
 	case avl_traversal_method::prefix:
 		err = (*in_callback)(in_root, in_context, in_depth);
-		if (!err)
-			err = avl_traverse_depth_first(in_root->left, in_callback, in_context, in_method, in_depth + 1);
-		if (!err)
-			err = avl_traverse_depth_first(in_root->right, in_callback, in_context, in_method, in_depth + 1);
+		if (!err) err = avl_traverse_depth_first(in_root->left, in_callback, in_context, in_method, in_depth + 1);
+		if (!err) err = avl_traverse_depth_first(in_root->right, in_callback, in_context, in_method, in_depth + 1);
 		break;
 
 	case avl_traversal_method::infix:
 		err = avl_traverse_depth_first(in_root->left, in_callback, in_context, in_method, in_depth + 1);
-		if (!err)
-			err = (*in_callback)(in_root, in_context, in_depth);
-		if (!err)
-			err = avl_traverse_depth_first(in_root->right, in_callback, in_context, in_method, in_depth + 1);
+		if (!err) err = (*in_callback)(in_root, in_context, in_depth);
+		if (!err) err = avl_traverse_depth_first(in_root->right, in_callback, in_context, in_method, in_depth + 1);
 		break;
 
 	case avl_traversal_method::postfix:
 		err = avl_traverse_depth_first(in_root->left, in_callback, in_context, in_method, in_depth + 1);
-		if (!err)
-			err = avl_traverse_depth_first(in_root->right, in_callback, in_context, in_method, in_depth + 1);
-		if (!err)
-			err = (*in_callback)(in_root, in_context, in_depth);
+		if (!err) err = avl_traverse_depth_first(in_root->right, in_callback, in_context, in_method, in_depth + 1);
+		if (!err) err = (*in_callback)(in_root, in_context, in_depth);
 		break;
 
 	default:
@@ -789,7 +819,7 @@ int extract_file(int ifile, dir_node* in_file, modes in_mode, std::string path, 
 		if (SEEK_ABSOLUTE(ifile, in_file->start_sector * XISO_SECTOR_SIZE + s_xbox_disc_lseek))
 		{
 			if (in_file->file_size == 0)
-				XLOG("{}{}{} (0) [100%]{}\r", in_mode == modes::extract ? "extracting " : "", path, in_file->filename, "");
+				XONE("{}{}{} (0) [100%]{}\r", in_mode == modes::extract ? "extracting " : "", path, in_file->filename, "");
 			if (in_mode == modes::extract)
 			{
 				for (u64 i = 0, size = std::min(in_file->file_size, READWRITE_BUFFER_SIZE); i < in_file->file_size; i += size, size = std::min(in_file->file_size - i, READWRITE_BUFFER_SIZE))
@@ -799,7 +829,7 @@ int extract_file(int ifile, dir_node* in_file, modes in_mode, std::string path, 
 
 					totalsize += size;
 					totalpercent = (totalsize * 100.0) / in_file->file_size;
-					XLOG("{}{}{} ({}) [{:.0f}%]{}\r", in_mode == modes::extract ? "extracting " : "", path, in_file->filename, in_file->file_size, totalpercent, "");
+					XONE("{}{}{} ({}) [{:.0f}%]{}\r", in_mode == modes::extract ? "extracting " : "", path, in_file->filename, in_file->file_size, totalpercent, "");
 				}
 
 				_close(out);
@@ -818,14 +848,14 @@ int extract_file(int ifile, dir_node* in_file, modes in_mode, std::string path, 
 
 					totalsize += size;
 					totalpercent = (totalsize * 100.0) / in_file->file_size;
-					XLOG("{}{}{} ({}) [{}%]{}\r", in_mode == modes::extract ? "extracting " : "", path, in_file->filename, in_file->file_size, totalpercent, "");
+					XONE("{}{}{} ({}) [{}%]{}\r", in_mode == modes::extract ? "extracting " : "", path, in_file->filename, in_file->file_size, totalpercent, "");
 				}
 			}
 		}
 	}
 
 	if (!err)
-		XLOG("\n");
+		XLOG("", "");
 
 	return err;
 }
@@ -846,8 +876,8 @@ int write_file(dir_node_avl* in_avl, write_tree_context* in_context, int in_dept
 	if (in_avl->subdirectory)
 		return 0;
 
-	int   err = 0;
-	int   fd  = -1;
+	int err = 0;
+	int fd  = -1;
 
 	if (!SEEK_ABSOLUTE(in_context->xiso, in_avl->start_sector * XISO_SECTOR_SIZE))
 		return err;
@@ -869,7 +899,6 @@ int write_file(dir_node_avl* in_avl, write_tree_context* in_context, int in_dept
 
 	if (!err)
 	{
-		XLOG("adding {} ({}) ", PadRight(in_context->path + in_avl->filename, max_filename_length + 1), PadLeft(std::to_string(in_avl->file_size), max_filesize_length));
 		int n = 0;
 
 		if (s_media_enable && in_avl->filename.ends_with(".xbe"))
@@ -913,10 +942,7 @@ int write_file(dir_node_avl* in_avl, write_tree_context* in_context, int in_dept
 			}
 		}
 
-		if (err)
-			XLOG("failed\n");
-		else
-			XLOG("[OK]\n");
+		XLOG("adding {} ({}) {}", PadRight(in_context->path + in_avl->filename, max_filename_length + 1), PadLeft(std::to_string(in_avl->file_size), max_filesize_length), err ? "failed" : "[OK]");
 
 		if (!err)
 		{
@@ -938,7 +964,7 @@ int write_file(dir_node_avl* in_avl, write_tree_context* in_context, int in_dept
 
 int write_directory(dir_node_avl* in_avl, int ifile, int in_depth)
 {
-	int  err = 0;
+	int  err        = 0;
 	u64  file_size  = in_avl->file_size + (in_avl->subdirectory ? (XISO_SECTOR_SIZE - (in_avl->file_size % XISO_SECTOR_SIZE)) % XISO_SECTOR_SIZE : 0);
 	char length     = (char)in_avl->filename.size();
 	char attributes = in_avl->subdirectory ? XISO_ATTRIBUTE_DIR : XISO_ATTRIBUTE_ARC, sector[XISO_SECTOR_SIZE];
@@ -989,7 +1015,7 @@ int write_tree(dir_node_avl* in_avl, write_tree_context* in_context, int in_dept
 
 		if (!err)
 		{
-			XLOG("adding {} ({}) [OK]\n", PadRight(context.path, max_filename_length + 1), PadLeft("0", max_filesize_length));
+			XLOG("adding {} ({}) [OK]", PadRight(context.path, max_filename_length + 1), PadLeft("0", max_filesize_length));
 
 			if (in_avl->subdirectory != EMPTY_SUBDIRECTORY)
 			{
@@ -1009,10 +1035,8 @@ int write_tree(dir_node_avl* in_avl, write_tree_context* in_context, int in_dept
 					memset(sector, XISO_PAD_BYTE, pad);
 					WRITE_EXACT(in_context->xiso, sector, pad);
 				}
-				if (!err)
-					err = avl_traverse_depth_first(in_avl->subdirectory, (traversal_callback)write_file, &context, avl_traversal_method::prefix, 0);
-				if (!err)
-					err = avl_traverse_depth_first(in_avl->subdirectory, (traversal_callback)write_tree, &context, avl_traversal_method::prefix, 0);
+				if (!err) err = avl_traverse_depth_first(in_avl->subdirectory, (traversal_callback)write_file, &context, avl_traversal_method::prefix, 0);
+				if (!err) err = avl_traverse_depth_first(in_avl->subdirectory, (traversal_callback)write_tree, &context, avl_traversal_method::prefix, 0);
 
 				if (!err && in_context->from == -1)
 					CHANGE_DIR("..");
@@ -1120,7 +1144,7 @@ int GenerateAvlTreeLocal(std::filesystem::path basePath, dir_node_avl** out_root
 {
 	if (!depth)
 	{
-		XLOG("generating avl tree from filesystem: ");
+		XLOG("generating avl tree from filesystem: ", "");
 		max_filename_length = 0;
 		max_filesize        = 0;
 		max_filesize_length = 0;
@@ -1131,7 +1155,7 @@ int GenerateAvlTreeLocal(std::filesystem::path basePath, dir_node_avl** out_root
 
 	if (!std::filesystem::is_directory(basePath))
 	{
-		fmt::print(stderr, "{} not a dir: {}\n", __LINE__, basePath.string());
+		FMT_ERROR("{} not a dir: {}", __LINE__, basePath.string());
 		return 1;
 	}
 
@@ -1164,14 +1188,14 @@ int GenerateAvlTreeLocal(std::filesystem::path basePath, dir_node_avl** out_root
 		}
 
 		// used to format the console output
-		max_filename_length = std::max(max_filename_length, (int)filename.size());
+		max_filename_length = std::max(max_filename_length, (int)path.string().size());
 
 		if (!err)
 		{
 			if (avl)
 			{
 				if (avl_insert(out_root, avl) == avl_result::avl_error)
-					XERROR("error inserting file {} into tree (duplicate filename?)\n", avl->filename);
+					XERROR("error inserting file {} into tree (duplicate filename?)", avl->filename);
 			}
 		}
 		else
@@ -1196,7 +1220,7 @@ FILE_TIME* alloc_filetime_now()
 	auto ft = new FILE_TIME();
 	MEMORY_CHECK(ft);
 	if (!err && (now = time(nullptr)) == -1)
-		XERROR("an unrecoverable error has occurred\n");
+		XERROR("an unrecoverable error has occurred", "");
 	if (!err)
 	{
 		double tmp = ((double)now + (369.0 * 365.25 * 24 * 60 * 60 - (3.0 * 24 * 60 * 60 + 6.0 * 60 * 60))) * 1.0e7;
@@ -1273,11 +1297,11 @@ int CreateXiso(std::string in_root_directory, std::string in_output_directory, d
 	write_tree_context wt_context;
 	u64                start_sector;
 	u64                n;
-	int                i    = 0;
-	int                xiso = -1;
-	int                err  = 0;
-	char*              buf  = nullptr;
-    auto               currentPath = std::filesystem::current_path();
+	int                i           = 0;
+	int                xiso        = -1;
+	int                err         = 0;
+	char*              buf         = nullptr;
+	auto               currentPath = std::filesystem::current_path();
 	std::string        iso_dir;
 	std::string        iso_name;
 	std::string        xiso_path;
@@ -1323,7 +1347,7 @@ int CreateXiso(std::string in_root_directory, std::string in_output_directory, d
 	}
 	if (!err)
 	{
-		XLOG("{} {}{}:\n\n", in_root ? "rewriting" : "\ncreating", iso_name, in_name.size() ? "" : ".iso");
+		XLOG("{} {}{}:\n", in_root ? "rewriting" : "\ncreating", iso_name, in_name.size() ? "" : ".iso");
 
 		root.start_sector = XISO_ROOT_DIRECTORY_SECTOR;
 
@@ -1336,9 +1360,9 @@ int CreateXiso(std::string in_root_directory, std::string in_output_directory, d
 		}
 		else
 		{
-			err = GenerateAvlTreeLocal(".", &root.subdirectory, 0);
+			err                 = GenerateAvlTreeLocal(".", &root.subdirectory, 0);
 			max_filesize_length = (max_filesize > 0) ? (int)ceil(log10(max_filesize)) : 1;
-			XLOG("{}\n\n", err ? "failed!" : "[OK]");
+			XLOG("{}\n", err ? "failed!" : "[OK]");
 		}
 	}
 	if (!err && in_progress_callback)
@@ -1442,9 +1466,9 @@ int CreateXiso(std::string in_root_directory, std::string in_output_directory, d
 	if (!in_root && !s_quiet)
 	{
 		if (err)
-			fmt::print("\ncould not create {}{}", iso_name.size() ? iso_name : "xiso", iso_name.size() && !in_name.size() ? ".iso" : "");
+			FMT_ERROR("\ncould not create {}{}", iso_name.size() ? iso_name : "xiso", iso_name.size() && !in_name.size() ? ".iso" : "");
 		else
-			fmt::print("\nsuccessfully created {}{} ({} files totalling {} bytes added)\n", iso_name.size() ? iso_name : "xiso", iso_name.size() && !in_name.size() ? ".iso" : "", s_total_files, (long long int)s_total_bytes);
+			FMT_PRINT("\nsuccessfully created {}{} ({} files totalling {} bytes added)", iso_name.size() ? iso_name : "xiso", iso_name.size() && !in_name.size() ? ".iso" : "", s_total_files, (long long int)s_total_bytes);
 	}
 
 	if (root.subdirectory != EMPTY_SUBDIRECTORY)
@@ -1462,7 +1486,7 @@ int CreateXiso(std::string in_root_directory, std::string in_output_directory, d
 	if (ft)
 		delete ft;
 
-    std::filesystem::current_path(currentPath);
+	std::filesystem::current_path(currentPath);
 	return err;
 }
 
@@ -1472,8 +1496,10 @@ int TraverseXiso(int ifile, dir_node* in_dir_node, s64 in_dir_start, std::string
 	std::string   path;
 	s64           curpos;
 	dir_node      subdir;
-	dir_node *    dir, node;
-	int           err      = 0, sector;
+	dir_node*     dir;
+	dir_node      node;
+	int           err = 0;
+	int           sector;
 	u64           l_offset = 0;
 	u16           tmp;
 
@@ -1527,7 +1553,7 @@ read_entry:
 			// security patch (Chris Bainbridge), modified by in to support "...", etc. 02.14.06 (in)
 			if (!strcmp(dir->filename, ".") || !strcmp(dir->filename, "..") || strchr(dir->filename, '/') || strchr(dir->filename, '\\'))
 			{
-				XERROR("{} filename '{}' contains invalid character(s), aborting.\n", __LINE__, dirname);
+				XERROR("{} filename '{}' contains invalid character(s), aborting.", __LINE__, dirname);
 				exit(1);
 			}
 		}
@@ -1547,7 +1573,7 @@ read_entry:
 			avl->old_start_sector = dir->start_sector;
 
 			if (avl_insert(in_root, avl) == avl_result::avl_error)
-				XERROR("this iso appears to be corrupt\n");
+				XERROR("this iso appears to be corrupt", "");
 		}
 	}
 
@@ -1605,10 +1631,7 @@ left_processed:
 							CHANGE_DIR(dir->filename);
 					}
 					if (!err && in_mode != modes::generate_avl && in_mode != modes::title && in_mode != modes::exe)
-					{
 						XLOG("{}{}{}{} (0){}", in_mode == modes::extract ? "creating " : "", in_path, dir->filename, PATH_CHAR_STR, in_mode == modes::extract ? " [OK]" : "");
-						XLOG("\n");
-					}
 				}
 			}
 
@@ -1635,12 +1658,10 @@ left_processed:
 				{
 					if (in_mode == modes::title)
 					{
-						if (!strcmp(dir->filename, DEFAULT_XBE))
+						if (!_stricmp(dir->filename, DEFAULT_XBE))
 						{
 							err = extract_file(ifile, dir, in_mode, in_path, gameInfo);
-
 							XLOG("{}{}{} ({}){}", in_mode == modes::extract ? "extracting " : "", in_path, dir->filename, dir->file_size, "");
-							XLOG("\n");
 						}
 					}
 					else
@@ -1652,10 +1673,7 @@ left_processed:
 						else
 						{
 							if (in_mode != modes::exe || strstr(dir->filename, ".xbe"))
-							{
 								XLOG("{}{}{} ({}){}", in_mode == modes::extract ? "extracting " : "", in_path, dir->filename, dir->file_size, "");
-								XLOG("\n");
-							}
 							else
 								skipCount = true;
 						}
@@ -1699,7 +1717,7 @@ end_traverse:
 void GameInfo::CreateBufferUID()
 {
 	uid = fmt::format("{} ({})", title, key);
-    strcpy_s(buffer, fmt::format("{} {}", uid, date).c_str());
+	strcpy_s(buffer, fmt::format("{} {}", uid, date).c_str());
 }
 
 struct XBE
@@ -1777,26 +1795,26 @@ int CreateXiso(std::string in_root_directory, std::string in_output_directory, s
 
 int CreateXiso(std::string filename)
 {
-    std::filesystem::path path = filename;
-    if (!std::filesystem::is_directory(path))
-        path = path.parent_path();
+	std::filesystem::path path = filename;
+	if (!std::filesystem::is_directory(path))
+		path = path.parent_path();
 
-    return CreateXiso(path.string(), path.parent_path().string(), "", false);
+	return CreateXiso(path.string(), path.parent_path().string(), "", false);
 }
 
 int DecodeXiso(std::string filename, std::string in_path, modes in_mode, std::string* out_iso_path, bool in_ll_compat, GameInfo* gameInfo)
 {
-    if (!filename.size())
-        return 1;
+	if (!filename.size())
+		return 1;
 
 	dir_node_avl* root   = nullptr;
 	bool          repair = false;
 	int           root_dir_sect;
 	int           root_dir_size;
-	int           err       = 0;
-	int           add_slash = 0;
-	size_t        len = 0;
-    auto          currentPath = std::filesystem::current_path();
+	int           err         = 0;
+	int           add_slash   = 0;
+	size_t        len         = 0;
+	auto          currentPath = std::filesystem::current_path();
 	std::string   iso_name;
 	std::string   name;
 	std::string   short_name;
@@ -1824,7 +1842,7 @@ int DecodeXiso(std::string filename, std::string in_path, modes in_mode, std::st
 	}
 
 	if (!err && !len)
-		XERROR("invalid xiso image name: {}\n", filename);
+		XERROR("invalid xiso image name: {}", filename);
 
 	if (!err && in_mode == modes::extract && in_path.size())
 	{
@@ -1839,7 +1857,7 @@ int DecodeXiso(std::string filename, std::string in_path, modes in_mode, std::st
 
 	if (!err && in_mode != modes::rewrite)
 	{
-		XLOG("{} \"{}\":\n\n", in_mode == modes::extract ? "extracting" : "listing", name);
+		XLOG("{} \"{}\":\n", in_mode == modes::extract ? "extracting" : "listing", name);
 
 		if (in_mode == modes::extract)
 		{
@@ -1878,12 +1896,12 @@ int DecodeXiso(std::string filename, std::string in_path, modes in_mode, std::st
 	if (err == err_iso_rewritten)
 		err = 0;
 	if (err)
-		XERROR("failed to {} xbox iso image {}\n", in_mode == modes::rewrite ? "rewrite" : (in_mode == modes::extract ? "extract" : "list"), name);
+		XERROR("failed to {} xbox iso image {}", in_mode == modes::rewrite ? "rewrite" : (in_mode == modes::extract ? "extract" : "list"), name);
 
 	if (ifile != -1)
 		_close(ifile);
 
-    std::filesystem::current_path(currentPath);
+	std::filesystem::current_path(currentPath);
 
 	if (repair)
 		filename += '.';
@@ -1893,7 +1911,7 @@ int DecodeXiso(std::string filename, std::string in_path, modes in_mode, std::st
 
 int DecodeXiso(std::string filename)
 {
-    return DecodeXiso(filename, "", modes::extract, nullptr, false, nullptr);
+	return DecodeXiso(filename, "", modes::extract, nullptr, false, nullptr);
 }
 
 /**
@@ -1904,7 +1922,7 @@ bool ExtractGameInfo(std::string filename, GameInfo* gameInfo, bool log)
 	s_quiet    = true;
 	auto start = std::chrono::steady_clock::now();
 
-    gameInfo->path = filename;
+	gameInfo->path = filename;
 
 	if (DecodeXiso(filename, "", modes::title, nullptr, true, gameInfo))
 		return false;
@@ -1913,7 +1931,7 @@ bool ExtractGameInfo(std::string filename, GameInfo* gameInfo, bool log)
 	{
 		auto finish  = std::chrono::steady_clock::now();
 		auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(finish - start).count() / 1000.0f;
-		fmt::print(stderr, "ExtractGameInfo: {} in {:.3f} ms\n", gameInfo->buffer, elapsed);
+		FMT_PRINT("ExtractGameInfo: {} in {:.3f} ms", gameInfo->buffer, elapsed);
 	}
 	return true;
 }
@@ -1923,7 +1941,7 @@ bool ExtractGameInfo(std::string filename, GameInfo* gameInfo, bool log)
  *              01234567 89abcdef
  * A (1 byte ): 1LLLCCCC
  * B (2 bytes): 01LLLLLL LLLLCCCC
-*/
+ */
 bool ExtractLogo(int ifile, GameInfo* gameInfo, int logoSize, bool log)
 {
 	const int size       = 100 * 17;
@@ -1943,12 +1961,12 @@ bool ExtractLogo(int ifile, GameInfo* gameInfo, int logoSize, bool log)
 
 		if (data & 1)
 		{
-			len = (data >> 1) & 0b111;
+			len   = (data >> 1) & 0b111;
 			value = (data >> 4);
 		}
 		else if (data & 2)
 		{
-			len = (data >> 2) + ((raw[i + 1] & 0b1111) << 6);
+			len   = (data >> 2) + ((raw[i + 1] & 0b1111) << 6);
 			value = (raw[i + 1] >> 4);
 			++i;
 		}
@@ -1964,20 +1982,21 @@ bool ExtractLogo(int ifile, GameInfo* gameInfo, int logoSize, bool log)
 	if (log)
 	{
 		if (n != size)
-			fmt::print("{}\n", n);
+			FMT_PRINT("{}", n);
 
 		const char* grayscale = " .:-=+*#%@";
 
 		int m = 0;
 		for (int i = 0; i < 17; ++i)
 		{
+			std::string line;
 			for (int j = 0; j < 100; ++j)
 			{
 				char val = grayscale[logo[m + j] / 24];
-				fmt::print("{}", val);
+				line += val;
 			}
 			m += 100;
-			fmt::print("\n");
+			FMT_PRINT("{}", line);
 		}
 	}
 #ifdef SAVE_PNG
@@ -2009,7 +2028,7 @@ int ExtractMetadata(int ifile, GameInfo* gameInfo)
 	if (!READ_EXACT(ifile, &cert, sizeof(Certificate)))
 		return err;
 
-	XLOG("\n");
+	XLOG("", "");
 	PrintHexBytes((char*)&cert, sizeof(Certificate), offset, true);
 
 	const char* regions[] = {
@@ -2059,7 +2078,7 @@ int ExtractMetadata(int ifile, GameInfo* gameInfo)
 
 	gameInfo->CreateBufferUID();
 
-	XLOG("\n=> {}\n", gameInfo->buffer);
+	XLOG("=> {}", gameInfo->buffer);
 	return err;
 }
 
@@ -2072,25 +2091,25 @@ void PrintHexBytes(char* buffer, int count, size_t offset, bool showHeader)
 		return;
 
 	if (showHeader)
-		fmt::print("Offset     00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F  Decoded text\n");
+		FMT_PRINT("Offset     00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F  Decoded text");
 
 	for (int i = 0; i < count; i += 16)
 	{
-		fmt::print("{:09X} ", i + offset);
+		auto line = fmt::format("{:09X} ", i + offset);
 		for (int j = i; j < i + 16; ++j)
 			if (j >= count)
-				fmt::print("   ");
+				line += fmt::format("   ");
 			else
-				fmt::print(" {:02X}", (u8)buffer[j]);
+				line += fmt::format(" {:02X}", (u8)buffer[j]);
 
-		fmt::print("  ");
+		line += fmt::format("  ");
 		for (int j = i; j < i + 16 && j < count; ++j)
 		{
 			char val = buffer[j];
-			fmt::print("{}", !val ? '.' : ((val != 0x7f && (u8)val >= 0x20) ? val : '+'));
+			line += fmt::format("{}", !val ? '.' : ((val != 0x7f && (u8)val >= 0x20) ? val : '+'));
 		}
 
-		fmt::print("\n");
+		FMT_PRINT("{}", line);
 	}
 }
 
@@ -2106,14 +2125,14 @@ std::vector<GameInfo> ScanFolder(std::string folder, bool log)
 
 	if (!std::filesystem::is_directory(rootPath))
 	{
-		fmt::print(stderr, "{} not a dir: {}\n", __LINE__, rootPath.string());
+		FMT_ERROR("{} not a dir: {}", __LINE__, rootPath.string());
 		return gameInfos;
 	}
 
-	s_quiet = true;
+	s_quiet               = true;
 	size_t maxTitleLength = 0;
 
-	for (auto& dir_entry : std::filesystem::directory_iterator{ rootPath })
+	for (auto& dir_entry : std::filesystem::directory_iterator { rootPath })
 	{
 		auto& path = dir_entry.path();
 		if (path.extension().string() == ".iso")
@@ -2128,13 +2147,13 @@ std::vector<GameInfo> ScanFolder(std::string folder, bool log)
 
 	if (log)
 	{
-		auto finish = std::chrono::steady_clock::now();
+		auto finish  = std::chrono::steady_clock::now();
 		auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(finish - start).count() / 1000.0f;
 
 		for (auto& gameInfo : gameInfos)
-			fmt::print(stderr, "{}  {:8} {:5}{} {:10}\n", PadRight(gameInfo.title, maxTitleLength + 1), gameInfo.id, gameInfo.region, gameInfo.debug ? '*' : ' ', gameInfo.date);
+			FMT_PRINT("{}  {:8} {:5}{} {:10}", PadRight(gameInfo.title, maxTitleLength + 1), gameInfo.id, gameInfo.region, gameInfo.debug ? '*' : ' ', gameInfo.date);
 
-		fmt::print(stderr, "Parsed {} games in {:.3f} ms\n", gameInfos.size(), elapsed);
+		FMT_PRINT("Parsed {} games in {:.3f} ms", gameInfos.size(), elapsed);
 	}
 	return gameInfos;
 }
@@ -2155,7 +2174,7 @@ int VerifyXiso(int ifile, int* out_root_dir_sector, int* out_root_dir_size, std:
 			{
 				SEEK_ABSOLUTE(ifile, XISO_HEADER_OFFSET + XGD1_LSEEK_OFFSET);
 				if (READ_EXACT(ifile, buffer, XISO_HEADER_DATA_LENGTH) && memcmp(buffer, XISO_HEADER_DATA, XISO_HEADER_DATA_LENGTH))
-					XERROR("{} does not appear to be a valid xbox iso image\n", in_iso_name);
+					XERROR("{} does not appear to be a valid xbox iso image", in_iso_name);
 				else
 					s_xbox_disc_lseek = XGD1_LSEEK_OFFSET;
 			}
@@ -2178,14 +2197,14 @@ int VerifyXiso(int ifile, int* out_root_dir_sector, int* out_root_dir_size, std:
 	// seek to header tail and verify media tag
 	SEEK_RELATIVE(ifile, XISO_FILETIME_SIZE + XISO_UNUSED_SIZE);
 	if (READ_EXACT(ifile, buffer, XISO_HEADER_DATA_LENGTH) && memcmp(buffer, XISO_HEADER_DATA, XISO_HEADER_DATA_LENGTH))
-		XERROR("{} appears to be corrupt\n", in_iso_name);
+		XERROR("{} appears to be corrupt", in_iso_name);
 
 	// seek to root directory sector
 	if (!err)
 	{
 		if (!*out_root_dir_sector && !*out_root_dir_size)
 		{
-			XLOG("xbox image {} contains no files.\n", in_iso_name);
+			XLOG("xbox image {} contains no files.", in_iso_name);
 			err = err_iso_no_files;
 		}
 		else

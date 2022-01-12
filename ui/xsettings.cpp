@@ -24,11 +24,10 @@ using namespace std::string_literals;
 const std::string shurikenToml = "shuriken.toml";
 
 const char* sAspectRatios[] = { "16:9", "4:3", "Native", "Window" };
-const char* sFonts[]        = { "Proggy Clean", "Roboto Medium" };
 const char* sFrameLimits[]  = { "off", "auto", "30", "50", "59.94", "60" };
 const char* sNetBackends[]  = { "user", "udp", "pcap" };
 const char* sRenderers[]    = { "DX9", "DX11", "OpenGL", "Vulkan", "Null" };
-const char* sThemes[]       = { "Classic", "Dark", "Light", "Shuriken", "Xemu" };
+const char* sThemes[]       = { "Classic", "Custom", "Dark", "Light", "Xemu" };
 
 #define CHECK_TYPE(want)                                                       \
 	if (type != want)                                                          \
@@ -191,7 +190,6 @@ static std::vector<Config> configs = {
 	X_INT2(gpu, 0, anisotropic, 0, "|0|1|2|4|8|16|"),
 	X_ENUM(gpu, 0, aspect_ratio, ASPECT_RATIO_43, sAspectRatios),
 	X_INT(gpu, 0, dither, 2, 0, 2),
-	X_BOOL(gpu, 0, fbo_nearest, 0),
     X_ENUM(gpu, 0, frame_limit, FRAME_LIMIT_AUTO, sFrameLimits),
 	X_BOOL(gpu, 0, graph_nearest, 0),
 	X_BOOL(gpu, 0, integer_scaling, 0),
@@ -202,7 +200,6 @@ static std::vector<Config> configs = {
 	X_INT(gpu, 0, resolution_scale, 1, 1, 10),
 	X_BOOL(gpu, 0, scale_nearest, 0),
 	X_BOOL(gpu, 0, shader_hint, 0),
-	X_BOOL(gpu, 0, shader_nearest, 0),
 	X_BOOL(gpu, 0, stretch, 0),
 	X_BOOL(gpu, 0, surface_part_nearest, 0),
 	X_BOOL(gpu, 0, surface_texture_nearest, 0),
@@ -245,10 +242,11 @@ static std::vector<Config> configs = {
 	X_STRING(emulator, 0, window_title, ""),
 
 	// [gui]
-	X_ENUM(gui, 0, font, FONT_ROBOTO_MEDIUM, sFonts),
+	X_STRING(gui, 0, font, "RobotoCondensed"),
+	X_BOOL(gui, 0, grid, 0),
 	X_INT(gui, 0, guide, 1, 0, 2),
 	X_INT(gui, 0, guide_hold, 2, 0, 2),
-	X_INT(gui, 0, guide_hold_frames, 15, 1, 60),
+	X_INT(gui, 0, guide_hold_time, 250, 1, 1000),
 	X_INT(gui, 0, row_height, 80, 24, 176),
 	X_BOOL(gui, 0, run_no_ui, 1),
 	X_STRING(gui, 0, shortcut_controls, "Ctrl+C"),
@@ -257,22 +255,24 @@ static std::vector<Config> configs = {
 	X_STRING(gui, 0, shortcut_games, "Esc"),
 	X_STRING(gui, 0, shortcut_gpu, "F1"),
 	X_STRING(gui, 0, shortcut_intercept, "Alt+I"),
+	X_STRING(gui, 0, shortcut_loadstate, "F7"),
 	X_STRING(gui, 0, shortcut_log, "Ctrl+L"),
 	X_STRING(gui, 0, shortcut_monitor, "`"),
 	X_STRING(gui, 0, shortcut_open, "Ctrl+O"),
 	X_STRING(gui, 0, shortcut_pads, "F2"),
 	X_STRING(gui, 0, shortcut_pause, "Ctrl+P"),
 	X_STRING(gui, 0, shortcut_reset, "Ctrl+R"),
+	X_STRING(gui, 0, shortcut_savestate, "F6"),
 	X_STRING(gui, 0, shortcut_screenshot, "Ctrl+S"),
 	X_BOOL(gui, 0, text_button, 1),
 	X_ENUM(gui, 0, theme, THEME_XEMU, sThemes),
-	X_FLOAT(gui, 0, ui_scale, 1.0f, 1.0f, 4.0f),
+	X_FLOAT(gui, 0, ui_scale, 1.0f, 1.0f, 2.5f),
 
 	// [debug]
 	X_STRING(debug, 0, intercept_filter, ""),
 
 	// [misc]
-	X_BOOL(misc, 1, check_for_update, 1),
+	X_BOOL(misc, 1, check_for_update, 0),
 	X_ARRAY(misc, 0, recent_files, "", 6),
 	X_STRING(misc, 0, user_token, ""),
 };
@@ -289,13 +289,13 @@ XSettings xsettings;
 
 Config* ConfigFind(std::string name)
 {
-	auto it = configMap.find(name);
-    if (it == configMap.end())
+	if (auto it = configMap.find(name); it != configMap.end())
+	    return it->second;
+    else
     {
         ui::LogError("ConfigFind: unknown %s", name.c_str());
         return nullptr;
     }
-    return it->second;
 }
 
 /**
@@ -362,9 +362,11 @@ std::filesystem::path xsettingsFolder()
  */
 const char* xsettingsFolderC(const char* newFolder)
 {
+	static str2k settingsDirC;
 	if (newFolder)
 		settingsDir = newFolder;
-	return settingsDir.string().c_str();
+	strcpy(settingsDirC, settingsDir.string().c_str());
+	return settingsDirC;
 }
 
 /**

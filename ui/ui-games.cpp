@@ -140,7 +140,7 @@ static void CheckClicks(std::string key, GameStats& game)
 				lastTime += std::chrono::milliseconds(700);
 				if (LoadDisc(game.path, true))
 				{
-					if (xsettings.run_no_ui) ShowWindows(0);
+					if (xsettings.run_no_ui) ShowWindows(false, true);
 					TogglePause(1);
 				}
 			}
@@ -162,12 +162,12 @@ static void CheckClicks(std::string key, GameStats& game)
 /**
  * Selectable for grid/columns
  */
-static float Selectable(bool isGrid, std::string key, GameStats& game, float height)
+static float Selectable(std::string key, GameStats& game, float height)
 {
 	static std::unordered_set<std::string> selection;
 
 	ImGuiSelectableFlags flags = ImGuiSelectableFlags_None | ImGuiSelectableFlags_AllowItemOverlap | ImGuiSelectableFlags_SelectOnClick;
-	if (!isGrid) flags |= ImGuiSelectableFlags_SpanAllColumns;
+	if (!xsettings.grid) flags |= ImGuiSelectableFlags_SpanAllColumns;
 
 	float y = ImGui::GetCursorPosY();
 	if (ImGui::Selectable("", selection.contains(key), flags, ImVec2(0.0f, height)))
@@ -186,22 +186,17 @@ static float Selectable(bool isGrid, std::string key, GameStats& game, float hei
 class GamesWindow : public CommonWindow
 {
 public:
-	bool isGrid = false;
-
-	GamesWindow() { isOpen = manualOpen = true; }
+	GamesWindow()
+	{
+		name   = "Games";
+		isOpen = true;
+	}
 
 	void Draw()
 	{
-		if (!isOpen)
-			return;
-
+		CHECK_DRAW();
 		if (!drawn)
 		{
-			const ImGuiViewport* viewport = ImGui::GetMainViewport();
-			auto&                size     = viewport->WorkSize;
-			ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + size.x * 0.1f, viewport->WorkPos.y + size.y * 0.1f));
-			ImGui::SetNextWindowSize(ImVec2(size.x * 0.8f, size.y * 0.8f));
-
 			OpenGamesList();
 			++drawn;
 		}
@@ -219,11 +214,11 @@ public:
 		ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(2.0f, 2.0f));
 
 		// grid display
-		if (isGrid)
+		if (xsettings.grid)
 		{
-			ImVec2      childDims         = { iconDims.x, iconDims.y };
-			ImGuiStyle& style             = ImGui::GetStyle();
-			float       window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+			ImVec2      childDims = { iconDims.x, iconDims.y };
+			ImGuiStyle& style     = ImGui::GetStyle();
+			float       window_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
 
 			if (childDims.x > 128.0f)
 				childDims.y += textHeight + style.ItemSpacing.y * 2;
@@ -233,17 +228,11 @@ public:
 				ImGui::BeginChild(key.c_str(), childDims);
 				ImGui::PushID(key.c_str());
 
-				if (focus)
-				{
-					ImGui::SetKeyboardFocusHere();
-					focus = 0;
-				}
-
 				// selectable + icon
-				Selectable(true, key, game, childDims.y);
+				Selectable(key, game, childDims.y);
 				game.CheckIcon();
 				if (game.icon & 2)
-					ImGui::Image((void*)(intptr_t)game.iconTexture, iconDims);
+					ImGui::Image((ImTextureID)(intptr_t)game.iconTexture, iconDims);
 				else
 					ImGui::TextUnformatted("ICON");
 
@@ -260,7 +249,7 @@ public:
 
 				float last_x2 = ImGui::GetItemRectMax().x;
 				float next_x2 = last_x2 + style.ItemSpacing.x / 2 + childDims.x;
-				if (next_x2 < window_visible_x2)
+				if (next_x2 < window_x2)
 					ImGui::SameLine();
 			}
 		}
@@ -268,7 +257,7 @@ public:
 		else
 		{
 			static ImGuiTableFlags tFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_RowBg
-				| ImGuiTableFlags_NoBordersInBody | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY;
+			    | ImGuiTableFlags_NoBordersInBody | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY;
 
 			if (ImGui::BeginTable("Table", 9, tFlags))
 			{
@@ -295,10 +284,10 @@ public:
 
 					// selectable + icon
 					ImGui::TableSetColumnIndex(0);
-					float posy = Selectable(false, key, game, iconDims.y) + offset;
+					float posy = Selectable(key, game, iconDims.y) + offset;
 					game.CheckIcon();
 					if (game.icon & 2)
-						ImGui::Image((void*)(intptr_t)game.iconTexture, iconDims);
+						ImGui::Image((ImTextureID)(intptr_t)game.iconTexture, iconDims);
 					else
 						ImGui::TextUnformatted("ICON");
 
@@ -334,12 +323,19 @@ public:
 	}
 
 	/**
-	 * Set the grid + activate/deactive window
+	 * Set the grid + activate/deactivate window
 	 */
 	void SetGrid(bool grid)
 	{
-		isOpen = (isGrid == grid) ? !isOpen : true;
-		isGrid = grid;
+		hidden &= ~1;
+		if (xsettings.grid == grid)
+			isOpen = !isOpen;
+		else
+		{
+			isOpen = true;
+			xsettings.grid = grid;
+			xsettingsSave();
+		}
 	}
 };
 
@@ -351,8 +347,7 @@ CommonWindow&      GetGamesWindow() { return gamesWindow; }
 
 void CheckIcon(std::string uid)
 {
-	auto it = gameStats.find(uid);
-	if (it != gameStats.end())
+	if (auto it = gameStats.find(uid); it != gameStats.end())
 	{
 		it->second.icon = 0;
 		it->second.CheckIcon();
@@ -450,7 +445,6 @@ void SaveGamesList()
 void ScanGamesFolder()
 {
 	const char* filters  = ".iso Files\0*.iso\0All Files\0*.*\0";
-	// const char* current  = xsettings.dvd_path;
 	const char* filename = PausedFileOpen(NOC_FILE_DIALOG_OPEN, filters, "", nullptr);
 
 	if (!filename)
@@ -464,17 +458,16 @@ void ScanGamesFolder()
 
 	for (auto& gameInfo : gameInfos)
 	{
-		auto it = gameStats.find(gameInfo.uid);
-		if (it == gameStats.end())
-		{
-			GameStats gameStat      = gameInfo;
-			gameStats[gameInfo.uid] = gameStat;
-		}
-		else
+		if (auto it = gameStats.find(gameInfo.uid); it != gameStats.end())
 		{
 			GameStats& gameStat = it->second;
 			gameStat.path       = gameInfo.path;
 			gameStat.CheckIcon();
+		}
+		else
+		{
+			GameStats gameStat      = gameInfo;
+			gameStats[gameInfo.uid] = gameStat;
 		}
 	}
 

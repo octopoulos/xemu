@@ -16,11 +16,11 @@ class FileWindow : public CommonWindow
 public:
 	bool isFolder = false;
 
+	FileWindow() { name = "File"; }
+
 	void Draw()
 	{
-		if (!isOpen)
-			return;
-
+		CHECK_DRAW();
 		if (!ImGui::Begin(isFolder ? "Select a folder" : "Select a file", &isOpen, ImGuiWindowFlags_NoDocking))
 		{
 			ImGui::End();

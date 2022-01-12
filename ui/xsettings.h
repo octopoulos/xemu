@@ -24,12 +24,6 @@ enum ASPECT_RATIO
 	ASPECT_RATIO_WINDOW,
 };
 
-enum FONT
-{
-	FONT_PROGGY_CLEAN,
-	FONT_ROBOTO_MEDIUM,
-};
-
 enum FRAME_LIMIT
 {
 	FRAME_LIMIT_OFF,
@@ -59,9 +53,9 @@ enum RENDERER
 enum THEMES
 {
 	THEME_CLASSIC,
+	THEME_CUSTOM,
 	THEME_DARK,
 	THEME_LIGHT,
-	THEME_SHURIKEN,
 	THEME_XEMU,
 };
 
@@ -78,7 +72,6 @@ typedef struct XSettings
 	int aspect_ratio;
 	int display_nearest;
 	int dither;
-	int fbo_nearest;
 	int frame_limit;
 	int graph_nearest;
 	int integer_scaling;
@@ -89,7 +82,6 @@ typedef struct XSettings
 	int resolution_scale;
 	int scale_nearest;
 	int shader_hint;
-	int shader_nearest;
 	int stretch;
 	int surface_part_nearest;
 	int surface_texture_nearest;
@@ -133,9 +125,10 @@ typedef struct XSettings
 
 	// [gui]
 	int   font;
+	int   grid;
 	int   guide;
 	int   guide_hold;
-	int   guide_hold_frames;
+	int   guide_hold_time;
 	int   row_height;
 	int   run_no_ui;
 	str32 shortcut_controls;
@@ -144,12 +137,14 @@ typedef struct XSettings
 	str32 shortcut_games;
 	str32 shortcut_gpu;
 	str32 shortcut_intercept;
+	str32 shortcut_loadstate;
 	str32 shortcut_log;
 	str32 shortcut_monitor;
 	str32 shortcut_open;
 	str32 shortcut_pads;
 	str32 shortcut_pause;
 	str32 shortcut_reset;
+	str32 shortcut_savestate;
 	str32 shortcut_screenshot;
 	int   text_button;
 	int   theme;

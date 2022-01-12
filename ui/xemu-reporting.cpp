@@ -41,11 +41,11 @@ CompatibilityReport::~CompatibilityReport()
 const std::string& CompatibilityReport::GetSerializedReport()
 {
 	json report = {
-		{ "token", token },
-		{ "xemu_version", xemu_version },
-		{ "xemu_branch", xemu_branch },
-		{ "xemu_commit", xemu_commit },
-		{ "xemu_date", xemu_date },
+		// { "token", token },
+		{ "shuriken_version", shuriken_version },
+		{ "shuriken_branch", shuriken_branch },
+		{ "shuriken_commit", shuriken_commit },
+		{ "shuriken_date", shuriken_date },
 		{ "os_platform", os_platform },
 		{ "os_version", os_version },
 		{ "cpu", cpu },

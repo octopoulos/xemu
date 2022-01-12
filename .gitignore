@@ -13,13 +13,13 @@
 /build/
 /dist
 /GNUmakefile
-/xemu.ini
 build.log
 config-temp/
 cscope.*
 GPATH
 GRTAGS
 GTAGS
+original/
 settings.json
 tags
 TAGS

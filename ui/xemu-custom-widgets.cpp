@@ -46,11 +46,6 @@ const rect tex_items[] = {
 	{ 0, 148, 467, 364 }, // obj_controller
 	{ 0, 81, 67, 67 },    // obj_lstick
 	{ 0, 14, 67, 67 },    // obj_rstick
-	{ 67, 104, 68, 44 },  // obj_port_socket
-	{ 67, 76, 28, 28 },   // obj_port_lbl_1
-	{ 67, 48, 28, 28 },   // obj_port_lbl_2
-	{ 67, 20, 28, 28 },   // obj_port_lbl_3
-	{ 95, 76, 28, 28 },   // obj_port_lbl_4
 };
 
 enum tex_item_names
@@ -58,11 +53,6 @@ enum tex_item_names
 	obj_controller,
 	obj_lstick,
 	obj_rstick,
-	obj_port_socket,
-	obj_port_lbl_1,
-	obj_port_lbl_2,
-	obj_port_lbl_3,
-	obj_port_lbl_4,
 };
 
 void initialize_custom_ui_rendering()
@@ -71,9 +61,9 @@ void initialize_custom_ui_rendering()
 	glGetIntegerv(GL_VIEWPORT, vp);
 
 	glActiveTexture(GL_TEXTURE0);
-	g_ui_tex = load_texture_from_memory(controller_mask_data, controller_mask_size);
+	g_ui_tex = load_texture_from_memory(controller_mask_data, controller_mask_size, 1);
 	create_decal_shader(decalMask, SHADER_TYPE_MASK);
-	g_logo_tex = load_texture_from_memory(logo_sdf_data, logo_sdf_size);
+	g_logo_tex = load_texture_from_memory(logo_sdf_data, logo_sdf_size, 1);
 	create_decal_shader(decalLogo, SHADER_TYPE_LOGO);
 	controller_fbo = create_fbo(512, 512);
 	logo_fbo       = create_fbo(512, 512);
@@ -135,7 +125,7 @@ void render_controller(float frame_x, float frame_y, uint32_t primary_color, uin
 
 	// Check to see if the guide button is pressed
 	const uint32_t animate_guide_button_duration = 2000;
-	if (state->buttons & CONTROLLER_BUTTON_GUIDE)
+	if (state->buttons & PAD_BUTTON_GUIDE)
 		state->animate_guide_button_end = now + animate_guide_button_duration;
 
 	if (now < state->animate_guide_button_end)
@@ -182,31 +172,31 @@ void render_controller(float frame_x, float frame_y, uint32_t primary_color, uin
 	float h        = tex_items[obj_lstick].h;
 	float c_x      = frame_x + lstick_ctr.x;
 	float c_y      = frame_y + lstick_ctr.y;
-	float lstick_x = (float)state->axis[CONTROLLER_AXIS_LSTICK_X] / 32768.0;
-	float lstick_y = (float)state->axis[CONTROLLER_AXIS_LSTICK_Y] / 32768.0;
+	float lstick_x = (float)state->axis[PAD_AXIS_LSTICK_X] / 32768.0;
+	float lstick_y = (float)state->axis[PAD_AXIS_LSTICK_Y] / 32768.0;
 	render_decal(
 	    decalMask, (int)(c_x - w / 2.0f + 10.0f * lstick_x), (int)(c_y - h / 2.0f + 10.0f * lstick_y), w, h,
 	    tex_items[obj_lstick].x, tex_items[obj_lstick].y, w, h,
-	    (state->buttons & CONTROLLER_BUTTON_LSTICK) ? secondary_color : primary_color, (state->buttons & CONTROLLER_BUTTON_LSTICK) ? primary_color : secondary_color, 0);
+	    (state->buttons & PAD_BUTTON_LSTICK) ? secondary_color : primary_color, (state->buttons & PAD_BUTTON_LSTICK) ? primary_color : secondary_color, 0);
 
 	// Render right thumbstick
 	w              = tex_items[obj_rstick].w;
 	h              = tex_items[obj_rstick].h;
 	c_x            = frame_x + rstick_ctr.x;
 	c_y            = frame_y + rstick_ctr.y;
-	float rstick_x = (float)state->axis[CONTROLLER_AXIS_RSTICK_X] / 32768.0;
-	float rstick_y = (float)state->axis[CONTROLLER_AXIS_RSTICK_Y] / 32768.0;
+	float rstick_x = (float)state->axis[PAD_AXIS_RSTICK_X] / 32768.0;
+	float rstick_y = (float)state->axis[PAD_AXIS_RSTICK_Y] / 32768.0;
 	render_decal(
 	    decalMask, (int)(c_x - w / 2.0f + 10.0f * rstick_x), (int)(c_y - h / 2.0f + 10.0f * rstick_y), w, h,
 	    tex_items[obj_rstick].x, tex_items[obj_rstick].y, w, h,
-	    (state->buttons & CONTROLLER_BUTTON_RSTICK) ? secondary_color : primary_color,
-	    (state->buttons & CONTROLLER_BUTTON_RSTICK) ? primary_color : secondary_color, 0);
+	    (state->buttons & PAD_BUTTON_RSTICK) ? secondary_color : primary_color,
+	    (state->buttons & PAD_BUTTON_RSTICK) ? primary_color : secondary_color, 0);
 
 	glBlendFunc(GL_ONE, GL_ZERO); // Don't blend, just overwrite values in buffer
 
 	// Render trigger bars
-	float          ltrig                    = state->axis[CONTROLLER_AXIS_LTRIG] / 32767.0;
-	float          rtrig                    = state->axis[CONTROLLER_AXIS_RTRIG] / 32767.0;
+	float          ltrig                    = state->axis[PAD_AXIS_LTRIG] / 32767.0;
+	float          rtrig                    = state->axis[PAD_AXIS_RTRIG] / 32767.0;
 	const uint32_t animate_trigger_duration = 1000;
 	if ((ltrig > 0) || (rtrig > 0))
 	{
@@ -231,34 +221,6 @@ void render_controller(float frame_x, float frame_y, uint32_t primary_color, uin
 	state->rumble_l = (int)(rumble_l * (float)0xffff);
 	state->rumble_r = (int)(rumble_r * (float)0xffff);
 	xemu_input_update_rumble(state);
-
-	glBindVertexArray(0);
-	glUseProgram(0);
-}
-
-void render_controller_port(float frame_x, float frame_y, int i, uint32_t port_color)
-{
-	glUseProgram(decalMask.prog);
-	glBindVertexArray(decalMask.vao);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, g_ui_tex);
-
-	glBlendFunc(GL_ONE, GL_ZERO);
-
-	// Render port socket
-	render_decal(
-	    decalMask, frame_x, frame_y, tex_items[obj_port_socket].w, tex_items[obj_port_socket].h,
-	    tex_items[obj_port_socket].x, tex_items[obj_port_socket].y, tex_items[obj_port_socket].w, tex_items[obj_port_socket].h,
-	    port_color, port_color, 0);
-
-	frame_x += (tex_items[obj_port_socket].w - tex_items[obj_port_lbl_1].w) / 2;
-	frame_y += tex_items[obj_port_socket].h + 8;
-
-	// Render port label
-	render_decal(
-	    decalMask, frame_x, frame_y, tex_items[obj_port_lbl_1 + i].w, tex_items[obj_port_lbl_1 + i].h,
-	    tex_items[obj_port_lbl_1 + i].x, tex_items[obj_port_lbl_1 + i].y, tex_items[obj_port_lbl_1 + i].w, tex_items[obj_port_lbl_1 + i].h,
-	    port_color, port_color, 0);
 
 	glBindVertexArray(0);
 	glUseProgram(0);

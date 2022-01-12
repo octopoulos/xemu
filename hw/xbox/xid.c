@@ -227,16 +227,16 @@ static void update_input(USBXIDState* s)
 	xemu_input_update_controller(state);
 
 	const int button_map_analog[6][2] = {
-		{ GAMEPAD_A, CONTROLLER_BUTTON_A },			{ GAMEPAD_B, CONTROLLER_BUTTON_B },
-		{ GAMEPAD_X, CONTROLLER_BUTTON_X },			{ GAMEPAD_Y, CONTROLLER_BUTTON_Y },
-		{ GAMEPAD_BLACK, CONTROLLER_BUTTON_BLACK }, { GAMEPAD_WHITE, CONTROLLER_BUTTON_WHITE },
+		{ GAMEPAD_A    , PAD_BUTTON_A     }, { GAMEPAD_B    , PAD_BUTTON_B     },
+		{ GAMEPAD_X    , PAD_BUTTON_X     }, { GAMEPAD_Y    , PAD_BUTTON_Y     },
+		{ GAMEPAD_BLACK, PAD_BUTTON_BLACK }, { GAMEPAD_WHITE, PAD_BUTTON_WHITE },
 	};
 
 	const int button_map_binary[8][2] = {
-		{ GAMEPAD_BACK, CONTROLLER_BUTTON_BACK },			{ GAMEPAD_START, CONTROLLER_BUTTON_START },
-		{ GAMEPAD_LEFT_THUMB, CONTROLLER_BUTTON_LSTICK },	{ GAMEPAD_RIGHT_THUMB, CONTROLLER_BUTTON_RSTICK },
-		{ GAMEPAD_DPAD_UP, CONTROLLER_BUTTON_DPAD_UP },		{ GAMEPAD_DPAD_DOWN, CONTROLLER_BUTTON_DPAD_DOWN },
-		{ GAMEPAD_DPAD_LEFT, CONTROLLER_BUTTON_DPAD_LEFT }, { GAMEPAD_DPAD_RIGHT, CONTROLLER_BUTTON_DPAD_RIGHT },
+		{ GAMEPAD_BACK      , PAD_BUTTON_BACK      }, { GAMEPAD_START      , PAD_BUTTON_START      },
+		{ GAMEPAD_LEFT_THUMB, PAD_BUTTON_LSTICK    }, { GAMEPAD_RIGHT_THUMB, PAD_BUTTON_RSTICK     },
+		{ GAMEPAD_DPAD_UP   , PAD_BUTTON_DPAD_UP   }, { GAMEPAD_DPAD_DOWN  , PAD_BUTTON_DPAD_DOWN  },
+		{ GAMEPAD_DPAD_LEFT , PAD_BUTTON_DPAD_LEFT }, { GAMEPAD_DPAD_RIGHT , PAD_BUTTON_DPAD_RIGHT },
 	};
 
 	for (int i = 0; i < 6; i++)
@@ -254,12 +254,12 @@ static void update_input(USBXIDState* s)
 		}
 	}
 
-	s->in_state.bAnalogButtons[GAMEPAD_LEFT_TRIGGER] = state->axis[CONTROLLER_AXIS_LTRIG] >> 7;
-	s->in_state.bAnalogButtons[GAMEPAD_RIGHT_TRIGGER] = state->axis[CONTROLLER_AXIS_RTRIG] >> 7;
-	s->in_state.sThumbLX = state->axis[CONTROLLER_AXIS_LSTICK_X];
-	s->in_state.sThumbLY = state->axis[CONTROLLER_AXIS_LSTICK_Y];
-	s->in_state.sThumbRX = state->axis[CONTROLLER_AXIS_RSTICK_X];
-	s->in_state.sThumbRY = state->axis[CONTROLLER_AXIS_RSTICK_Y];
+	s->in_state.bAnalogButtons[GAMEPAD_LEFT_TRIGGER] = state->axis[PAD_AXIS_LTRIG] >> 7;
+	s->in_state.bAnalogButtons[GAMEPAD_RIGHT_TRIGGER] = state->axis[PAD_AXIS_RTRIG] >> 7;
+	s->in_state.sThumbLX = state->axis[PAD_AXIS_LSTICK_X];
+	s->in_state.sThumbLY = state->axis[PAD_AXIS_LSTICK_Y];
+	s->in_state.sThumbRX = state->axis[PAD_AXIS_RSTICK_X];
+	s->in_state.sThumbRY = state->axis[PAD_AXIS_RSTICK_Y];
 }
 
 static void usb_xid_handle_reset(USBDevice* dev)

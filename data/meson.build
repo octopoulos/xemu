@@ -1,8 +1,11 @@
 pfiles = [
   'controller_mask.png',
+  'controls.png',
   'logo_sdf.png',
-  'xemu_64x64.png',
-  'roboto_medium.ttf',
+  'RobotoCondensed.ttf',
+  'RobotoMedium.ttf',
+  'shuriken_64.png',
+  'SourceSansPro.ttf',
 ]
 
 libpfile_targets = []

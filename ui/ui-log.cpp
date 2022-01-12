@@ -9,8 +9,6 @@
 #include "ui.h"
 #include "stb_sprintf.h"
 
-extern ImFont* fixedFont;
-
 namespace ui
 {
 
@@ -24,7 +22,11 @@ const ImVec4 colorValues[] = {
 class LogWindow : public CommonWindow
 {
 public:
-	LogWindow() { isOpen = manualOpen = true; }
+	LogWindow()
+	{
+		name   = "Log";
+		isOpen = true;
+	}
 
 	void AddLog(int color, std::string text)
 	{
@@ -34,16 +36,14 @@ public:
 
 	void Draw()
 	{
-		if (!isOpen)
-			return;
-
+		CHECK_DRAW();
 		if (!ImGui::Begin("Log", &isOpen))
 		{
 			ImGui::End();
 			return;
 		}
 
-		ImGui::PushFont(fixedFont);
+		ImGui::PushFont(FindFont("mono"));
 		ImGuiListClipper clipper;
 		clipper.Begin(lines.size());
 		while (clipper.Step())
@@ -134,9 +134,11 @@ void LogWarning(const char* fmt, ...)
 	va_end(args);
 }
 
+// clang-format off
 void Log       (std::string text) { AddLog(0, text); }
 void LogError  (std::string text) { AddLog(1, text); }
 void LogInfo   (std::string text) { AddLog(2, text); }
 void LogWarning(std::string text) { AddLog(3, text); }
+// clang-format on
 
 } // namespace ui

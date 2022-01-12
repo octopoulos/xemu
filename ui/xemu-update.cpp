@@ -24,7 +24,7 @@
 #include "ui.h"
 #include "util/miniz/miniz.h"
 #include "xemu-update.h"
-#include "xemu-version.h"
+#include "shuriken-version.h"
 
 #if defined(_WIN32)
 const char* version_host = "raw.githubusercontent.com";
@@ -87,7 +87,7 @@ void Updater::check_for_update_internal()
 		goto finished;
 	}
 
-	if (strcmp(xemu_version, res->body.c_str()))
+	if (strcmp(shuriken_version, res->body.c_str()))
 		m_update_availability = UPDATE_AVAILABLE;
 	else
 		m_update_availability = UPDATE_NOT_AVAILABLE;
@@ -168,7 +168,7 @@ void Updater::update_internal()
 		char* dst_path = g_strdup_printf("%s%s", SDL_GetBasePath(), fstat.m_filename);
 		ui::Log("extracting %s to %s", fstat.m_filename, dst_path);
 
-		if (!strcmp(fstat.m_filename, "xemu.exe"))
+		if (!strcmp(fstat.m_filename, "shuriken.exe"))
 		{
 			// We cannot overwrite current executable, but we can move it
 			char* renamed_path = g_strdup_printf("%s%s", SDL_GetBasePath(), "xemu-previous.exe");
@@ -200,7 +200,7 @@ extern char** gArgv;
 
 void Updater::restart_to_updated()
 {
-	char* target_exec = g_strdup_printf("%s%s", SDL_GetBasePath(), "xemu.exe");
+	char* target_exec = g_strdup_printf("%s%s", SDL_GetBasePath(), "shuriken.exe");
 	ui::Log("Restarting to updated executable %s", target_exec);
 	_execv(target_exec, gArgv);
 	ui::LogError("Launching updated executable failed");

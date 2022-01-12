@@ -159,14 +159,13 @@ if sparse.found()
 endif
 
 ###########################################
-# xemu Version
+# Shuriken Version
 ###########################################
 
-xemu_version_cmd = [find_program('scripts/xemu-version.sh'),
-                    meson.current_source_dir()]
-xemu_version = custom_target('xemu-version-macro.h',
-                             output: 'xemu-version-macro.h',
-                             command: xemu_version_cmd,
+shuriken_version_cmd = [find_program('scripts/shuriken-version.sh'), meson.current_source_dir()]
+shuriken_version = custom_target('shuriken-version-macro.h',
+                             output: 'shuriken-version-macro.h',
+                             command: shuriken_version_cmd,
                              capture: true,
                              build_by_default: true,
                              build_always_stale: true)
@@ -204,7 +203,7 @@ if targetos == 'windows'
   version_res = win.compile_resources('version.rc',
                                       depend_files: files('pc-bios/qemu-nsis.ico'),
                                       include_directories: include_directories('.'),
-                                      depends: xemu_version)
+                                      depends: shuriken_version)
 elif targetos == 'darwin'
   coref = dependency('appleframeworks', modules: 'CoreFoundation')
   iokit = dependency('appleframeworks', modules: 'IOKit', required: false)
@@ -839,8 +838,8 @@ if 'CONFIG_OPENGL' in config_host
                               link_args: config_host['OPENGL_LIBS'].split())
 endif
 
-xemu_gtk = declare_dependency(compile_args: config_host['XEMU_GTK_CFLAGS'].split(),
-                              link_args: config_host['XEMU_GTK_LIBS'].split())
+shuriken_gtk = declare_dependency(compile_args: config_host['SHURIKEN_GTK_CFLAGS'].split(),
+                              link_args: config_host['SHURIKEN_GTK_LIBS'].split())
 
 openssl = declare_dependency(compile_args: config_host['OPENSSL_CFLAGS'].split(),
                              link_args: config_host['OPENSSL_LIBS'].split())
@@ -2045,7 +2044,7 @@ qemu_version = custom_target('qemu-version.h',
                              build_always_stale: true)
 
 genh += qemu_version
-genh += xemu_version
+genh += shuriken_version
 
 hxdep = []
 hx_headers = [
@@ -2281,7 +2280,7 @@ if have_block
   softmmu_ss.add(when: 'CONFIG_WIN32', if_true: [files('os-win32.c')])
 endif
 
-specific_ss.add(files('xemu-xbe.c', 'xemu-version.c'))
+specific_ss.add(files('xemu-xbe.c', 'shuriken-version.c'))
 
 common_ss.add(files('cpus-common.c'))
 

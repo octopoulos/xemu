@@ -11,11 +11,11 @@ target_arch=$(uname -m)
 package_windows() {
     rm -rf dist
     mkdir -p dist
-    cp build/qemu-system-i386w.exe dist/xemu.exe
+    cp build/qemu-system-i386w.exe dist/shuriken.exe
     # cp -r "${project_source_dir}/data" dist/
-    python3 "${project_source_dir}/get_deps.py" dist/xemu.exe dist
+    python3 "${project_source_dir}/get_deps.py" dist/shuriken.exe dist
     if [ "$debug" != "y" ]; then
-        strip dist/xemu.exe
+        strip dist/shuriken.exe
     fi
 }
 
@@ -23,10 +23,10 @@ package_wincross() {
     STRIP=${CROSSPREFIX}strip
     rm -rf dist
     mkdir -p dist
-    cp build/qemu-system-i386w.exe dist/xemu.exe
+    cp build/qemu-system-i386w.exe dist/shuriken.exe
     # cp -r "${project_source_dir}/data" dist/
     if [ "$debug" != "y" ]; then
-        $STRIP dist/xemu.exe
+        $STRIP dist/shuriken.exe
     fi
     python3 ./scripts/gen-license.py --platform windows > dist/LICENSE.txt
 }
@@ -35,14 +35,14 @@ package_macos() {
     rm -rf dist
 
     # Copy in executable
-    mkdir -p dist/xemu.app/Contents/MacOS/
-    exe_path=dist/xemu.app/Contents/MacOS/xemu
-    lib_path=dist/xemu.app/Contents/Libraries/${target_arch}
+    mkdir -p dist/shuriken.app/Contents/MacOS/
+    exe_path=dist/shuriken.app/Contents/MacOS/xemu
+    lib_path=dist/shuriken.app/Contents/Libraries/${target_arch}
     lib_rpath=../Libraries/${target_arch}
     cp build/qemu-system-i386 ${exe_path}
 
     # Copy in in executable dylib dependencies
-    dylibbundler -cd -of -b -x dist/xemu.app/Contents/MacOS/xemu \
+    dylibbundler -cd -of -b -x dist/shuriken.app/Contents/MacOS/xemu \
         -d ${lib_path}/ \
         -p "@executable_path/${lib_rpath}/" \
         -s ${PWD}/macos-libs/${target_arch}/opt/local/libexec/openssl11/lib/ \
@@ -67,15 +67,15 @@ package_macos() {
     done
 
     # Copy in runtime resources
-    mkdir -p dist/xemu.app/Contents/Resources
-    # cp -r "${project_source_dir}/data" dist/xemu.app/Contents/Resources
+    mkdir -p dist/shuriken.app/Contents/Resources
+    # cp -r "${project_source_dir}/data" dist/shuriken.app/Contents/Resources
 
     # Generate icon file
     mkdir -p xemu.iconset
     for r in 16 32 128 256 512; do cp "${project_source_dir}/ui/icons/xemu_${r}x${r}.png" "xemu.iconset/icon_${r}x${r}.png"; done
-    iconutil --convert icns --output dist/xemu.app/Contents/Resources/xemu.icns xemu.iconset
+    iconutil --convert icns --output dist/shuriken.app/Contents/Resources/xemu.icns xemu.iconset
 
-    cp Info.plist dist/xemu.app/Contents/
+    cp Info.plist dist/shuriken.app/Contents/
 
     codesign --force --deep --preserve-metadata=entitlements,requirements,flags,runtime --sign - "${exe_path}"
     python3 ./scripts/gen-license.py --version-file=macos-libs/$target_arch/INSTALLED > dist/LICENSE.txt
@@ -86,8 +86,8 @@ package_linux() {
     mkdir -p dist
     cp build/qemu-system-i386 dist/xemu
     # cp -r "${project_source_dir}/data" dist
-    if test -e "${project_source_dir}/XEMU_LICENSE"; then
-      cp "${project_source_dir}/XEMU_LICENSE" dist/LICENSE.txt
+    if test -e "${project_source_dir}/SHURIKEN_LICENSE"; then
+      cp "${project_source_dir}/SHURIKEN_LICENSE" dist/LICENSE.txt
     else
       python3 ./scripts/gen-license.py > dist/LICENSE.txt
     fi

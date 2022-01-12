@@ -31,7 +31,7 @@
 #define DBG_SURFACES	 0
 #define DBG_SURFACE_SYNC 0
 
-int g_user_asked_for_intercept = 0;
+int askedIntercept = 0;
 int interceptFrame = 0;
 
 static NV2AState* g_nv2a;
@@ -61,8 +61,8 @@ static void nv2a_profile_increment(void)
 
 	// intercept frame
 	{
-		int asked = g_user_asked_for_intercept;
-		g_user_asked_for_intercept = 0;
+		int asked = askedIntercept;
+		askedIntercept = 0;
 		if (interceptFrame == 2)
 		{
 			NewFrame(!asked);
@@ -4107,6 +4107,7 @@ static void pgraph_render_display_pvideo_overlay(NV2AState* d)
 
 	// TODO: support other color formats
 	assert(in_color == NV_PVIDEO_FORMAT_COLOR_LE_CR8YB8CB8YA8);
+	LogC(LOG_INFO, "in_pitch=%d in_width=%d", in_pitch, in_width);
 	assert(in_pitch >= in_width * 2);
 
 	unsigned int out_width = GET_MASK(d->pvideo.regs[NV_PVIDEO_SIZE_OUT], NV_PVIDEO_SIZE_OUT_WIDTH);
@@ -4228,6 +4229,7 @@ void pgraph_gl_sync(NV2AState* d)
 	glo_set_current(g_nv2a_context_display);
 	pgraph_render_display(d, surface);
 	pgraph_gl_fence();
+	// This can crash when the computer goes to sleep
 	assert(glGetError() == GL_NO_ERROR);
 
 	// Switch back to original context
@@ -4912,9 +4914,7 @@ static void pgraph_update_surface_part(NV2AState* d, bool upload, bool color)
 
 		NV2A_XPRINTF(
 			DBG_SURFACES,
-			"Target: [%5s @ %" HWADDR_PRIx
-			"] (%s) "
-			"aa:%d clip:x=%d,w=%d,y=%d,h=%d\n",
+			"Target: [%5s @ %" HWADDR_PRIx "] (%s) aa:%d clip:x=%d,w=%d,y=%d,h=%d\n",
 			color ? "COLOR" : "ZETA", entry.vram_addr, entry.swizzle ? "sz" : "ln", pg->surface_shape.anti_aliasing,
 			pg->surface_shape.clip_x, pg->surface_shape.clip_width, pg->surface_shape.clip_y,
 			pg->surface_shape.clip_height);
@@ -4926,9 +4926,7 @@ static void pgraph_update_surface_part(NV2AState* d, bool upload, bool color)
 			bool is_compatible = pgraph_check_surface_compatibility(found, &entry, false);
 			NV2A_XPRINTF(
 				DBG_SURFACES,
-				"%6s: [%5s @ %" HWADDR_PRIx
-				" (%dx%d)] (%s) "
-				"aa:%d, clip:x=%d,w=%d,y=%d,h=%d\n",
+				"%6s: [%5s @ %" HWADDR_PRIx	" (%dx%d)] (%s) aa:%d, clip:x=%d,w=%d,y=%d,h=%d\n",
 				"Match", found->color ? "COLOR" : "ZETA", found->vram_addr, found->width, found->height,
 				found->swizzle ? "sz" : "ln", found->shape.anti_aliasing, found->shape.clip_x, found->shape.clip_width,
 				found->shape.clip_y, found->shape.clip_height);
@@ -4973,8 +4971,7 @@ static void pgraph_update_surface_part(NV2AState* d, bool upload, bool color)
 			glBindTexture(GL_TEXTURE_2D, entry.gl_buffer);
 			NV2A_GL_DLABEL(
 				GL_TEXTURE, entry.gl_buffer,
-				"%s format: %0X, width: %d, height: %d "
-				"(addr %" HWADDR_PRIx ")",
+				"%s format: %0X, width: %d, height: %d (addr %" HWADDR_PRIx ")",
 				color ? "color" : "zeta", color ? pg->surface_shape.color_format : pg->surface_shape.zeta_format,
 				entry.width, entry.height, surface->offset);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
@@ -4996,9 +4993,7 @@ static void pgraph_update_surface_part(NV2AState* d, bool upload, bool color)
 
 		NV2A_XPRINTF(
 			DBG_SURFACES,
-			"%6s: [%5s @ %" HWADDR_PRIx
-			" (%dx%d)] (%s) "
-			"aa:%d, clip:x=%d,w=%d,y=%d,h=%d\n",
+			"%6s: [%5s @ %" HWADDR_PRIx	" (%dx%d)] (%s) aa:%d, clip:x=%d,w=%d,y=%d,h=%d\n",
 			should_create ? "Create" : "Hit", color ? "COLOR" : "ZETA", found->vram_addr, found->width, found->height,
 			found->swizzle ? "sz" : "ln", found->shape.anti_aliasing, found->shape.clip_x, found->shape.clip_width,
 			found->shape.clip_y, found->shape.clip_height);
@@ -5934,7 +5929,6 @@ static void upload_gl_texture(GLenum gl_target, const TextureShape s, const uint
 					block_size = 16;
 
 				glCompressedTexImage2D(gl_target, level, f.gl_internal_format, width, height, 0, width / 4 * height / 4 * block_size, texture_data);
-
 				texture_data += width / 4 * height / 4 * block_size;
 			}
 			else
@@ -6070,8 +6064,7 @@ static TextureBinding* generate_texture(const TextureShape s, const uint8_t* tex
 
 	NV2A_GL_DLABEL(
 		GL_TEXTURE, gl_texture,
-		"offset: 0x%08lx, format: 0x%02X%s, %d dimensions%s, "
-		"width: %d, height: %d, depth: %d",
+		"offset: 0x%08lx, format: 0x%02X%s, %d dimensions%s, width: %d, height: %d, depth: %d",
 		texture_data - g_nv2a->vram_ptr, s.color_format, f.linear ? "" : " (SZ)", s.dimensionality,
 		s.cubemap ? " (Cubemap)" : "", s.width, s.height, s.depth);
 

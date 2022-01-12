@@ -16,6 +16,7 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cmath>
 #include <cstdio>
 #include <deque>
 #include <epoxy/gl.h>
@@ -35,7 +36,7 @@
 #include "xemu-shaders.h"
 #include "xemu-custom-widgets.h"
 #include "xemu-monitor.h"
-#include "xemu-version.h"
+#include "shuriken-version.h"
 #include "xemu-net.h"
 #include "xemu-os-utils.h"
 #include "xemu-xbe.h"
@@ -45,8 +46,6 @@
 #	include "xemu-update.h"
 #endif
 
-#include "data/roboto_medium.ttf.h"
-
 #include "imgui/backends/imgui_impl_sdl.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 #include "implot/implot.h"
@@ -55,9 +54,8 @@
 #include "ui.h"
 
 extern "C" {
-#include "qemui/noc_file_dialog.h"
+// #include "qemui/noc_file_dialog.h"
 
-// Include necessary QEMU headers
 #include "qemu/osdep.h"
 #include "qemu-common.h"
 #include "sysemu/sysemu.h"
@@ -76,7 +74,6 @@ extern "C" {
 
 extern FBO* logo_fbo;
 
-ImFont* fixedFont;
 bool    g_trigger_style_update = true;
 
 class NotificationManager
@@ -90,7 +87,6 @@ private:
 
 public:
 	NotificationManager() { active = false; }
-	~NotificationManager() {}
 
 	void QueueNotification(const char* msg_, bool instant)
 	{
@@ -179,9 +175,7 @@ private:
 		if (ImGui::Begin("Notification", nullptr, ImGuiWindowFlags_Tooltip | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoInputs))
 			ImGui::Text("%s", msg);
 
-		ImGui::PopStyleColor();
-		ImGui::PopStyleColor();
-		ImGui::PopStyleColor();
+		ImGui::PopStyleColor(3);
 		ImGui::PopStyleVar();
 		ImGui::End();
 	}
@@ -267,11 +261,12 @@ public:
 	MonitorWindow()
 	{
 		memset(InputBuf, 0, sizeof(InputBuf));
+		name           = "Monitor";
+		hidden         = 2;
 		HistoryPos     = -1;
 		AutoScroll     = true;
 		ScrollToBottom = false;
 	}
-	~MonitorWindow() {}
 
 	// Portable helpers
 	static char* Strdup(const char* str)
@@ -290,11 +285,11 @@ public:
 
 	void Draw()
 	{
-		if (!isOpen)
-			return;
+		CHECK_DRAW();
 		int    style_pop_cnt = PushWindowTransparencySettings(true);
 		auto&  io            = ImGui::GetIO();
 		ImVec2 window_pos    = ImVec2(0, io.DisplaySize.y / 2);
+
 		ImGui::SetNextWindowPos(window_pos, ImGuiCond_Appearing);
 		ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, io.DisplaySize.y / 2), ImGuiCond_Appearing);
 		if (ImGui::Begin("Monitor", &isOpen, ImGuiWindowFlags_NoCollapse))
@@ -303,7 +298,7 @@ public:
 			ImGui::BeginChild("ScrollingRegion", ImVec2(0, -footer_height_to_reserve), false, ImGuiWindowFlags_HorizontalScrollbar); // Leave room for 1 separator + 1 InputText
 
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1)); // Tighten spacing
-			ImGui::PushFont(fixedFont);
+			ImGui::PushFont(ui::FindFont("mono"));
 			ImGui::TextUnformatted(xemu_get_monitor_buffer());
 			ImGui::PopFont();
 
@@ -319,7 +314,7 @@ public:
 			bool reclaim_focus = ImGui::IsWindowAppearing();
 
 			ImGui::SetNextItemWidth(-1);
-			ImGui::PushFont(fixedFont);
+			ImGui::PushFont(ui::FindFont("mono"));
 			if (ImGui::InputText("##text", InputBuf, IM_ARRAYSIZE(InputBuf), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory, &TextEditCallbackStub, (void*)this))
 			{
 				char* s = InputBuf;
@@ -413,13 +408,16 @@ private:
 public:
 	AboutWindow()
 	{
+		name   = "About";
+		hidden = 2;
+
 		snprintf(
 		    build_info_text, sizeof(build_info_text),
 		    "Version: %s\n"
 		    "Branch:  %s\n"
 		    "Commit:  %s\n"
 		    "Date:    %s",
-		    xemu_version, xemu_branch, xemu_commit, xemu_date);
+		    shuriken_version, shuriken_branch, shuriken_commit, shuriken_date);
 		// FIXME: Show platform
 		// FIXME: Show driver
 		// FIXME: Show BIOS/BootROM hash
@@ -427,9 +425,7 @@ public:
 
 	void Draw()
 	{
-		if (!isOpen)
-			return;
-
+		CHECK_DRAW();
 		ImGui::SetNextWindowContentSize(ImVec2(400.0f * xsettings.ui_scale, 0.0f));
 		if (!ImGui::Begin("About", &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
 		{
@@ -458,8 +454,8 @@ public:
 		ImGui::SetCursorPosX(10 * xsettings.ui_scale);
 
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 100 * xsettings.ui_scale);
-		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize(xemu_version).x) / 2);
-		ImGui::Text("%s", xemu_version);
+		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize(shuriken_version).x) / 2);
+		ImGui::Text("%s", shuriken_version);
 
 		ImGui::SetCursorPosX(10 * xsettings.ui_scale);
 		ui::AddSpace(20);
@@ -470,7 +466,7 @@ public:
 
 		ui::AddSpace(40);
 
-		ImGui::PushFont(fixedFont);
+		ImGui::PushFont(ui::FindFont("mono"));
 		ImGui::InputTextMultiline("##build_info", build_info_text, sizeof(build_info_text), ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * 6), ImGuiInputTextFlags_ReadOnly);
 		ImGui::PopFont();
 
@@ -562,24 +558,20 @@ public:
 	bool is_current(NetworkInterface& iface) { return &iface == current_iface; }
 };
 
-class NetworkWindow
+class NetworkWindow : public ui::CommonWindow
 {
 public:
-	bool isOpen = false;
 	int  backend;
 	char remote_addr[64];
 	char local_addr[64];
 
 	std::unique_ptr<NetworkInterfaceManager> iface_mgr;
 
-	NetworkWindow() {}
-	~NetworkWindow() {}
+	NetworkWindow() { name = "Network"; }
 
 	void Draw()
 	{
-		if (!isOpen)
-			return;
-
+		CHECK_DRAW();
 		ImGui::SetNextWindowContentSize(ImVec2(500.0f * xsettings.ui_scale, 0.0f));
 		if (!ImGui::Begin("Network", &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
 		{
@@ -743,258 +735,18 @@ public:
 	}
 };
 
-#ifdef CONFIG_CPUID_H
-#	include <cpuid.h>
-#endif
-
-const char* get_cpu_info()
-{
-	const char* cpu_info = "";
-#ifdef CONFIG_CPUID_H
-	static uint32_t brand[12];
-	if (__get_cpuid_max(0x80000004, nullptr))
-	{
-		__get_cpuid(0x80000002, brand + 0x0, brand + 0x1, brand + 0x2, brand + 0x3);
-		__get_cpuid(0x80000003, brand + 0x4, brand + 0x5, brand + 0x6, brand + 0x7);
-		__get_cpuid(0x80000004, brand + 0x8, brand + 0x9, brand + 0xa, brand + 0xb);
-	}
-	cpu_info = (const char*)brand;
-#endif
-	// FIXME: Support other architectures (e.g. ARM)
-	return cpu_info;
-}
-
-class CompatibilityReporter
-{
-public:
-	bool isOpen = false;
-
-	CompatibilityReport report;
-	bool                dirty;
-	bool                is_xbe_identified;
-	bool                did_send, send_result;
-	char                token_buf[512];
-	int                 playability;
-	char                description[1024];
-	std::string         serialized_report;
-
-	CompatibilityReporter()
-	{
-		report.token        = "";
-		report.xemu_version = xemu_version;
-		report.xemu_branch  = xemu_branch;
-		report.xemu_commit  = xemu_commit;
-		report.xemu_date    = xemu_date;
-#if defined(__linux__)
-		report.os_platform = "Linux";
-#elif defined(_WIN32)
-		report.os_platform = "Windows";
-#elif defined(__APPLE__)
-		report.os_platform = "macOS";
-#else
-		report.os_platform = "Unknown";
-#endif
-		report.os_version = xemu_get_os_info();
-		report.cpu        = get_cpu_info();
-		dirty             = true;
-		is_xbe_identified = false;
-		did_send = send_result = false;
-	}
-
-	~CompatibilityReporter() {}
-
-	void Draw()
-	{
-		if (!isOpen)
-			return;
-
-		const char* playability_names[] = { "Broken", "Intro", "Starts", "Playable", "Perfect" };
-
-		const char* playability_descriptions[] = {
-			"This title crashes very soon after launching, or displays nothing at all.",
-			"This title displays an intro sequence, but fails to make it to gameplay.",
-			"This title starts, but may crash or have significant issues.",
-			"This title is playable, but may have minor issues.",
-			"This title is playable from start to finish with no noticable issues.",
-		};
-
-		ImGui::SetNextWindowContentSize(ImVec2(550.0f * xsettings.ui_scale, 0.0f));
-		if (!ImGui::Begin("Report Compatibility", &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
-		{
-			ImGui::End();
-			return;
-		}
-
-		if (ImGui::IsWindowAppearing())
-		{
-			report.gl_vendor                   = (const char*)glGetString(GL_VENDOR);
-			report.gl_renderer                 = (const char*)glGetString(GL_RENDERER);
-			report.gl_version                  = (const char*)glGetString(GL_VERSION);
-			report.gl_shading_language_version = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
-			struct xbe* xbe                    = xemu_get_xbe_info();
-			is_xbe_identified                  = xbe != nullptr;
-			if (is_xbe_identified) report.SetXbeData(xbe);
-			did_send = send_result = false;
-
-			playability            = 3; // Playable
-			report.compat_rating   = playability_names[playability];
-			description[0]         = '\x00';
-			report.compat_comments = description;
-
-			strncpy(token_buf, xsettings.user_token, sizeof(token_buf));
-			report.token = token_buf;
-
-			dirty = true;
-		}
-
-		if (!is_xbe_identified)
-		{
-			ImGui::TextWrapped("An XBE could not be identified.\nPlease launch an official Xbox title to submit a compatibility report.");
-			ImGui::End();
-			return;
-		}
-
-		ImGui::TextWrapped(
-		    "If you would like to help improve xemu by submitting a compatibility report for this "
-		    "title, please select an appropriate playability level, enter a brief description, then click 'Send'."
-		    "\n\n"
-		    "Note: By submitting a report, you acknowledge and consent to "
-		    "collection, archival, and publication of information as outlined "
-		    "in 'Privacy Disclosure' below.");
-
-		ui::AddSpace();
-		ImGui::Separator();
-		ui::AddSpace();
-
-		ImGui::Columns(2, "", false);
-		ImGui::SetColumnWidth(0, ImGui::GetWindowWidth() * 0.25);
-
-		ImGui::Text("User Token");
-		ImGui::SameLine();
-		HelpMarker("This is a unique access token used to authorize submission of the report. To request a token, click 'Get Token'.");
-		ImGui::NextColumn();
-		float item_width = ImGui::GetColumnWidth() * 0.75 - 20 * xsettings.ui_scale;
-		ImGui::SetNextItemWidth(item_width);
-		ImGui::PushFont(fixedFont);
-		if (ImGui::InputText("###UserToken", token_buf, sizeof(token_buf), 0))
-		{
-			report.token = token_buf;
-			dirty        = true;
-		}
-		ImGui::PopFont();
-		ImGui::SameLine();
-		if (ImGui::Button("Get Token"))
-			xemu_open_web_browser("https://reports.xemu.app");
-		ImGui::NextColumn();
-
-		ImGui::Text("Playability");
-		ImGui::NextColumn();
-		ImGui::SetNextItemWidth(item_width);
-		const char* sPlayabilities[] = { "Broken", "Intro/Menus", "Starts", "Playable", "Perfect" };
-		if (ImGui::Combo("###PlayabilityRating", &playability, sPlayabilities, IM_ARRAYSIZE(sPlayabilities)))
-		{
-			report.compat_rating = playability_names[playability];
-			dirty                = true;
-		}
-		ImGui::SameLine();
-		HelpMarker(playability_descriptions[playability]);
-		ImGui::NextColumn();
-
-		ImGui::Columns(1);
-
-		ImGui::Text("Description");
-		if (ImGui::InputTextMultiline("###desc", description, sizeof(description), ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * 6), 0))
-		{
-			report.compat_comments = description;
-			dirty                  = true;
-		}
-
-		if (ImGui::TreeNode("Report Details"))
-		{
-			ImGui::PushFont(fixedFont);
-			if (dirty)
-			{
-				serialized_report = report.GetSerializedReport();
-				dirty             = false;
-			}
-			ImGui::InputTextMultiline("##build_info", (char*)serialized_report.c_str(), strlen(serialized_report.c_str()) + 1, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * 7), ImGuiInputTextFlags_ReadOnly);
-			ImGui::PopFont();
-			ImGui::TreePop();
-		}
-
-		if (ImGui::TreeNode("Privacy Disclosure (Please read before submission!)"))
-		{
-			ImGui::TextWrapped(
-			    "By volunteering to submit a compatibility report, basic information about your "
-			    "computer is collected, including: your operating system version, CPU model, "
-			    "graphics card/driver information, and details about the title which are "
-			    "extracted from the executable in memory. The contents of this report can be "
-			    "seen before submission by expanding 'Report Details'."
-			    "\n\n"
-			    "Like many websites, upon submission, the public IP address of your computer is "
-			    "also recorded with your report. If provided, the identity associated with your "
-			    "token is also recorded."
-			    "\n\n"
-			    "This information will be archived and used to analyze, resolve problems with, "
-			    "and improve the application. This information may be made publicly visible, "
-			    "for example: to anyone who wishes to see the playability status of a title, as "
-			    "indicated by your report.");
-			ImGui::TreePop();
-		}
-
-		ui::AddSpace();
-		ImGui::Separator();
-		ui::AddSpace();
-
-		if (did_send)
-		{
-			if (send_result)
-				ImGui::Text("Sent! Thanks.");
-			else
-				ImGui::Text("Error: %s (%d)", report.GetResultMessage().c_str(), report.GetResultCode());
-			ImGui::SameLine();
-		}
-
-		ImGui::SetCursorPosX(ImGui::GetWindowWidth() - (120 + 10) * xsettings.ui_scale);
-
-		ImGui::SetItemDefaultFocus();
-		if (ImGui::Button("Send", ImVec2(120 * xsettings.ui_scale, 0)))
-		{
-			did_send    = true;
-			send_result = report.Send();
-			if (send_result)
-			{
-				// Close window on success
-				isOpen = false;
-
-				// Save user token if it was used
-				strcpy(xsettings.user_token, token_buf);
-				xsettingsSave();
-			}
-		}
-
-		ImGui::End();
-	}
-};
-
-#include <math.h>
-
-float mix(float a, float b, float t)
-{
-	return a * (1.0 - t) + (b - a) * t;
-}
-
 class DebugApuWindow : public ui::CommonWindow
 {
 public:
-	DebugApuWindow() {}
-	~DebugApuWindow() {}
+	DebugApuWindow()
+	{
+		name   = "Audio";
+		hidden = 2;
+	}
 
 	void Draw()
 	{
-		if (!isOpen)
-			return;
-
+		CHECK_DRAW();
 		ImGui::SetNextWindowContentSize(ImVec2(600.0f * xsettings.ui_scale, 0.0f));
 		if (!ImGui::Begin("Audio Debug", &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
 		{
@@ -1009,7 +761,7 @@ public:
 		float t          = now / 1000.0f;
 		float freq       = 1;
 		float v          = fabs(sin(M_PI * t * freq));
-		float c_active   = mix(0.4, 0.97, v);
+		float c_active   = 0.4f * (1.0f - v) + (0.97f - 0.4f) * v;
 		float c_inactive = 0.2f;
 
 		int voice_monitor = -1;
@@ -1017,7 +769,7 @@ public:
 		int voice_mute    = -1;
 
 		// Color buttons, demonstrate using PushID() to add unique identifier in the ID stack, and changing style.
-		ImGui::PushFont(fixedFont);
+		ImGui::PushFont(ui::FindFont("mono"));
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2, 2));
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 4));
@@ -1079,7 +831,7 @@ public:
 			ImGui::Text(voice->stereo ? "Stereo" : "Mono");
 
 			ImGui::Separator();
-			ImGui::PushFont(fixedFont);
+			ImGui::PushFont(ui::FindFont("mono"));
 
 			const char* noyes[2] = { "NO", "YES" };
 			ImGui::Text(
@@ -1124,7 +876,7 @@ public:
 		ImGui::SetColumnWidth(0, ImGui::GetCursorPosX());
 		ImGui::NextColumn();
 
-		ImGui::PushFont(fixedFont);
+		ImGui::PushFont(ui::FindFont("mono"));
 		ImGui::Text("Frames:      %04d", dbg->frames_processed);
 		ImGui::Text("GP Cycles:   %04d", dbg->gp.cycles);
 		ImGui::Text("EP Cycles:   %04d", dbg->ep.cycles);
@@ -1194,21 +946,17 @@ struct ScrollingBuffer
 class DebugVideoWindow : public ui::CommonWindow
 {
 public:
-	bool transparent;
+	bool transparent = false;
 
 	DebugVideoWindow()
 	{
-		isOpen      = false;
-		transparent = false;
+		name   = "Video";
+		hidden = 2;
 	}
-
-	~DebugVideoWindow() {}
 
 	void Draw()
 	{
-		if (!isOpen)
-			return;
-
+		CHECK_DRAW();
 		float alpha = transparent ? 0.2 : 1.0;
 		PushWindowTransparencySettings(transparent, 0.2);
 		ImGui::SetNextWindowSize(ImVec2(600.0f * xsettings.ui_scale, 150.0f * xsettings.ui_scale), ImGuiCond_Once);
@@ -1293,22 +1041,15 @@ public:
 };
 
 #if defined(_WIN32)
-class AutoUpdateWindow
+class AutoUpdateWindow : public ui::CommonWindow
 {
 protected:
 	Updater updater;
 
 public:
-	bool isOpen;
-	bool should_prompt_auto_update_selection;
+	bool should_prompt_auto_update_selection = false;
 
-	AutoUpdateWindow()
-	{
-		isOpen                              = false;
-		should_prompt_auto_update_selection = false;
-	}
-
-	~AutoUpdateWindow() {}
+	AutoUpdateWindow() { name = "Update"; }
 
 	void save_auto_update_selection(bool preference)
 	{
@@ -1350,8 +1091,7 @@ public:
 
 	void Draw()
 	{
-		if (!isOpen)
-			return;
+		CHECK_DRAW();
 		ImGui::SetNextWindowContentSize(ImVec2(550.0f * xsettings.ui_scale, 0.0f));
 		if (!ImGui::Begin("Update", &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
 		{
@@ -1428,7 +1168,6 @@ public:
 #endif
 
 static AboutWindow           about_window;
-static CompatibilityReporter compatibility_reporter_window;
 static DebugApuWindow        apu_window;
 static DebugVideoWindow      video_window;
 static MonitorWindow         monitor_window;
@@ -1437,77 +1176,6 @@ static NotificationManager   notification_manager;
 #if defined(_WIN32)
 static AutoUpdateWindow update_window;
 #endif
-static std::deque<const char*> g_errors;
-
-class FirstBootWindow
-{
-public:
-	bool isOpen = false;
-
-	FirstBootWindow() {}
-	~FirstBootWindow() {}
-
-	void Draw()
-	{
-		if (!isOpen)
-			return;
-
-		ImVec2 size(400 * xsettings.ui_scale, 300 * xsettings.ui_scale);
-		auto&  io = ImGui::GetIO();
-
-		ImVec2 window_pos = ImVec2((io.DisplaySize.x - size.x) / 2, (io.DisplaySize.y - size.y) / 2);
-		ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always);
-
-		ImGui::SetNextWindowSize(size, ImGuiCond_Appearing);
-		if (!ImGui::Begin("First Boot", &isOpen, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDecoration))
-		{
-			ImGui::End();
-			return;
-		}
-
-		static uint32_t time_start = 0;
-		if (ImGui::IsWindowAppearing())
-			time_start = SDL_GetTicks();
-
-		uint32_t now = SDL_GetTicks() - time_start;
-
-		ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 50 * xsettings.ui_scale);
-		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 256 * xsettings.ui_scale) / 2);
-
-		ImTextureID id    = (ImTextureID)(intptr_t)render_to_fbo(logo_fbo);
-		float       t_w   = 256.0;
-		float       t_h   = 256.0;
-		float       x_off = 0;
-		ImGui::Image(id, ImVec2((t_w - x_off) * xsettings.ui_scale, t_h * xsettings.ui_scale), ImVec2(x_off / t_w, t_h / t_h), ImVec2(t_w / t_w, 0));
-
-		if (ImGui::IsItemClicked()) time_start = SDL_GetTicks();
-
-		render_logo(now, 0x42e335ff, 0x42e335ff, 0x00000000);
-		render_to_default_fb();
-
-		ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 100 * xsettings.ui_scale);
-		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize(xemu_version).x) / 2);
-		ImGui::Text("%s", xemu_version);
-
-		ImGui::SetCursorPosX(10 * xsettings.ui_scale);
-		ui::AddSpace(20);
-
-		const char* msg = "To get started, please configure machine settings.";
-		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize(msg).x) / 2);
-		ImGui::Text("%s", msg);
-
-		ui::AddSpace(20);
-		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - 120 * xsettings.ui_scale) / 2);
-		if (ImGui::Button("Settings", ImVec2(120 * xsettings.ui_scale, 0))) ui::GetSettingsWindow().Show();
-		ui::AddSpace(20);
-
-		msg = "Visit https://xemu.app for more information";
-		ImGui::SetCursorPosX((ImGui::GetWindowWidth() - ImGui::CalcTextSize(msg).x) / 2);
-		Hyperlink(msg, "https://xemu.app");
-
-		ImGui::End();
-	}
-};
 
 static bool is_shortcut_key_pressed(int scancode, bool isAlt)
 {
@@ -1524,66 +1192,9 @@ static bool is_key_pressed(int scancode)
 	return io.KeysDown[scancode] && (io.KeysDownDuration[scancode] == 0.0);
 }
 
-static void process_keyboard_shortcuts()
-{
-	// if (is_shortcut_key_pressed(SDL_SCANCODE_E, false)) action_eject_disc();
-	// if (is_shortcut_key_pressed(SDL_SCANCODE_G, true)) g_user_asked_for_intercept = 1;
-	// if (is_shortcut_key_pressed(SDL_SCANCODE_H, true)) g_user_asked_for_intercept = 2;
-	// if (is_shortcut_key_pressed(SDL_SCANCODE_O, false)) ui::LoadDisc();
-	// if (is_shortcut_key_pressed(SDL_SCANCODE_P, false)) ui::TogglePause();
-	// if (is_shortcut_key_pressed(SDL_SCANCODE_R, false)) action_reset();
-
-	// // if (is_shortcut_key_pressed(SDL_SCANCODE_Q, false))
-	// // 	action_shutdown();
-
-	// if (is_key_pressed(SDL_SCANCODE_GRAVE))
-	// 	monitor_window.toggle_open();
-}
-
-static void InitializeStyle()
-{
-	auto& io = ImGui::GetIO();
-
-	io.Fonts->Clear();
-
-	ImFontConfig roboto_font_cfg         = ImFontConfig();
-	roboto_font_cfg.FontDataOwnedByAtlas = false;
-	io.Fonts->AddFontFromMemoryTTF((void*)roboto_medium_data, roboto_medium_size, 16 * xsettings.ui_scale, &roboto_font_cfg);
-
-	ImFontConfig font_cfg = ImFontConfig();
-	font_cfg.OversampleH  = 1;
-	font_cfg.OversampleV  = 1;
-	font_cfg.PixelSnapH   = true;
-	font_cfg.SizePixels   = 13.0f * xsettings.ui_scale;
-	fixedFont             = io.Fonts->AddFontDefault(&font_cfg);
-
-	ImGui_ImplOpenGL3_CreateFontsTexture();
-
-	ImGuiStyle style;
-	style.WindowRounding    = 8.0;
-	style.FrameRounding     = 8.0;
-	style.GrabRounding      = 12.0;
-	style.PopupRounding     = 5.0;
-	style.ScrollbarRounding = 12.0;
-	style.FramePadding.x    = 10;
-	style.FramePadding.y    = 4;
-	style.WindowBorderSize  = 0;
-	style.PopupBorderSize   = 0;
-	style.FrameBorderSize   = 0;
-	style.TabBorderSize     = 0;
-	ImGui::GetStyle()       = style;
-	ImGui::GetStyle().ScaleAllSizes(xsettings.ui_scale);
-
-	ui::UpdateTheme();
-}
-
-/* External interface, called from ui/xemu.c which handles SDL main loop */
-static FirstBootWindow first_boot_window;
-
 void xemu_hud_init(SDL_Window* window, void* sdl_gl_context)
 {
 	xemu_monitor_init();
-
 	initialize_custom_ui_rendering();
 
 	// Setup Dear ImGui context
@@ -1599,8 +1210,6 @@ void xemu_hud_init(SDL_Window* window, void* sdl_gl_context)
 	ImGui_ImplSDL2_InitForOpenGL(window, sdl_gl_context);
 	ImGui_ImplOpenGL3_Init("#version 150");
 
-	first_boot_window.isOpen = xsettingsFailed();
-
 	ImPlot::CreateContext();
 
 #if defined(_WIN32)
@@ -1610,6 +1219,8 @@ void xemu_hud_init(SDL_Window* window, void* sdl_gl_context)
 	else if (should_check_for_update)
 		update_window.check_for_updates_and_prompt_if_available();
 #endif
+
+	ui::ListWindows();
 }
 
 void xemu_hud_cleanup()
@@ -1649,13 +1260,13 @@ void xemu_hud_render()
 		controller_focus_capture = true;
 	}
 
-	// Prevent controller events from going to the guest if they are being used
-	// to navigate the HUD
+	// Prevent controller events from going to the guest if they are being used to navigate the HUD
 	xemu_input_set_test_mode(controller_focus_capture);
 
 	if (g_trigger_style_update)
 	{
-		InitializeStyle();
+		ui::UpdateFonts();
+		ui::UpdateTheme();
 		g_trigger_style_update = false;
 	}
 
@@ -1665,9 +1276,7 @@ void xemu_hud_render()
 	ui::UpdateIO();
 
 	ImGui::NewFrame();
-	process_keyboard_shortcuts();
 
-	if (!first_boot_window.isOpen)
 	{
 		// Auto-hide main menu after 3s of inactivity
 		static uint32_t last_check    = 0;
@@ -1685,7 +1294,7 @@ void xemu_hud_render()
 
 		auto controlsWindow  = ui::GetControlsWindow();
 		controlsWindow.alpha = alpha;
-		// controlsWindow.Show(alpha > 0.0f);
+		// controlsWindow.isOpen = (alpha > 0.0f);
 
 		ui::ShowMainMenu(alpha);
 	}
@@ -1693,52 +1302,22 @@ void xemu_hud_render()
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::DockSpaceOverViewport(viewport, ImGuiDockNodeFlags_PassthruCentralNode);
 
-	first_boot_window.Draw();
-	monitor_window.Draw();
-	apu_window.Draw();
-	video_window.Draw();
-	about_window.Draw();
 	network_window.Draw();
-	compatibility_reporter_window.Draw();
 	notification_manager.Draw();
 #if defined(_WIN32)
 	update_window.Draw();
 #endif
 
-	ui::Draw();
+	ui::DrawWindows();
 
-	// Very rudimentary error notification API
-	if (g_errors.size() > 0) ImGui::OpenPopup("Error");
-
-	if (ImGui::BeginPopupModal("Error", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-	{
-		ImGui::Text("%s", g_errors[0]);
-		ui::AddSpace(16);
-		ImGui::SetItemDefaultFocus();
-		ImGui::SetCursorPosX(ImGui::GetWindowWidth() - (120 + 10));
-		if (ImGui::Button("Ok", ImVec2(120, 0)))
-		{
-			ImGui::CloseCurrentPopup();
-			free((void*)g_errors[0]);
-			g_errors.pop_front();
-		}
-		ImGui::EndPopup();
-	}
-
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-/* External interface, exposed via xemu-notifications.h */
-
 void xemu_queue_notification(const char* msg, bool instant)
 {
 	notification_manager.QueueNotification(msg, instant);
-}
-
-void xemu_queue_error_message(const char* msg)
-{
-	g_errors.push_back(strdup(msg));
 }
 
 namespace ui

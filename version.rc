@@ -1,25 +1,26 @@
 #include <winver.h>
 #include "config-host.h"
-#include "xemu-version-macro.h"
+#include "shuriken-version-macro.h"
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION XEMU_VERSION_MAJOR,XEMU_VERSION_MINOR,XEMU_VERSION_MICRO,XEMU_VERSION_PATCH
-PRODUCTVERSION XEMU_VERSION_MAJOR,XEMU_VERSION_MINOR,XEMU_VERSION_MICRO,XEMU_VERSION_PATCH
-FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
-FILEOS VOS_NT_WINDOWS32
-FILETYPE VFT_APP
-FILESUBTYPE VFT2_UNKNOWN
+FILEVERSION     SHURIKEN_VERSION_MAJOR,SHURIKEN_VERSION_MINOR,SHURIKEN_VERSION_MICRO,SHURIKEN_VERSION_PATCH
+PRODUCTVERSION  SHURIKEN_VERSION_MAJOR,SHURIKEN_VERSION_MINOR,SHURIKEN_VERSION_MICRO,SHURIKEN_VERSION_PATCH
+FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     VFT2_UNKNOWN
 {
   BLOCK "StringFileInfo"
   {
     BLOCK "040904E4"
     {
-      VALUE "CompanyName", "https://xemu.app"
-      VALUE "FileDescription", "xemu: Original Xbox Emulator"
-      VALUE "FileVersion", XEMU_VERSION
+      VALUE "CompanyName", "Shuriken"
+      VALUE "FileDescription", "Shuriken: Original Xbox Emulator"
+      VALUE "FileVersion", SHURIKEN_VERSION
       VALUE "LegalCopyright", "Copyright various authors. Released under the GNU General Public License."
-      VALUE "LegalTrademarks", "QEMU is a trademark of Fabrice Bellard."
-      VALUE "ProductName", "xemu"
+      VALUE "LegalTrademarks1", "XEMU is a trademark of Matt Borgerson."
+      VALUE "LegalTrademarks2", "QEMU is a trademark of Fabrice Bellard."
+      VALUE "ProductName", "shuriken"
     }
   }
   BLOCK "VarFileInfo"
@@ -28,4 +29,4 @@ FILESUBTYPE VFT2_UNKNOWN
   }
 }
 
-IDI_ICON1 ICON "ui/icons/xemu-icon.ico"
+IDI_ICON1 ICON "ui/icons/shuriken-icon.ico"

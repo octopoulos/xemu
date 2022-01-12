@@ -40,6 +40,7 @@ xemu_ss.add(files(
   'xemu.cpp',
 
   'extract-xiso.cpp',
+  'shuriken.cpp',
   'xsettings.cpp',
 
   'ui-common.cpp',
@@ -48,6 +49,7 @@ xemu_ss.add(files(
   'ui-games.cpp',
   'ui-log.cpp',
   'ui-settings.cpp',
+  'ui-theme.cpp',
 ))
 xemu_ss.add(when: 'CONFIG_WIN32', if_true: files('xemu-update.cpp'))
 
@@ -72,7 +74,7 @@ freetype2 = declare_dependency(compile_args: config_host['FREETYPE2_CFLAGS'].spl
 
 imgui = declare_dependency(compile_args: imgui_flags, include_directories: 'imgui')
 xemu_ss.add(sdl, opengl, openssl, imgui, fmt, freetype2)
-xemu_ss.add(when: 'CONFIG_LINUX', if_true: [xemu_gtk, files('xemu-os-utils-linux.cpp', 'qemui/noc_file_dialog_gtk.c')])
+xemu_ss.add(when: 'CONFIG_LINUX', if_true: [shuriken_gtk, files('xemu-os-utils-linux.cpp', 'qemui/noc_file_dialog_gtk.c')])
 xemu_ss.add(when: 'CONFIG_WIN32', if_true: files('xemu-os-utils-windows.cpp', 'qemui/noc_file_dialog_win32.c'))
 xemu_ss.add(when: 'CONFIG_DARWIN', if_true: files('xemu-os-utils-macos.m', 'qemui/noc_file_dialog_macos.m'))
 softmmu_ss.add_all(xemu_ss)

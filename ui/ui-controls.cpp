@@ -1,4 +1,4 @@
-// ui-controls.cpp: Controls + Main menu + Xbox functions
+// ui-controls.cpp: Controls + Main menu + Xbox functions + window Manager
 // @2022 octopoulos
 //
 // This file is part of Shuriken.
@@ -7,6 +7,8 @@
 // You should have received a copy of the GNU General Public License along with Shuriken. If not, see <https://www.gnu.org/licenses/>.
 
 #include "ui.h"
+#include "shuriken.h"
+#include "data/controls.png.h"
 
 #include "implot/implot.h"
 #include "imgui_extra/imgui_memory_editor.h"
@@ -26,13 +28,11 @@ extern "C" {
 #include "hw/xbox/nv2a/nv2a.h"
 #include "hw/xbox/smbus.h"
 #include "xemu-os-utils.h"
-
 #include "qapi/qapi-commands-block.h"
 
-extern ImFont*  fixedFont;
-extern int      g_user_asked_for_intercept;
-extern int      want_screenshot;
+extern int      askedIntercept;
 extern uint64_t memoryData[4];
+extern int      want_screenshot;
 
 exiso::GameInfo gameInfo;
 
@@ -45,6 +45,20 @@ namespace ui
 
 // FUNCTIONS
 ////////////
+
+static bool AddMenu(const char* text, const char* shortcut, CommonWindow& window)
+{
+	bool clicked = ImGui::MenuItem(text, shortcut, &window.isOpen);
+	if (clicked)
+	{
+		Log("text=%s clicked=%d hidden=%d isOpen=%d", text, clicked, window.hidden, window.isOpen);
+		if (window.hidden & 1)
+			window.isOpen = true;
+		if (window.isOpen)
+			window.hidden &= ~1;
+	}
+	return clicked;
+}
 
 void EjectDisc()
 {
@@ -152,39 +166,20 @@ void TogglePause(int status)
 	switch (status)
 	{
 	case 0:
-		if (IsRunning())
-			vm_stop(RUN_STATE_PAUSED);
+		if (IsRunning()) vm_stop(RUN_STATE_PAUSED);
 		break;
 	case 1:
-		if (!IsRunning())
-			vm_start();
+		if (!IsRunning()) vm_start();
 		break;
 	case 2:
-		if (IsRunning())
-			vm_stop(RUN_STATE_PAUSED);
-		else
-			vm_start();
+		if (IsRunning()) vm_stop(RUN_STATE_PAUSED);
+		else vm_start();
 		break;
 	}
 }
 
 // CLASS
 ////////
-
-static std::vector<std::string> buttonNames = {
-	"Config",
-	"FullScr",
-	"FullScr2",
-	"Grid",
-	"List",
-	"Open",
-	"Pads",
-	"Pause",
-	"Refresh",
-	"Restart",
-	"Start",
-	"Stop",
-};
 
 static bool SetAlpha(float alpha)
 {
@@ -200,60 +195,130 @@ static bool SetAlpha(float alpha)
 
 class ControlsWindow : public CommonWindow
 {
+private:
+	uint32_t texId;
+
 public:
-	ControlsWindow() { isOpen = manualOpen = true; }
+	ControlsWindow()
+	{
+		name   = "Controls";
+		isOpen = true;
+	}
 
 	void Draw()
 	{
-		if (!isOpen)
-			return;
-
+		CHECK_DRAW();
 		if (!drawn)
 		{
-			const ImGuiViewport* viewport = ImGui::GetMainViewport();
-			auto&                size     = viewport->WorkSize;
-			ImGui::SetNextWindowPos(ImVec2(0, 0));
-			ImGui::SetNextWindowSize(ImVec2(size.x, 64.0f));
-
-			LoadTextures("buttons", buttonNames);
+			texId = LoadTexture(controls_data, controls_size, "controls");
 			++drawn;
 		}
 
 		if (!SetAlpha(alpha))
 			return;
 
-		if (!ImGui::Begin("Controls", &isOpen, ImGuiWindowFlags_NoBackground * 0 | ImGuiWindowFlags_NoDecoration))
+		if (ImGui::Begin("Controls", &isOpen))
 		{
+			auto& style = ImGui::GetStyle();
+			auto color = style.Colors[ImGuiCol_Text];
+
+			ImGui::PushFont(FindFont("RobotoCondensed"));
+			if (DrawButton(color, "Open")) LoadDisc();
+			if (DrawButton(color, "Reset")) Reset();
+			if (DrawButton(color, "FullScr")) xemu_toggle_fullscreen();
+			if (DrawButton(color, "Stop")) EjectDisc();
+			if (DrawButton(color, IsRunning() ? "Pause" : "Start")) TogglePause();
+			if (DrawButton(color, "Config")) OpenConfig(1);
+			if (DrawButton(color, "Pads")) OpenConfig(3);
+			if (DrawButton(color, "List")) SetGamesGrid(false);
+			if (DrawButton(color, "Grid")) SetGamesGrid(true);
+			ImGui::PopFont();
+
+			if (GetGamesWindow().isOpen)
+			{
+				auto  regionMax = ImGui::GetWindowContentRegionMax();
+				auto  cursorPos = ImGui::GetCursorPos();
+				float size64    = 64.0f * xsettings.ui_scale;
+
+				if (float spaceLeftX = regionMax.x - cursorPos.x - style.ItemSpacing.x / 2; spaceLeftX > size64 * 1.5f)
+				{
+					ImGui::PushItemWidth(std::min(spaceLeftX, size64 * 3));
+					float offset = (size64 - 16.0f) / 2  - style.FramePadding.y;
+					ImGui::SetCursorPosY(cursorPos.y + offset);
+					AddSliderInt("row_height", "##Scale");
+					ImGui::PopItemWidth();
+				}
+				else
+				{
+					float sizeY = size64;
+					if (regionMax.x < size64 * 2)
+					{
+						float offset = (size64 - 30.0f) / 2;
+						ImGui::SetCursorPosX(cursorPos.x + offset);
+						float spaceLeftY = regionMax.y - cursorPos.y - style.ItemSpacing.y / 2;
+						sizeY = std::clamp(spaceLeftY, size64, size64 * 2);
+					}
+					AddSliderInt("row_height", "##Scale", "%d", true, ImVec2(30.0f, sizeY));
+				}
+			}
+
+			// saved
 			ImGui::End();
-			return;
 		}
 
-		ImGui::PushFont(fixedFont);
-		if (RowButton("Open")) LoadDisc();
-		if (RowButton("Refresh")) ScanGamesFolder();
-		if (RowButton("FullScr")) xemu_toggle_fullscreen();
-		if (RowButton("Stop")) EjectDisc();
-		if (RowButton(IsRunning() ? "Pause" : "Start")) TogglePause();
-		if (RowButton("Config")) OpenConfig(1);
-		if (RowButton("Pads")) OpenConfig(3);
-		if (RowButton("List")) SetGamesGrid(false);
-		if (RowButton("Grid")) SetGamesGrid(true);
-		ImGui::PopFont();
-
-		if (GetGamesWindow().isOpen)
-		{
-			ImGui::PushItemWidth(200);
-			float offset = (64.0f - ImGui::CalcTextSize("Scale").y) / 2;
-			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offset);
-			AddSliderInt("row_height", "Scale");
-			ImGui::PopItemWidth();
-			// ImGui::SameLine();
-			// ImGui::InputText("Search", search, sizeof(str2k));
-		}
-
-		// saved
-		ImGui::End();
 		ImGui::PopStyleColor();
+	}
+
+	/**
+	 * Image text button aligned on a row
+	 */
+	int DrawButton(const ImVec4& color, std::string name)
+	{
+		static std::map<std::string, std::tuple<ImVec2, ImVec2>> buttonNames = {
+			{"Config",    { { 0.0f, 0.0f }, { 0.25f, 0.25f } }},
+			{ "FullScr",  { { 0.25f, 0.0f }, { 0.5f, 0.25f } }},
+			{ "FullScr2", { { 0.5f, 0.0f }, { 0.75f, 0.25f } }},
+			{ "Grid",     { { 0.75f, 0.0f }, { 1.0f, 0.25f } }},
+			{ "List",     { { 0.0f, 0.25f }, { 0.25f, 0.5f } }},
+			{ "Open",     { { 0.25f, 0.25f }, { 0.5f, 0.5f } }},
+			{ "Pads",     { { 0.5f, 0.25f }, { 0.75f, 0.5f } }},
+			{ "Pause",    { { 0.75f, 0.25f }, { 1.0f, 0.5f } }},
+			{ "Reset",    { { 0.0f, 0.5f }, { 0.25f, 0.75f } }},
+			{ "Start",    { { 0.25f, 0.5f }, { 0.5f, 0.75f } }},
+			{ "Stop",     { { 0.5f, 0.5f }, { 0.75f, 0.75f } }},
+		};
+
+		const auto   scale = std::clamp(xsettings.ui_scale, 1.0f, 2.0f);
+		const ImVec2 buttonDims(32.0f * scale, 32.0f * scale);
+		const ImVec2 childDims(64.0f * scale, 64.0f * scale);
+		const ImVec2 offset(16.0f * scale, 4.0f * scale);
+
+		auto  nameStr    = name.c_str();
+		auto& style      = ImGui::GetStyle();
+		auto  padding    = style.WindowPadding;
+		auto& [uv0, uv1] = buttonNames[name];
+
+		ImGui::BeginChild(nameStr, childDims, true, ImGuiWindowFlags_NoScrollbar);
+		auto pos = ImGui::GetCursorPos() - padding;
+		ImGui::SetCursorPos(pos + offset);
+		ImGui::Image((ImTextureID)(intptr_t)texId, buttonDims, uv0, uv1, color);
+		if (xsettings.text_button)
+		{
+			float offset = (childDims.x - ImGui::CalcTextSize(nameStr).x) / 2;
+			ImGui::SetCursorPosX(pos.x + offset);
+			ImGui::TextUnformatted(nameStr);
+		}
+		ImGui::EndChild();
+
+		int flag = ImGui::IsItemClicked() ? 1 : 0;
+
+		float window_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+		float last_x2 = ImGui::GetItemRectMax().x;
+		float next_x2 = last_x2 + style.ItemSpacing.x / 2 + childDims.x;
+		if (next_x2 < window_x2)
+			ImGui::SameLine();
+
+		return flag;
 	}
 };
 
@@ -269,7 +334,7 @@ static bool         showImPlotDemo   = false;
 static bool         showMemoryEditor = false;
 
 static float menuHeight = 0.0f;
-float GetMenuHeight() { return menuHeight; }
+float        GetMenuHeight() { return menuHeight; }
 
 void ShowMainMenu(float alpha)
 {
@@ -328,6 +393,9 @@ void ShowMainMenu(float alpha)
 		{
 			if (ImGui::MenuItem(runstate_is_running() ? "Pause" : "Run", xsettings.shortcut_pause)) TogglePause();
 			if (ImGui::MenuItem("Reset", xsettings.shortcut_reset)) Reset();
+			ImGui::Separator();
+			if (ImGui::MenuItem("Load State", xsettings.shortcut_loadstate)) LoadState();
+			if (ImGui::MenuItem("Save State", xsettings.shortcut_savestate)) SaveState();
 			ImGui::EndMenu();
 		}
 
@@ -344,14 +412,17 @@ void ShowMainMenu(float alpha)
 			if (ImGui::MenuItem("Emulator")) OpenConfig(7);
 			if (ImGui::MenuItem("GUI")) OpenConfig(8);
 			if (ImGui::MenuItem("Debug")) OpenConfig(9);
+			ImGui::Separator();
+			if (ImGui::MenuItem("Shortcuts")) OpenConfig(10);
+			AddMenu("Theme Editor", nullptr, GetThemeWindow());
 			ImGui::EndMenu();
 		}
 
 		if (ImGui::BeginMenu("View"))
 		{
-			if (ImGui::MenuItem("Controls", xsettings.shortcut_controls)) controlsWindow.Toggle();
-			if (ImGui::MenuItem("Game List", xsettings.shortcut_games)) GetGamesWindow().Toggle();
-			if (ImGui::MenuItem("Log", xsettings.shortcut_log)) GetLogWindow().Toggle();
+			ImGui::MenuItem("Controls", xsettings.shortcut_controls, &controlsWindow.isOpen);
+			AddMenu("Game List", xsettings.shortcut_games, GetGamesWindow());
+			AddMenu("Log", xsettings.shortcut_log, GetLogWindow());
 			ImGui::Separator();
 			ImGui::MenuItem("ImGui Demo", nullptr, &showImGuiDemo);
 			ImGui::MenuItem("ImPlot Demo", nullptr, &showImPlotDemo);
@@ -363,9 +434,9 @@ void ShowMainMenu(float alpha)
 		if (ImGui::BeginMenu("Utilities"))
 		{
 			ImGui::MenuItem("Memory Editor", nullptr, &showMemoryEditor);
-			// ImGui::MenuItem("Monitor", xsettings.shortcut_monitor, &monitor_window.isOpen);
-			ImGui::MenuItem("Audio", nullptr, &GetAudioWindow().isOpen);
-			ImGui::MenuItem("Video", nullptr, &GetVideoWindow().isOpen);
+			AddMenu("Monitor", xsettings.shortcut_monitor, GetMonitorWindow());
+			AddMenu("Audio", nullptr, GetAudioWindow());
+			AddMenu("Video", nullptr, GetVideoWindow());
 
 			ImGui::Separator();
 			if (ImGui::MenuItem("Extract ISO")) exiso::DecodeXiso(FileOpenISO(""));
@@ -374,7 +445,7 @@ void ShowMainMenu(float alpha)
 			ImGui::Separator();
 			if (ImGui::MenuItem("Screenshot", xsettings.shortcut_screenshot)) want_screenshot = (1 + 4) + 2; // force screenshot + maybe icon
 			if (ImGui::MenuItem("Save Icon")) want_screenshot = 2 + 8;                                       // force icon
-			if (ImGui::MenuItem("Intercept", xsettings.shortcut_intercept)) GetFileWindow().Show();
+			if (ImGui::MenuItem("Intercept", xsettings.shortcut_intercept)) GetFileWindow().isOpen = true;
 			ImGui::EndMenu();
 		}
 
@@ -385,8 +456,8 @@ void ShowMainMenu(float alpha)
 			// ImGui::MenuItem("Report Compatibility...", nullptr, &compatibility_reporter_window.isOpen);
 			// ImGui::MenuItem("Check for Updates...", nullptr, &update_window.isOpen);
 
-			// ImGui::Separator();
-			// ImGui::MenuItem("About", nullptr, &about_window.isOpen);
+			ImGui::Separator();
+			AddMenu("About", nullptr, GetAboutWindow());
 			ImGui::EndMenu();
 		}
 
@@ -404,20 +475,20 @@ void ShowMainMenu(float alpha)
 // API
 //////
 
+static std::vector<CommonWindow*>                     windows;
+static std::unordered_map<std::string, CommonWindow*> windowNames;
+
 // Draw all UI
-void Draw()
+void DrawWindows()
 {
-	controlsWindow.Draw();
-	GetFileWindow().Draw();
-	GetGamesWindow().Draw();
-	GetLogWindow().Draw();
-	GetSettingsWindow().Draw();
+	for (auto window : windows)
+		window->Draw();
 
 	if (showImGuiDemo) ImGui::ShowDemoWindow(&showImGuiDemo);
 	if (showImPlotDemo) ImPlot::ShowDemoWindow(&showImPlotDemo);
 	if (showMemoryEditor)
 	{
-		ImGui::PushFont(fixedFont);
+		ImGui::PushFont(FindFont("mono"));
 		memoryEditor.DrawWindow("Memory Editor", (uint8_t*)memoryData[0], memoryData[2]);
 		ImGui::PopFont();
 	}
@@ -441,22 +512,56 @@ void HomeGuide(bool hold)
 	// if game is running => hide the windows otherwise show them
 	bool running = IsRunning();
 	if (value > 1 || (running && xsettings.run_no_ui))
-		lastChange = ShowWindows(running ? 0 : 2);
+		lastChange = ShowWindows(!running, false);
 	else
 		lastChange = false;
 }
 
-bool ShowWindows(int show)
+/**
+ * Create a list of the windows
+ */
+void ListWindows()
 {
-	bool changed = 0;
-	changed |= controlsWindow.Show(show, true);
-	changed |= GetAudioWindow().Show(show, true);
-	changed |= GetFileWindow().Show(show, true);
-	changed |= GetGamesWindow().Show(show, true);
-	changed |= GetLogWindow().Show(show, true);
-	changed |= GetMonitorWindow().Show(show, true);
-	changed |= GetSettingsWindow().Show(show, true);
-	changed |= GetVideoWindow().Show(show, true);
+	if (windows.size())
+		return;
+
+	windows.push_back(&GetAudioWindow());
+	windows.push_back(&GetControlsWindow());
+	windows.push_back(&GetFileWindow());
+	windows.push_back(&GetGamesWindow());
+	windows.push_back(&GetLogWindow());
+	windows.push_back(&GetMonitorWindow());
+	windows.push_back(&GetSettingsWindow());
+	windows.push_back(&GetThemeWindow());
+	windows.push_back(&GetVideoWindow());
+
+	for (auto window : windows)
+		windowNames[window->name] = window;
+}
+
+/**
+ * Hide/unhide windows:
+ * - only change hidden, not isOpen
+ */
+bool ShowWindows(bool show, bool force)
+{
+	bool changed = false;
+	for (auto window : windows)
+	{
+		if (show)
+		{
+			if (window->hidden & 1)
+			{
+				changed = true;
+				window->hidden &= ~1;
+			}
+		}
+		else if (window->hidden == 0 || (window->hidden == 2 && force))
+		{
+			changed = true;
+			window->hidden |= 1;
+		}
+	}
 	return changed;
 }
 

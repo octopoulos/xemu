@@ -29,41 +29,41 @@
 
 enum controller_state_buttons_mask
 {
-	CONTROLLER_BUTTON_A          = (1 << 0),
-	CONTROLLER_BUTTON_B          = (1 << 1),
-	CONTROLLER_BUTTON_X          = (1 << 2),
-	CONTROLLER_BUTTON_Y          = (1 << 3),
-	CONTROLLER_BUTTON_DPAD_LEFT  = (1 << 4),
-	CONTROLLER_BUTTON_DPAD_UP    = (1 << 5),
-	CONTROLLER_BUTTON_DPAD_RIGHT = (1 << 6),
-	CONTROLLER_BUTTON_DPAD_DOWN  = (1 << 7),
-	CONTROLLER_BUTTON_BACK       = (1 << 8),
-	CONTROLLER_BUTTON_START      = (1 << 9),
-	CONTROLLER_BUTTON_WHITE      = (1 << 10),
-	CONTROLLER_BUTTON_BLACK      = (1 << 11),
-	CONTROLLER_BUTTON_LSTICK     = (1 << 12),
-	CONTROLLER_BUTTON_RSTICK     = (1 << 13),
+	PAD_BUTTON_A          = (1 << 0),
+	PAD_BUTTON_B          = (1 << 1),
+	PAD_BUTTON_X          = (1 << 2),
+	PAD_BUTTON_Y          = (1 << 3),
+	PAD_BUTTON_DPAD_LEFT  = (1 << 4),
+	PAD_BUTTON_DPAD_UP    = (1 << 5),
+	PAD_BUTTON_DPAD_RIGHT = (1 << 6),
+	PAD_BUTTON_DPAD_DOWN  = (1 << 7),
+	PAD_BUTTON_BACK       = (1 << 8),
+	PAD_BUTTON_START      = (1 << 9),
+	PAD_BUTTON_WHITE      = (1 << 10),
+	PAD_BUTTON_BLACK      = (1 << 11),
+	PAD_BUTTON_LSTICK     = (1 << 12),
+	PAD_BUTTON_RSTICK     = (1 << 13),
 	// extensions
-	CONTROLLER_BUTTON_GUIDE    = (1 << 14),
-	CONTROLLER_BUTTON_TOUCHPAD = (1 << 15),
-	CONTROLLER_BUTTON_MISC1    = (1 << 16),
-	CONTROLLER_BUTTON_PADDLE1  = (1 << 17),
-	CONTROLLER_BUTTON_PADDLE2  = (1 << 18),
-	CONTROLLER_BUTTON_PADDLE3  = (1 << 19),
-	CONTROLLER_BUTTON_PADDLE4  = (1 << 20),
+	PAD_BUTTON_GUIDE      = (1 << 14),
+	PAD_BUTTON_TOUCHPAD   = (1 << 15),
+	PAD_BUTTON_MISC1      = (1 << 16),
+	PAD_BUTTON_PADDLE1    = (1 << 17),
+	PAD_BUTTON_PADDLE2    = (1 << 18),
+	PAD_BUTTON_PADDLE3    = (1 << 19),
+	PAD_BUTTON_PADDLE4    = (1 << 20),
 };
 
 #define CONTROLLER_STATE_BUTTON_ID_TO_MASK(x) (1 << x)
 
 enum controller_state_axis_index
 {
-	CONTROLLER_AXIS_LTRIG,
-	CONTROLLER_AXIS_RTRIG,
-	CONTROLLER_AXIS_LSTICK_X,
-	CONTROLLER_AXIS_LSTICK_Y,
-	CONTROLLER_AXIS_RSTICK_X,
-	CONTROLLER_AXIS_RSTICK_Y,
-	CONTROLLER_AXIS__COUNT,
+	PAD_AXIS_LTRIG,
+	PAD_AXIS_RTRIG,
+	PAD_AXIS_LSTICK_X,
+	PAD_AXIS_LSTICK_Y,
+	PAD_AXIS_RSTICK_X,
+	PAD_AXIS_RSTICK_Y,
+	PAD_AXIS__COUNT,
 };
 
 enum controller_input_device_type
@@ -82,7 +82,7 @@ typedef struct ControllerState
 
 	// Input state
 	int     buttons;
-	int16_t axis[CONTROLLER_AXIS__COUNT];
+	int16_t axis[PAD_AXIS__COUNT];
 	int     raw_inputs[32];
 
 	// Rendering state hacked on here for convenience but needs to be moved (FIXME)
@@ -90,7 +90,8 @@ typedef struct ControllerState
 	uint32_t animate_trigger_end;
 
 	// Rumble state
-	uint16_t rumble_l, rumble_r;
+	uint16_t rumble_l;
+	uint16_t rumble_r;
 
 	enum controller_input_device_type type;
 	const char*                       name;
@@ -130,12 +131,12 @@ void             xemu_input_update_rumble(ControllerState* state);
 ControllerState* xemu_input_get_bound(int index);
 void             xemu_input_bind(int index, ControllerState* state, int save);
 int              xemu_input_get_controller_default_bind_port(ControllerState* state, int start, int end);
-
-void xemu_input_set_test_mode(int enabled);
-int  xemu_input_get_test_mode(void);
-
-void ParseMappingString(char* mapping, int* vector, const char* defaultMapping);
-void StringifyMapping(int* mapping, char* text, const char* defaultMapping);
+//
+void             xemu_input_set_test_mode(int enabled);
+int              xemu_input_get_test_mode(void);
+//
+void             ParseMappingString(char* mapping, int* vector, const char* defaultMapping);
+void             StringifyMapping(int* mapping, char* text, const char* defaultMapping);
 
 #ifdef __cplusplus
 }

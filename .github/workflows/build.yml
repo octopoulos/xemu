@@ -340,8 +340,8 @@ jobs:
         mv /tmp/xemu-debian/debian archive
 
         # Create changelog containing current version
-        echo -e "xemu (1:$(cat archive/XEMU_VERSION)-0) unstable; urgency=medium\n" > archive/debian/changelog
-        echo -e "  Built from $(cat archive/XEMU_VERSION)\n" >> archive/debian/changelog
+        echo -e "xemu (1:$(cat archive/SHURIKEN_VERSION)-0) unstable; urgency=medium\n" > archive/debian/changelog
+        echo -e "  Built from $(cat archive/SHURIKEN_VERSION)\n" >> archive/debian/changelog
         echo " -- Matt Borgerson <contact@mborgerson.com>  $(date -R)" >> archive/debian/changelog
     - name: Deploy source archive to branch
       uses: peaceiris/actions-gh-pages@v3

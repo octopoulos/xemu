@@ -219,34 +219,38 @@ static QemuOptsList qemu_rtc_opts = {
 	.name = "rtc",
 	.head = QTAILQ_HEAD_INITIALIZER(qemu_rtc_opts.head),
 	.merge_lists = true,
-	.desc = { {
-				  .name = "base",
-				  .type = QEMU_OPT_STRING,
-			  },
-			  {
-				  .name = "clock",
-				  .type = QEMU_OPT_STRING,
-			  },
-			  {
-				  .name = "driftfix",
-				  .type = QEMU_OPT_STRING,
-			  },
-			  { /* end of list */ } },
+	.desc = {
+		{
+			.name = "base",
+			.type = QEMU_OPT_STRING,
+		},
+		{
+			.name = "clock",
+			.type = QEMU_OPT_STRING,
+		},
+		{
+			.name = "driftfix",
+			.type = QEMU_OPT_STRING,
+		},
+		{ /* end of list */ },
+	},
 };
 
 static QemuOptsList qemu_option_rom_opts = {
 	.name = "option-rom",
 	.implied_opt_name = "romfile",
 	.head = QTAILQ_HEAD_INITIALIZER(qemu_option_rom_opts.head),
-	.desc = { {
-				  .name = "bootindex",
-				  .type = QEMU_OPT_NUMBER,
-			  },
-			  {
-				  .name = "romfile",
-				  .type = QEMU_OPT_STRING,
-			  },
-			  { /* end of list */ } },
+	.desc = {
+		{
+			.name = "bootindex",
+			.type = QEMU_OPT_NUMBER,
+		},
+		{
+			.name = "romfile",
+			.type = QEMU_OPT_STRING,
+		},
+		{ /* end of list */ },
+	},
 };
 
 static QemuOptsList qemu_accel_opts = {
@@ -268,56 +272,60 @@ static QemuOptsList qemu_boot_opts = {
 	.implied_opt_name = "order",
 	.merge_lists = true,
 	.head = QTAILQ_HEAD_INITIALIZER(qemu_boot_opts.head),
-	.desc = { {
-				  .name = "order",
-				  .type = QEMU_OPT_STRING,
-			  },
-			  {
-				  .name = "once",
-				  .type = QEMU_OPT_STRING,
-			  },
-			  {
-				  .name = "menu",
-				  .type = QEMU_OPT_BOOL,
-			  },
-			  {
-				  .name = "splash",
-				  .type = QEMU_OPT_STRING,
-			  },
-			  {
-				  .name = "splash-time",
-				  .type = QEMU_OPT_NUMBER,
-			  },
-			  {
-				  .name = "reboot-timeout",
-				  .type = QEMU_OPT_NUMBER,
-			  },
-			  {
-				  .name = "strict",
-				  .type = QEMU_OPT_BOOL,
-			  },
-			  { /*End of list */ } },
+	.desc = {
+		{
+			.name = "order",
+			.type = QEMU_OPT_STRING,
+		},
+		{
+			.name = "once",
+			.type = QEMU_OPT_STRING,
+		},
+		{
+			.name = "menu",
+			.type = QEMU_OPT_BOOL,
+		},
+		{
+			.name = "splash",
+			.type = QEMU_OPT_STRING,
+		},
+		{
+			.name = "splash-time",
+			.type = QEMU_OPT_NUMBER,
+		},
+		{
+			.name = "reboot-timeout",
+			.type = QEMU_OPT_NUMBER,
+		},
+		{
+			.name = "strict",
+			.type = QEMU_OPT_BOOL,
+		},
+		{ /*End of list */ },
+	},
 };
 
 static QemuOptsList qemu_add_fd_opts = {
 	.name = "add-fd",
 	.head = QTAILQ_HEAD_INITIALIZER(qemu_add_fd_opts.head),
-	.desc = { {
-				  .name = "fd",
-				  .type = QEMU_OPT_NUMBER,
-				  .help = "file descriptor of which a duplicate is added to fd set",
-			  },
-			  {
-				  .name = "set",
-				  .type = QEMU_OPT_NUMBER,
-				  .help = "ID of the fd set to add fd to",
-			  },
-			  {
-				  .name = "opaque",
-				  .type = QEMU_OPT_STRING,
-				  .help = "free-form string used to describe fd",
-			  },
-			  { /* end of list */ } },
+	.desc = {
+		{
+			.name = "fd",
+			.type = QEMU_OPT_NUMBER,
+			.help = "file descriptor of which a duplicate is added to fd set",
+		},
+		{
+			.name = "set",
+			.type = QEMU_OPT_NUMBER,
+			.help = "ID of the fd set to add fd to",
+		},
+		{
+			.name = "opaque",
+			.type = QEMU_OPT_STRING,
+			.help = "free-form string used to describe fd",
+		},
+		{ /* end of list */ },
+	},
 };
 
 static QemuOptsList qemu_object_opts = {
@@ -340,31 +348,35 @@ static QemuOptsList qemu_tpmdev_opts = {
 static QemuOptsList qemu_overcommit_opts = {
 	.name = "overcommit",
 	.head = QTAILQ_HEAD_INITIALIZER(qemu_overcommit_opts.head),
-	.desc = { {
-				  .name = "mem-lock",
-				  .type = QEMU_OPT_BOOL,
-			  },
-			  {
-				  .name = "cpu-pm",
-				  .type = QEMU_OPT_BOOL,
-			  },
-			  { /* end of list */ } },
+	.desc = {
+		{
+			.name = "mem-lock",
+			.type = QEMU_OPT_BOOL,
+		},
+		{
+			.name = "cpu-pm",
+			.type = QEMU_OPT_BOOL,
+		},
+		{ /* end of list */ },
+	},
 };
 
 static QemuOptsList qemu_msg_opts = {
 	.name = "msg",
 	.head = QTAILQ_HEAD_INITIALIZER(qemu_msg_opts.head),
-	.desc = { {
-				  .name = "timestamp",
-				  .type = QEMU_OPT_BOOL,
-			  },
-			  {
-				  .name = "guest-name",
-				  .type = QEMU_OPT_BOOL,
-				  .help = "Prepends guest name for error messages but only if "
-						  "-name guest is set otherwise option is ignored\n",
-			  },
-			  { /* end of list */ } },
+	.desc = {
+		{
+			.name = "timestamp",
+			.type = QEMU_OPT_BOOL,
+		},
+		{
+			.name = "guest-name",
+			.type = QEMU_OPT_BOOL,
+			.help = "Prepends guest name for error messages but only if "
+					"-name guest is set otherwise option is ignored\n",
+		},
+		{ /* end of list */ },
+	},
 };
 
 static QemuOptsList qemu_name_opts = {
@@ -372,26 +384,28 @@ static QemuOptsList qemu_name_opts = {
 	.implied_opt_name = "guest",
 	.merge_lists = true,
 	.head = QTAILQ_HEAD_INITIALIZER(qemu_name_opts.head),
-	.desc = { {
-				  .name = "guest",
-				  .type = QEMU_OPT_STRING,
-				  .help = "Sets the name of the guest.\n"
-						  "This name will be displayed in the SDL window caption.\n"
-						  "The name will also be used for the VNC server",
-			  },
-			  {
-				  .name = "process",
-				  .type = QEMU_OPT_STRING,
-				  .help = "Sets the name of the QEMU process, as shown in top etc",
-			  },
-			  {
-				  .name = "debug-threads",
-				  .type = QEMU_OPT_BOOL,
-				  .help = "When enabled, name the individual threads; defaults off.\n"
-						  "NOTE: The thread names are for debugging and not a\n"
-						  "stable API.",
-			  },
-			  { /* End of list */ } },
+	.desc = {
+		{
+			.name = "guest",
+			.type = QEMU_OPT_STRING,
+			.help = "Sets the name of the guest.\n"
+					"This name will be displayed in the SDL window caption.\n"
+					"The name will also be used for the VNC server",
+		},
+		{
+			.name = "process",
+			.type = QEMU_OPT_STRING,
+			.help = "Sets the name of the QEMU process, as shown in top etc",
+		},
+		{
+			.name = "debug-threads",
+			.type = QEMU_OPT_BOOL,
+			.help = "When enabled, name the individual threads; defaults off.\n"
+					"NOTE: The thread names are for debugging and not a\n"
+					"stable API.",
+		},
+		{ /* End of list */ },
+	},
 };
 
 static QemuOptsList qemu_mem_opts = {
@@ -399,19 +413,21 @@ static QemuOptsList qemu_mem_opts = {
 	.implied_opt_name = "size",
 	.head = QTAILQ_HEAD_INITIALIZER(qemu_mem_opts.head),
 	.merge_lists = true,
-	.desc = { {
-				  .name = "size",
-				  .type = QEMU_OPT_SIZE,
-			  },
-			  {
-				  .name = "slots",
-				  .type = QEMU_OPT_NUMBER,
-			  },
-			  {
-				  .name = "maxmem",
-				  .type = QEMU_OPT_SIZE,
-			  },
-			  { /* end of list */ } },
+	.desc = {
+		{
+			.name = "size",
+			.type = QEMU_OPT_SIZE,
+		},
+		{
+			.name = "slots",
+			.type = QEMU_OPT_NUMBER,
+		},
+		{
+			.name = "maxmem",
+			.type = QEMU_OPT_SIZE,
+		},
+		{ /* end of list */ },
+	},
 };
 
 static QemuOptsList qemu_icount_opts = {
@@ -419,83 +435,89 @@ static QemuOptsList qemu_icount_opts = {
 	.implied_opt_name = "shift",
 	.merge_lists = true,
 	.head = QTAILQ_HEAD_INITIALIZER(qemu_icount_opts.head),
-	.desc = { {
-				  .name = "shift",
-				  .type = QEMU_OPT_STRING,
-			  },
-			  {
-				  .name = "align",
-				  .type = QEMU_OPT_BOOL,
-			  },
-			  {
-				  .name = "sleep",
-				  .type = QEMU_OPT_BOOL,
-			  },
-			  {
-				  .name = "rr",
-				  .type = QEMU_OPT_STRING,
-			  },
-			  {
-				  .name = "rrfile",
-				  .type = QEMU_OPT_STRING,
-			  },
-			  {
-				  .name = "rrsnapshot",
-				  .type = QEMU_OPT_STRING,
-			  },
-			  { /* end of list */ } },
+	.desc = {
+		{
+			.name = "shift",
+			.type = QEMU_OPT_STRING,
+		},
+		{
+			.name = "align",
+			.type = QEMU_OPT_BOOL,
+		},
+		{
+			.name = "sleep",
+			.type = QEMU_OPT_BOOL,
+		},
+		{
+			.name = "rr",
+			.type = QEMU_OPT_STRING,
+		},
+		{
+			.name = "rrfile",
+			.type = QEMU_OPT_STRING,
+		},
+		{
+			.name = "rrsnapshot",
+			.type = QEMU_OPT_STRING,
+		},
+		{ /* end of list */ },
+	},
 };
 
 static QemuOptsList qemu_fw_cfg_opts = {
 	.name = "fw_cfg",
 	.implied_opt_name = "name",
 	.head = QTAILQ_HEAD_INITIALIZER(qemu_fw_cfg_opts.head),
-	.desc = { {
-				  .name = "name",
-				  .type = QEMU_OPT_STRING,
-				  .help = "Sets the fw_cfg name of the blob to be inserted",
-			  },
-			  {
-				  .name = "file",
-				  .type = QEMU_OPT_STRING,
-				  .help = "Sets the name of the file from which "
-						  "the fw_cfg blob will be loaded",
-			  },
-			  {
-				  .name = "string",
-				  .type = QEMU_OPT_STRING,
-				  .help = "Sets content of the blob to be inserted from a string",
-			  },
-			  {
-				  .name = "gen_id",
-				  .type = QEMU_OPT_STRING,
-				  .help = "Sets id of the object generating the fw_cfg blob "
-						  "to be inserted",
-			  },
-			  { /* end of list */ } },
+	.desc = {
+		{
+			.name = "name",
+			.type = QEMU_OPT_STRING,
+			.help = "Sets the fw_cfg name of the blob to be inserted",
+		},
+		{
+			.name = "file",
+			.type = QEMU_OPT_STRING,
+			.help = "Sets the name of the file from which "
+					"the fw_cfg blob will be loaded",
+		},
+		{
+			.name = "string",
+			.type = QEMU_OPT_STRING,
+			.help = "Sets content of the blob to be inserted from a string",
+		},
+		{
+			.name = "gen_id",
+			.type = QEMU_OPT_STRING,
+			.help = "Sets id of the object generating the fw_cfg blob "
+					"to be inserted",
+		},
+		{ /* end of list */ },
+	},
 };
 
 static QemuOptsList qemu_action_opts = {
 	.name = "action",
 	.merge_lists = true,
 	.head = QTAILQ_HEAD_INITIALIZER(qemu_action_opts.head),
-	.desc = { {
-				  .name = "shutdown",
-				  .type = QEMU_OPT_STRING,
-			  },
-			  {
-				  .name = "reboot",
-				  .type = QEMU_OPT_STRING,
-			  },
-			  {
-				  .name = "panic",
-				  .type = QEMU_OPT_STRING,
-			  },
-			  {
-				  .name = "watchdog",
-				  .type = QEMU_OPT_STRING,
-			  },
-			  { /* end of list */ } },
+	.desc = {
+		{
+			.name = "shutdown",
+			.type = QEMU_OPT_STRING,
+		},
+		{
+			.name = "reboot",
+			.type = QEMU_OPT_STRING,
+		},
+		{
+			.name = "panic",
+			.type = QEMU_OPT_STRING,
+		},
+		{
+			.name = "watchdog",
+			.type = QEMU_OPT_STRING,
+		},
+		{ /* end of list */ },
+	},
 };
 
 const char* qemu_get_vm_name(void)
@@ -603,11 +625,8 @@ static int parse_add_fd(void* opaque, QemuOpts* opts, Error** errp)
 
 static int cleanup_add_fd(void* opaque, QemuOpts* opts, Error** errp)
 {
-	int fd;
-
-	fd = qemu_opt_get_number(opts, "fd", -1);
+	int fd = qemu_opt_get_number(opts, "fd", -1);
 	close(fd);
-
 	return 0;
 }
 #endif
@@ -625,7 +644,6 @@ static int cleanup_add_fd(void* opaque, QemuOpts* opts, Error** errp)
 static int drive_init_func(void* opaque, QemuOpts* opts, Error** errp)
 {
 	BlockInterfaceType* block_default_type = opaque;
-
 	return drive_new(opts, *block_default_type, errp) == NULL;
 }
 
@@ -810,10 +828,7 @@ static void version(void)
 static void help(int exitcode)
 {
 	version();
-	printf(
-		"usage: %s [options] [disk_image]\n\n"
-		"'disk_image' is a raw hard disk image for IDE hard disk 0\n\n",
-		error_get_progname());
+	printf("usage: %s [options] [disk_image]\n\n'disk_image' is a raw hard disk image for IDE hard disk 0\n\n", error_get_progname());
 
 #define DEF(option, opt_arg, opt_enum, opt_help, arch_mask) \
 	if ((arch_mask)&arch_type) \
@@ -920,18 +935,15 @@ static bool vga_interface_available(VGAInterfaceType t)
 	const VGAInterfaceInfo* ti = &vga_interfaces[t];
 
 	assert(t < VGA_TYPE_MAX);
-	return !ti->class_names[0] || module_object_class_by_name(ti->class_names[0])
-		|| module_object_class_by_name(ti->class_names[1]);
+	return !ti->class_names[0] || module_object_class_by_name(ti->class_names[0]) || module_object_class_by_name(ti->class_names[1]);
 }
 
 static const char* get_default_vga_model(const MachineClass* machine_class)
 {
 	if (machine_class->default_display)
 		return machine_class->default_display;
-	else if (vga_interface_available(VGA_CIRRUS))
-		return "cirrus";
-	else if (vga_interface_available(VGA_STD))
-		return "std";
+	else if (vga_interface_available(VGA_CIRRUS)) return "cirrus";
+	else if (vga_interface_available(VGA_STD)) return "std";
 
 	return NULL;
 }
@@ -944,16 +956,11 @@ static void select_vgahw(const MachineClass* machine_class, const char* p)
 	if (g_str_equal(p, "help"))
 	{
 		const char* def = get_default_vga_model(machine_class);
-
 		for (t = 0; t < VGA_TYPE_MAX; t++)
 		{
 			const VGAInterfaceInfo* ti = &vga_interfaces[t];
-
 			if (vga_interface_available(t) && ti->opt_name)
-			{
-				printf(
-					"%-20s %s%s\n", ti->opt_name, ti->name ?: "", g_str_equal(ti->opt_name, def) ? " (default)" : "");
-			}
+				printf("%-20s %s%s\n", ti->opt_name, ti->name ?: "", g_str_equal(ti->opt_name, def) ? " (default)" : "");
 		}
 		exit(0);
 	}
@@ -1047,65 +1054,45 @@ static void parse_display(const char* p)
 			if (strstart(opts, ",alt_grab=", &nextopt))
 			{
 				opts = nextopt;
-				if (strstart(opts, "on", &nextopt))
-					alt_grab = 1;
-				else if (strstart(opts, "off", &nextopt))
-					alt_grab = 0;
-				else
-					goto invalid_sdl_args;
+				if (strstart(opts, "on", &nextopt)) alt_grab = 1;
+				else if (strstart(opts, "off", &nextopt)) alt_grab = 0;
+				else goto invalid_sdl_args;
 			}
 			else if (strstart(opts, ",ctrl_grab=", &nextopt))
 			{
 				opts = nextopt;
-				if (strstart(opts, "on", &nextopt))
-					ctrl_grab = 1;
-				else if (strstart(opts, "off", &nextopt))
-					ctrl_grab = 0;
-				else
-					goto invalid_sdl_args;
+				if (strstart(opts, "on", &nextopt))	ctrl_grab = 1;
+				else if (strstart(opts, "off", &nextopt)) ctrl_grab = 0;
+				else goto invalid_sdl_args;
 			}
 			else if (strstart(opts, ",window_close=", &nextopt) || strstart(opts, ",window-close=", &nextopt))
 			{
 				if (strstart(opts, ",window_close=", NULL))
-				{
-					warn_report(
-						"window_close with an underscore is deprecated,"
-						" please use window-close instead.");
-				}
+					warn_report("window_close with an underscore is deprecated, please use window-close instead.");
+
 				opts = nextopt;
 				dpy.has_window_close = true;
-				if (strstart(opts, "on", &nextopt))
-					dpy.window_close = true;
-				else if (strstart(opts, "off", &nextopt))
-					dpy.window_close = false;
-				else
-					goto invalid_sdl_args;
+				if (strstart(opts, "on", &nextopt))	dpy.window_close = true;
+				else if (strstart(opts, "off", &nextopt)) dpy.window_close = false;
+				else goto invalid_sdl_args;
 			}
 			else if (strstart(opts, ",show-cursor=", &nextopt))
 			{
 				opts = nextopt;
 				dpy.has_show_cursor = true;
-				if (strstart(opts, "on", &nextopt))
-					dpy.show_cursor = true;
-				else if (strstart(opts, "off", &nextopt))
-					dpy.show_cursor = false;
-				else
-					goto invalid_sdl_args;
+				if (strstart(opts, "on", &nextopt))	dpy.show_cursor = true;
+				else if (strstart(opts, "off", &nextopt)) dpy.show_cursor = false;
+				else goto invalid_sdl_args;
 			}
 			else if (strstart(opts, ",gl=", &nextopt))
 			{
 				opts = nextopt;
 				dpy.has_gl = true;
-				if (strstart(opts, "on", &nextopt))
-					dpy.gl = DISPLAYGL_MODE_ON;
-				else if (strstart(opts, "core", &nextopt))
-					dpy.gl = DISPLAYGL_MODE_CORE;
-				else if (strstart(opts, "es", &nextopt))
-					dpy.gl = DISPLAYGL_MODE_ES;
-				else if (strstart(opts, "off", &nextopt))
-					dpy.gl = DISPLAYGL_MODE_OFF;
-				else
-					goto invalid_sdl_args;
+				if (strstart(opts, "on", &nextopt))	dpy.gl = DISPLAYGL_MODE_ON;
+				else if (strstart(opts, "core", &nextopt)) dpy.gl = DISPLAYGL_MODE_CORE;
+				else if (strstart(opts, "es", &nextopt)) dpy.gl = DISPLAYGL_MODE_ES;
+				else if (strstart(opts, "off", &nextopt)) dpy.gl = DISPLAYGL_MODE_OFF;
+				else goto invalid_sdl_args;
 			}
 			else
 			{
@@ -1342,18 +1329,12 @@ static void qemu_disable_default_devices(void)
 	qemu_opts_foreach(qemu_find_opts("device"), default_driver_check, NULL, NULL);
 	qemu_opts_foreach(qemu_find_opts("global"), default_driver_check, NULL, NULL);
 
-	if (!vga_model && !default_vga)
-		vga_interface_type = VGA_DEVICE;
-	if (!has_defaults || machine_class->no_serial)
-		default_serial = 0;
-	if (!has_defaults || machine_class->no_parallel)
-		default_parallel = 0;
-	if (!has_defaults || machine_class->no_floppy)
-		default_floppy = 0;
-	if (!has_defaults || machine_class->no_cdrom)
-		default_cdrom = 0;
-	if (!has_defaults || machine_class->no_sdcard)
-		default_sdcard = 0;
+	if (!vga_model && !default_vga) vga_interface_type = VGA_DEVICE;
+	if (!has_defaults || machine_class->no_serial) default_serial = 0;
+	if (!has_defaults || machine_class->no_parallel) default_parallel = 0;
+	if (!has_defaults || machine_class->no_floppy) default_floppy = 0;
+	if (!has_defaults || machine_class->no_cdrom) default_cdrom = 0;
+	if (!has_defaults || machine_class->no_sdcard) default_sdcard = 0;
 	if (!has_defaults)
 	{
 		default_monitor = 0;
@@ -1572,9 +1553,7 @@ static void machine_help_func(const QDict* qdict)
 		if (mc->alias)
 			printf("%-20s %s (alias of %s)\n", mc->alias, mc->desc, mc->name);
 
-		printf(
-			"%-20s %s%s%s\n", mc->name, mc->desc, mc->is_default ? " (default)" : "",
-			mc->deprecation_reason ? " (deprecated)" : "");
+		printf("%-20s %s%s%s\n", mc->name, mc->desc, mc->is_default ? " (default)" : "", mc->deprecation_reason ? " (deprecated)" : "");
 	}
 }
 
@@ -1799,7 +1778,6 @@ static void object_option_parse(const char* optarg)
 	if (optarg[0] == '{')
 	{
 		QObject* obj = qobject_from_json(optarg, &error_fatal);
-
 		v = qobject_input_visitor_new(obj);
 		qobject_unref(obj);
 	}
@@ -1994,18 +1972,14 @@ static void qemu_create_late_backends(void)
 #endif
 
 	object_option_foreach_add(object_create_late);
-
 	if (tpm_init() < 0)
 		exit(1);
 
 	qemu_opts_foreach(qemu_find_opts("mon"), mon_init_func, NULL, &error_fatal);
 
-	if (foreach_device_config(DEV_SERIAL, serial_parse) < 0)
-		exit(1);
-	if (foreach_device_config(DEV_PARALLEL, parallel_parse) < 0)
-		exit(1);
-	if (foreach_device_config(DEV_DEBUGCON, debugcon_parse) < 0)
-		exit(1);
+	if (foreach_device_config(DEV_SERIAL, serial_parse) < 0) exit(1);
+	if (foreach_device_config(DEV_PARALLEL, parallel_parse) < 0) exit(1);
+	if (foreach_device_config(DEV_DEBUGCON, debugcon_parse) < 0) exit(1);
 
 	/* now chardevs have been created we may have semihosting to connect */
 	qemu_semihosting_connect_chardevs();
@@ -2034,8 +2008,7 @@ static void qemu_resolve_machine_memdev(void)
 		backend_size = object_property_get_uint(backend, "size", &error_abort);
 		if (have_custom_ram_size() && backend_size != ram_size)
 		{
-			error_report(
-				"Size specified by -m option must match size of explicitly specified 'memory-backend' property");
+			error_report("Size specified by -m option must match size of explicitly specified 'memory-backend' property");
 			exit(EXIT_FAILURE);
 		}
 		if (mem_path)
@@ -2155,8 +2128,7 @@ static void qemu_create_machine(QDict* qdict)
 
 	current_machine = MACHINE(object_new_with_class(OBJECT_CLASS(machine_class)));
 	object_property_add_child(object_get_root(), "machine", OBJECT(current_machine));
-	object_property_add_child(
-		container_get(OBJECT(current_machine), "/unattached"), "sysbus", OBJECT(sysbus_get_default()));
+	object_property_add_child(container_get(OBJECT(current_machine), "/unattached"), "sysbus", OBJECT(sysbus_get_default()));
 
 	if (machine_class->minimum_page_bits)
 	{
@@ -2864,19 +2836,12 @@ void qemu_init(int argc, char** argv, char** envp)
 		int bootrom_size = get_image_size(bootrom_path);
 		if (bootrom_size < 0)
 		{
-			char* msg =
-				g_strdup_printf("Failed to open BootROM file '%s'. Please check machine settings.", bootrom_path);
-			xemu_queue_error_message(msg);
-			g_free(msg);
+			LogC(LOG_ERROR, "Failed to open BootROM file '%s'. Please check machine settings.", bootrom_path);
 			bootrom_path = "";
 		}
 		else if (bootrom_size != 512)
 		{
-			char* msg = g_strdup_printf(
-				"Invalid BootROM file '%s' size %d. Expected 512 bytes. Please check machine settings.", bootrom_path,
-				bootrom_size);
-			xemu_queue_error_message(msg);
-			g_free(msg);
+			LogC(LOG_ERROR, "Invalid BootROM file '%s' size %d. Expected 512 bytes. Please check machine settings.", bootrom_path,	bootrom_size);
 			bootrom_path = "";
 		}
 		else
@@ -2889,9 +2854,7 @@ void qemu_init(int argc, char** argv, char** envp)
 
 	int short_animation = xsettings.short_animation;
 
-	fake_argv[fake_argc++] = g_strdup_printf(
-		"xbox%s%s%s", (bootrom_arg != NULL) ? bootrom_arg : "", short_animation ? ",short-animation=on" : "",
-		",kernel-irqchip=off");
+	fake_argv[fake_argc++] = g_strdup_printf("xbox%s%s%s", (bootrom_arg != NULL) ? bootrom_arg : "", short_animation ? ",short-animation=on" : "", ",kernel-irqchip=off");
 
 	if (bootrom_arg != NULL)
 		g_free(bootrom_arg);
@@ -2904,24 +2867,12 @@ void qemu_init(int argc, char** argv, char** envp)
 		int eeprom_size = get_image_size(eeprom_path);
 		if (eeprom_size < 0)
 		{
-			char* msg = g_strdup_printf(
-				"Failed to open EEPROM file '%s'.\n\n"
-				"Automatically generating a new one instead. "
-				"Please check machine settings for the new path and move if desired.",
-				eeprom_path);
-			xemu_queue_error_message(msg);
-			g_free(msg);
+			LogC(LOG_ERROR, "Failed to open EEPROM file '%s'.\n\nAutomatically generating a new one instead. Please check machine settings for the new path and move if desired.",	eeprom_path);
 			eeprom_path = "";
 		}
 		else if (eeprom_size != 256)
 		{
-			char* msg = g_strdup_printf(
-				"Invalid EEPROM file '%s' size of %d; should be 256 bytes.\n\n"
-				"Automatically generating a new one instead. "
-				"Please check machine settings for the new path and move if desired.",
-				eeprom_path, eeprom_size);
-			xemu_queue_error_message(msg);
-			g_free(msg);
+			LogC(LOG_ERROR, "Invalid EEPROM file '%s' size of %d; should be 256 bytes.\n\nAutomatically generating a new one instead. Please check machine settings for the new path and move if desired.", eeprom_path, eeprom_size);
 			eeprom_path = "";
 		}
 		else
@@ -2936,8 +2887,11 @@ void qemu_init(int argc, char** argv, char** envp)
 	// Generate a new EEPROM file if one isn't specified or contents are invalid
 	if (strlen(eeprom_path) == 0)
 	{
-		str2k eeprom_path;
-		sprintf(eeprom_path, "%s/eeprom.bin", xsettingsFolderC(0));
+		const char* basePath = xsettingsFolderC(0);
+		const char  lastChar = basePath[strlen(basePath) - 1];
+		str2k       eeprom_path;
+		sprintf(eeprom_path, "%s%seeprom.bin", basePath, (lastChar == '/' || lastChar == '\\') ? "" : "/");
+
 		if (xbox_eeprom_generate(eeprom_path, XBOX_EEPROM_VERSION_R1))
 		{
 			strcpy(xsettings.eeprom_path, eeprom_path);
@@ -2948,12 +2902,7 @@ void qemu_init(int argc, char** argv, char** envp)
 			free(escaped_eeprom_path);
 		}
 		else
-		{
-			char* msg =
-				g_strdup_printf("Failed to generate eeprom file '%s'. Please check machine settings.", eeprom_path);
-			xemu_queue_error_message(msg);
-			g_free(msg);
-		}
+			LogC(LOG_ERROR, "Failed to generate eeprom file '%s'. Please check machine settings.", eeprom_path);
 	}
 
 	const char* flash_path = xsettings.flash_path;
@@ -2964,11 +2913,7 @@ void qemu_init(int argc, char** argv, char** envp)
 		// to configure the path.
 	}
 	else if (xemu_check_file(flash_path))
-	{
-		char* msg = g_strdup_printf("Failed to open flash file '%s'. Please check machine settings.", flash_path);
-		xemu_queue_error_message(msg);
-		g_free(msg);
-	}
+		LogC(LOG_ERROR, "Failed to open flash file '%s'. Please check machine settings.", flash_path);
 	else
 	{
 		fake_argv[fake_argc++] = strdup("-bios");
@@ -2983,18 +2928,12 @@ void qemu_init(int argc, char** argv, char** envp)
 	if (strlen(hdd_path) > 0)
 	{
 		if (xemu_check_file(hdd_path))
-		{
-			char* msg =
-				g_strdup_printf("Failed to open hard disk image file '%s'. Please check machine settings.", hdd_path);
-			xemu_queue_error_message(msg);
-			g_free(msg);
-		}
+			LogC(LOG_ERROR, "Failed to open hard disk image file '%s'. Please check machine settings.", hdd_path);
 		else
 		{
 			fake_argv[fake_argc++] = strdup("-drive");
 			char* escaped_hdd_path = strdup_double_commas(hdd_path);
-			fake_argv[fake_argc++] = g_strdup_printf(
-				"index=0,media=disk,file=%s%s", escaped_hdd_path, strlen(escaped_hdd_path) > 0 ? ",locked=on" : "");
+			fake_argv[fake_argc++] = g_strdup_printf("index=0,media=disk,file=%s%s", escaped_hdd_path, strlen(escaped_hdd_path) > 0 ? ",locked=on" : "");
 			free(escaped_hdd_path);
 		}
 	}
@@ -3020,25 +2959,21 @@ void qemu_init(int argc, char** argv, char** envp)
 	{
 		if (xemu_check_file(dvd_path))
 		{
-			char* msg = g_strdup_printf("Failed to open DVD image file '%s'. Please check machine settings.", dvd_path);
-			xemu_queue_error_message(msg);
-			g_free(msg);
+			LogC(LOG_ERROR, "Failed to open DVD image file '%s'. Please check machine settings.", dvd_path);
 			dvd_path = "";
 		}
 	}
 
-	// Always populate DVD drive. If disc path is the empty string, drive is
-	// connected but no media present.
+	// Always populate DVD drive. If disc path is the empty string, drive is connected but no media present.
 	fake_argv[fake_argc++] = strdup("-drive");
 	char* escaped_dvd_path = strdup_double_commas(dvd_path);
 	fake_argv[fake_argc++] = g_strdup_printf("index=1,media=cdrom,file=%s", escaped_dvd_path);
 	free(escaped_dvd_path);
 
 	fake_argv[fake_argc++] = strdup("-display");
-	fake_argv[fake_argc++] = strdup("xemu");
+	fake_argv[fake_argc++] = strdup("shuriken");
 
 #ifdef _WIN32
-	// FIXME: Create this dummy device to prevent logspam
 	fake_argv[fake_argc++] = strdup("-audiodev");
 	fake_argv[fake_argc++] = strdup("none,id=snd0");
 #endif
@@ -3457,8 +3392,7 @@ graphic_error:
 					error_report("Usage: -virtfs fsdriver,mount_tag=tag");
 					exit(1);
 				}
-				fsdev = qemu_opts_create(
-					qemu_find_opts("fsdev"), qemu_opts_id(opts) ?: qemu_opt_get(opts, "mount_tag"), 1, NULL);
+				fsdev = qemu_opts_create(qemu_find_opts("fsdev"), qemu_opts_id(opts) ?: qemu_opt_get(opts, "mount_tag"), 1, NULL);
 				if (!fsdev)
 				{
 					error_report("duplicate or invalid fsdev id: %s", qemu_opt_get(opts, "mount_tag"));

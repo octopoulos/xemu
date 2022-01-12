@@ -48,14 +48,14 @@
 #include "xsettings.h"
 #include "xemu-shaders.h"
 #include "xemu-os-utils.h"
-#include "xemu-version.h"
+#include "shuriken-version.h"
 
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb/stb_image_resize.h"
 #include "stb/stb_image_write.h"
 #include "stb_sprintf.h"
 
-#include "data/xemu_64x64.png.h"
+#include "data/shuriken_64.png.h"
 
 #include <filesystem>
 #include <fstream>
@@ -728,7 +728,7 @@ static void sdl2_display_very_early_init(DisplayOptions* o)
 
 	int width, height, channels = 0;
 	stbi_set_flip_vertically_on_load(0);
-	unsigned char* icon_data = stbi_load_from_memory(xemu_64x64_data, xemu_64x64_size, &width, &height, &channels, 4);
+	unsigned char* icon_data = stbi_load_from_memory(shuriken_64_data, shuriken_64_size, &width, &height, &channels, 4);
 	if (icon_data)
 	{
 		SDL_Surface* icon = SDL_CreateRGBSurfaceFrom(icon_data, width, height, 32, width * 4, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
@@ -752,7 +752,7 @@ static void sdl2_display_very_early_init(DisplayOptions* o)
 
 static void sdl2_display_early_init(DisplayOptions* o)
 {
-	assert(o->type == DISPLAY_TYPE_XEMU);
+	assert(o->type == DISPLAY_TYPE_SHURIKEN);
 	display_opengl = 1;
 
 	SDL_GL_MakeCurrent(m_window, m_context);
@@ -768,7 +768,7 @@ static void sdl2_display_init(DisplayState* ds, DisplayOptions* o)
 	int           i;
 	SDL_SysWMinfo info;
 
-	assert(o->type == DISPLAY_TYPE_XEMU);
+	assert(o->type == DISPLAY_TYPE_SHURIKEN);
 	SDL_GL_MakeCurrent(m_window, m_context);
 
 	memset(&info, 0, sizeof(info));
@@ -836,7 +836,7 @@ static void sdl2_display_init(DisplayState* ds, DisplayOptions* o)
 }
 
 static QemuDisplay qemu_display_sdl2 = {
-	.type       = DISPLAY_TYPE_XEMU,
+	.type       = DISPLAY_TYPE_SHURIKEN,
 	.early_init = sdl2_display_early_init,
 	.init       = sdl2_display_init,
 };
@@ -962,23 +962,6 @@ void SaveScreenshot(int texId, int width, int height)
 	want_screenshot = 0;
 }
 
-static float fps = 1.0f;
-
-static void UpdateFps()
-{
-	static int64_t last_update = 0;
-	const float    r           = 0.1f;
-	static float   avg         = 1.0f;
-	int64_t        now         = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
-	float          ms          = ((float)(now - last_update) / 1000000.0f);
-	last_update                = now;
-	if (fabs(avg - ms) > 0.25f * avg)
-		avg = ms;
-	else
-		avg = avg * (1.0f - r) + ms * r;
-	fps = 1000.0f / avg;
-}
-
 /**
  * Calculate the scale to apply on the framebuffer texture to render on the window
  * - supports stretch + vertical integer scaling
@@ -1073,7 +1056,6 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 	bool flip_required = false;
 
 	SDL_GL_MakeCurrent(scon->real_window, scon->winctx);
-	UpdateFps();
 
 	/* XXX: Note that this bypasses the usual VGA path in order to quickly
 	 * get the surface. This is simple and fast, at the cost of accuracy.
@@ -1135,7 +1117,8 @@ void sdl2_gl_refresh(DisplayChangeListener* dcl)
 		static int         frame = 0;
 		static str256      title;
 		static std::string uid;
-		stbsp_sprintf(title, "FPS: %.2f | %s | %d x %d | %s | %s", fps, sRenderers[xsettings.renderer], tw, th, xemu_version, gameInfo.buffer);
+		auto&              io = ImGui::GetIO();
+		stbsp_sprintf(title, "FPS: %.2f | %s | %d x %d | %s | %s", io.Framerate, sRenderers[xsettings.renderer], tw, th, shuriken_version, gameInfo.buffer);
 		SDL_SetWindowTitle(m_window, title);
 
 		// new game
@@ -1310,6 +1293,83 @@ void sdl2_process_key(SDL2_Console* scon, SDL_KeyboardEvent* ev)
 	}
 }
 
+const std::string defaultIni =
+R"([Window][DockSpaceViewport_11111111]
+Pos=0,22
+Size=1280,778
+Collapsed=0
+
+[Window][Debug##Default]
+Pos=60,60
+Size=400,400
+Collapsed=0
+
+[Window][Controls]
+Pos=0,22
+Size=1280,79
+Collapsed=0
+DockId=0x0000000B,0
+
+[Window][Game List]
+Pos=0,103
+Size=1280,458
+Collapsed=0
+DockId=0x00000002,0
+
+[Window][Log]
+Pos=0,563
+Size=1280,237
+Collapsed=0
+DockId=0x00000003,0
+
+[Window][Settings]
+Pos=259,146
+Size=900,600
+Collapsed=0
+
+[Window][Error]
+Pos=404,350
+Size=471,100
+Collapsed=0
+
+[Window][Update]
+Pos=60,60
+Size=566,108
+Collapsed=0
+
+[Window][First Boot]
+Pos=440,250
+Size=400,300
+Collapsed=0
+
+[Table][0xB572EADC,9]
+RefScale=20.736
+Column 0  Width=126
+Column 1  Width=208
+Column 2  Width=78
+Column 3  Width=74
+Column 4  Width=116
+Column 5  Width=116
+Column 6  Width=140
+Column 7  Width=110
+Column 8  Weight=1.0000
+
+[Docking][Data]
+DockSpace             ID=0x8B93E3BD Window=0xA787BDB4 Pos=0,22 Size=1280,778 Split=Y
+  DockNode            ID=0x0000000B Parent=0x8B93E3BD SizeRef=1920,79 HiddenTabBar=1 Selected=0x039BEE69
+  DockNode            ID=0x0000000C Parent=0x8B93E3BD SizeRef=1920,697 Split=Y
+    DockNode          ID=0x00000009 Parent=0x0000000C SizeRef=1920,99 HiddenTabBar=1 Selected=0x039BEE69
+    DockNode          ID=0x0000000A Parent=0x0000000C SizeRef=1920,1068 Split=Y
+      DockNode        ID=0x00000007 Parent=0x0000000A SizeRef=1920,96 Selected=0x039BEE69
+      DockNode        ID=0x00000008 Parent=0x0000000A SizeRef=1920,1071 Split=Y
+        DockNode      ID=0x00000001 Parent=0x00000008 SizeRef=1920,97 HiddenTabBar=1 Selected=0x039BEE69
+        DockNode      ID=0x00000004 Parent=0x00000008 SizeRef=1920,1070 Split=Y
+          DockNode    ID=0x00000005 Parent=0x00000004 SizeRef=1280,127 HiddenTabBar=1 Selected=0x039BEE69
+          DockNode    ID=0x00000006 Parent=0x00000004 SizeRef=1280,671 Split=Y
+            DockNode  ID=0x00000002 Parent=0x00000006 SizeRef=1280,458 CentralNode=1 Selected=0xF69CCEB7
+            DockNode  ID=0x00000003 Parent=0x00000006 SizeRef=1280,237 Selected=0xB7722E25
+)";
+
 int    gArgc;
 char** gArgv;
 
@@ -1345,10 +1405,10 @@ int main(int argc, char** argv)
 	}
 #endif
 
-	ui::Log("shuriken_version: %s", xemu_version);
-	ui::Log("shuriken_branch: %s", xemu_branch);
-	ui::Log("shuriken_commit: %s", xemu_commit);
-	ui::Log("shuriken_date: %s", xemu_date);
+	ui::Log("shuriken_version: %s", shuriken_version);
+	ui::Log("shuriken_branch: %s", shuriken_branch);
+	ui::Log("shuriken_commit: %s", shuriken_commit);
+	ui::Log("shuriken_date: %s", shuriken_date);
 
 	DPRINTF("Entered main()\n");
 	gArgc = argc;
@@ -1381,8 +1441,21 @@ int main(int argc, char** argv)
 	qemu_set_current_aio_context(qemu_get_aio_context());
 
 	DPRINTF("Main thread: initializing app\n");
+	auto iniPath = xsettingsFolder() / "imgui.ini";
+	if (!std::filesystem::exists(iniPath))
+	{
+		std::ofstream out(iniPath.string());
+		out.write(defaultIni.c_str(), defaultIni.size());
+		out.close();
+	}
 
-	while (1)
+	str2k iniFilename;
+	strcpy(iniFilename, iniPath.string().c_str());
+	auto& io = ImGui::GetIO();
+	io.IniFilename = iniFilename;
+	ImGui::LoadIniSettingsFromDisk(iniFilename);
+
+	while (true)
 		sdl2_gl_refresh(&sdl2_console[0].dcl);
 
 	// rcu_unregister_thread();
