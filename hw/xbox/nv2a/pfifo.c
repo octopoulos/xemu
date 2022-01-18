@@ -469,7 +469,7 @@ void* pfifo_thread(void* arg)
 		if (!d->pfifo.halt)
 			pfifo_run_pusher(d);
 
-		// pgraph_process_pending_reports(d);
+		pgraph_process_pending_reports(d);
 
 		if (!d->pfifo.fifo_kick)
 		{
