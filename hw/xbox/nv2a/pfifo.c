@@ -164,8 +164,9 @@ static ssize_t pfifo_run_puller(
 	if (!GET_MASK(*pull0, NV_PFIFO_CACHE1_PULL0_ACCESS) || (*status & NV_PFIFO_CACHE1_STATUS_LOW_MARK))
 		return -1;
 
-	uint32_t method = method_entry & 0x1FFC;
+	uint32_t method     = method_entry & 0x1FFC;
 	uint32_t subchannel = GET_MASK(method_entry, NV_PFIFO_CACHE1_METHOD_SUBCHANNEL);
+	bool     inc        = !GET_MASK(method_entry, NV_PFIFO_CACHE1_METHOD_TYPE);
 
 	if (method == 0)
 	{
@@ -188,10 +189,7 @@ static ssize_t pfifo_run_puller(
 		{
 			pgraph_context_switch(d, entry.channel_id);
 			if (!d->pgraph.waiting_for_context_switch)
-			{
-				num_proc = pgraph_method(
-					d, subchannel, 0, entry.instance, parameters, num_words_available, max_lookahead_words);
-			}
+				num_proc = pgraph_method(d, subchannel, 0, entry.instance, parameters, num_words_available, max_lookahead_words, inc);
 		}
 
 		qemu_mutex_unlock(&d->pgraph.lock);
@@ -222,10 +220,7 @@ static ssize_t pfifo_run_puller(
 		qemu_mutex_lock(&d->pgraph.lock);
 
 		if (pgraph_can_fifo_access(d))
-		{
-			num_proc =
-				pgraph_method(d, subchannel, method, parameter, parameters, num_words_available, max_lookahead_words);
-		}
+			num_proc = pgraph_method(d, subchannel, method, parameter, parameters, num_words_available, max_lookahead_words, inc);
 
 		qemu_mutex_unlock(&d->pgraph.lock);
 		qemu_mutex_lock(&d->pfifo.lock);
@@ -473,6 +468,8 @@ void* pfifo_thread(void* arg)
 
 		if (!d->pfifo.halt)
 			pfifo_run_pusher(d);
+
+		// pgraph_process_pending_reports(d);
 
 		if (!d->pfifo.fifo_kick)
 		{

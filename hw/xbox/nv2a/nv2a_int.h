@@ -28,12 +28,12 @@ extern "C" {
 #include <assert.h>
 
 #include "qemu/osdep.h"
+#include "qemu/units.h"
 #include "qemu/thread.h"
 #include "qemu/queue.h"
 #include "qemu/main-loop.h"
 #include "qapi/error.h"
 #include "qemu/error-report.h"
-#include "qemu/units.h"
 #include "migration/vmstate.h"
 #include "sysemu/runstate.h"
 
@@ -55,11 +55,11 @@ extern "C" {
 
 #define GET_MASK(v, mask) (((v) & (mask)) >> ctz32(mask))
 
-#define SET_MASK(v, mask, val) \
-	({ \
-		const uint32_t __val = (val); \
-		const uint32_t __mask = (mask); \
-		(v) &= ~(__mask); \
+#define SET_MASK(v, mask, val)                        \
+	({                                                \
+		const uint32_t __val  = (val);                \
+		const uint32_t __mask = (mask);               \
+		(v) &= ~(__mask);                             \
 		(v) |= ((__val) << ctz32(__mask)) & (__mask); \
 	})
 
@@ -69,20 +69,20 @@ enum FIFOEngine
 {
 	ENGINE_SOFTWARE = 0,
 	ENGINE_GRAPHICS = 1,
-	ENGINE_DVD = 2,
+	ENGINE_DVD      = 2,
 };
 
 typedef struct DMAObject
 {
 	uint32_t dma_class;
 	uint32_t dma_target;
-	hwaddr address;
-	hwaddr limit;
+	hwaddr   address;
+	hwaddr   limit;
 } DMAObject;
 
 typedef struct VertexAttribute
 {
-	bool dma_select;
+	bool   dma_select;
 	hwaddr offset;
 
 	/* inline arrays are packed in order?
@@ -92,17 +92,17 @@ typedef struct VertexAttribute
 	float inline_value[4];
 
 	uint32_t format;
-	uint32_t size;	/* size of the data type */
+	uint32_t size;  /* size of the data type */
 	uint32_t count; /* number of components */
 	uint32_t stride;
 
 	bool needs_conversion;
 
 	float* inline_buffer;
-	bool inline_buffer_populated;
+	bool   inline_buffer_populated;
 
-	GLint gl_count;
-	GLenum gl_type;
+	GLint     gl_count;
+	GLenum    gl_type;
 	GLboolean gl_normalize;
 
 	GLuint gl_inline_buffer;
@@ -111,17 +111,17 @@ typedef struct VertexAttribute
 typedef struct SurfaceFormatInfo
 {
 	uint32_t bytes_per_pixel;
-	GLint gl_internal_format;
-	GLenum gl_format;
-	GLenum gl_type;
-	GLenum gl_attachment;
+	GLint    gl_internal_format;
+	GLenum   gl_format;
+	GLenum   gl_type;
+	GLenum   gl_attachment;
 } SurfaceFormatInfo;
 
 typedef struct Surface
 {
-	bool draw_dirty;
-	bool buffer_dirty;
-	bool write_enabled_cache;
+	bool     draw_dirty;
+	bool     buffer_dirty;
+	bool     write_enabled_cache;
 	uint32_t pitch;
 
 	hwaddr offset;
@@ -140,28 +140,30 @@ typedef struct SurfaceShape
 
 typedef struct SurfaceBinding
 {
-	QTAILQ_ENTRY(SurfaceBinding) entry;
+	QTAILQ_ENTRY(SurfaceBinding)
+	entry;
 	// MemAccessCallback* access_cb;
 	void* access_cb;
 
 	hwaddr vram_addr;
 
 	SurfaceFormatInfo fmt;
-	SurfaceShape shape;
-	uintptr_t dma_addr;
-	uintptr_t dma_len;
-	bool color;
-	bool swizzle;
+	SurfaceShape      shape;
+	uintptr_t         dma_addr;
+	uintptr_t         dma_len;
+	bool              color;
+	bool              swizzle;
 
 	uint32_t width;
 	uint32_t height;
 	uint32_t pitch;
-	size_t size;
+	size_t   size;
 
 	GLuint gl_buffer;
 
-	int frame_time;
-	int draw_time;
+	bool cleared;
+	int  frame_time;
+	int  draw_time;
 	bool draw_dirty;
 	bool download_pending;
 	bool upload_pending;
@@ -169,7 +171,7 @@ typedef struct SurfaceBinding
 
 typedef struct TextureShape
 {
-	bool cubemap;
+	bool     cubemap;
 	uint32_t dimensionality;
 	uint32_t color_format;
 	uint32_t levels;
@@ -181,10 +183,10 @@ typedef struct TextureShape
 
 typedef struct TextureBinding
 {
-	GLenum gl_target;
-	GLuint gl_texture;
+	GLenum   gl_target;
+	GLuint   gl_texture;
 	uint32_t refcnt;
-	int draw_time;
+	int      draw_time;
 	uint64_t data_hash;
 	uint32_t scale;
 } TextureBinding;
@@ -192,35 +194,35 @@ typedef struct TextureBinding
 typedef struct TextureKey
 {
 	TextureShape state;
-	hwaddr texture_vram_offset;
-	hwaddr texture_length;
-	hwaddr palette_vram_offset;
-	hwaddr palette_length;
+	hwaddr       texture_vram_offset;
+	hwaddr       texture_length;
+	hwaddr       palette_vram_offset;
+	hwaddr       palette_length;
 } TextureKey;
 
 typedef struct TextureLruNode
 {
-	LruNode node;
-	TextureKey key;
+	LruNode         node;
+	TextureKey      key;
 	TextureBinding* binding;
-	bool possibly_dirty;
+	bool            possibly_dirty;
 } TextureLruNode;
 
 typedef struct VertexKey
 {
-	size_t count;
-	GLuint gl_type;
+	size_t    count;
+	GLuint    gl_type;
 	GLboolean gl_normalize;
-	size_t stride;
-	hwaddr addr;
+	size_t    stride;
+	hwaddr    addr;
 } VertexKey;
 
 typedef struct VertexLruNode
 {
-	LruNode node;
+	LruNode   node;
 	VertexKey key;
-	GLuint gl_buffer;
-	bool initialized;
+	GLuint    gl_buffer;
+	bool      initialized;
 } VertexLruNode;
 
 typedef struct KelvinState
@@ -230,23 +232,39 @@ typedef struct KelvinState
 
 typedef struct ContextSurfaces2DState
 {
-	hwaddr object_instance;
-	hwaddr dma_image_source;
-	hwaddr dma_image_dest;
+	hwaddr   object_instance;
+	hwaddr   dma_image_source;
+	hwaddr   dma_image_dest;
 	uint32_t color_format;
 	uint32_t source_pitch, dest_pitch;
-	hwaddr source_offset, dest_offset;
+	hwaddr   source_offset, dest_offset;
 } ContextSurfaces2DState;
 
 typedef struct ImageBlitState
 {
-	hwaddr object_instance;
-	hwaddr context_surfaces;
+	hwaddr   object_instance;
+	hwaddr   context_surfaces;
 	uint32_t operation;
 	uint32_t in_x, in_y;
 	uint32_t out_x, out_y;
 	uint32_t width, height;
 } ImageBlitState;
+
+typedef struct BetaState
+{
+	hwaddr   object_instance;
+	uint32_t beta;
+} BetaState;
+
+typedef struct QueryReport
+{
+	QSIMPLEQ_ENTRY(QueryReport)
+	entry;
+	bool         clear;
+	uint32_t     parameter;
+	unsigned int query_count;
+	GLuint*      queries;
+} QueryReport;
 
 typedef struct PGRAPHState
 {
@@ -271,23 +289,25 @@ typedef struct PGRAPHState
 		GLuint line_offset_loc;
 		GLuint tex_loc;
 		GLuint pvideo_tex;
-		GLint pvideo_enable_loc;
-		GLint pvideo_tex_loc;
-		GLint pvideo_pos_loc;
-		GLint palette_loc[256];
+		GLint  pvideo_enable_loc;
+		GLint  pvideo_tex_loc;
+		GLint  pvideo_pos_loc;
+		GLint  palette_loc[256];
 	} disp_rndr;
 
 	/* subchannels state we're not sure the location of... */
 	ContextSurfaces2DState context_surfaces_2d;
-	ImageBlitState image_blit;
-	KelvinState kelvin;
+	ImageBlitState         image_blit;
+	KelvinState            kelvin;
+	BetaState              beta;
 
-	hwaddr dma_color, dma_zeta;
-	Surface surface_color, surface_zeta;
-	uint32_t surface_type;
+	hwaddr       dma_color, dma_zeta;
+	Surface      surface_color, surface_zeta;
+	uint32_t     surface_type;
 	SurfaceShape surface_shape;
 	SurfaceShape last_surface_shape;
-	QTAILQ_HEAD(, SurfaceBinding) surfaces;
+	QTAILQ_HEAD(, SurfaceBinding)
+	surfaces;
 	SurfaceBinding *color_binding, *zeta_binding;
 	struct
 	{
@@ -299,36 +319,38 @@ typedef struct PGRAPHState
 		int height;
 	} surface_binding_dim; // FIXME: Refactor
 
-	hwaddr dma_a, dma_b;
-	Lru texture_cache;
-	struct TextureLruNode* texture_cache_entries;
-	bool texture_dirty[NV2A_MAX_TEXTURES];
+	hwaddr          dma_a, dma_b;
+	Lru             texture_cache;
+	TextureLruNode* texture_cache_entries;
+	bool            texture_dirty[NV2A_MAX_TEXTURES];
 	TextureBinding* texture_binding[NV2A_MAX_TEXTURES];
 
-	GHashTable* shader_cache;
+	GHashTable*    shader_cache;
 	ShaderBinding* shader_binding;
 
 	bool texture_matrix_enable[NV2A_MAX_TEXTURES];
 
 	GLuint gl_framebuffer;
 
-	GLuint gl_display_buffer;
-	GLint gl_display_buffer_internal_format;
+	GLuint  gl_display_buffer;
+	GLint   gl_display_buffer_internal_format;
 	GLsizei gl_display_buffer_width;
 	GLsizei gl_display_buffer_height;
-	GLenum gl_display_buffer_format;
-	GLenum gl_display_buffer_type;
+	GLenum  gl_display_buffer_format;
+	GLenum  gl_display_buffer_type;
 
 	hwaddr dma_state;
 	hwaddr dma_notifies;
 	hwaddr dma_semaphore;
 
-	hwaddr dma_report;
-	hwaddr report_offset;
-	bool zpass_pixel_count_enable;
+	hwaddr   dma_report;
+	hwaddr   report_offset;
+	bool     zpass_pixel_count_enable;
 	uint32_t zpass_pixel_count_result;
 	uint32_t gl_zpass_pixel_count_query_count;
-	GLuint* gl_zpass_pixel_count_queries;
+	GLuint*  gl_zpass_pixel_count_queries;
+	QSIMPLEQ_HEAD(, QueryReport)
+	report_queue;
 
 	hwaddr dma_vertex_a, dma_vertex_b;
 
@@ -337,18 +359,18 @@ typedef struct PGRAPHState
 	bool enable_vertex_program_write;
 
 	uint32_t program_data[NV2A_MAX_TRANSFORM_PROGRAM_LENGTH][VSH_TOKEN_SIZE];
-	bool program_data_dirty;
+	bool     program_data_dirty;
 
 	uint32_t vsh_constants[NV2A_VERTEXSHADER_CONSTANTS][4];
-	bool vsh_constants_dirty[NV2A_VERTEXSHADER_CONSTANTS];
+	bool     vsh_constants_dirty[NV2A_VERTEXSHADER_CONSTANTS];
 
 	/* lighting constant arrays */
 	uint32_t ltctxa[NV2A_LTCTXA_COUNT][4];
-	bool ltctxa_dirty[NV2A_LTCTXA_COUNT];
+	bool     ltctxa_dirty[NV2A_LTCTXA_COUNT];
 	uint32_t ltctxb[NV2A_LTCTXB_COUNT][4];
-	bool ltctxb_dirty[NV2A_LTCTXB_COUNT];
+	bool     ltctxb_dirty[NV2A_LTCTXB_COUNT];
 	uint32_t ltc1[NV2A_LTC1_COUNT][4];
-	bool ltc1_dirty[NV2A_LTC1_COUNT];
+	bool     ltc1_dirty[NV2A_LTC1_COUNT];
 
 	// should figure out where these are in lighting context
 	float light_infinite_half_vector[NV2A_MAX_LIGHTS][3];
@@ -359,14 +381,14 @@ typedef struct PGRAPHState
 	float point_params[8];
 
 	VertexAttribute vertex_attributes[NV2A_VERTEXSHADER_ATTRIBUTES];
-	uint16_t compressed_attrs;
+	uint16_t        compressed_attrs;
 
-	Lru element_cache;
-	struct VertexLruNode* element_cache_entries;
+	Lru            element_cache;
+	VertexLruNode* element_cache_entries;
 
 	uint32_t inline_array_length;
 	uint32_t inline_array[NV2A_MAX_BATCH_LENGTH];
-	GLuint gl_inline_array_buffer;
+	GLuint   gl_inline_array_buffer;
 
 	uint32_t inline_elements_length;
 	uint32_t inline_elements[NV2A_MAX_BATCH_LENGTH];
@@ -377,22 +399,23 @@ typedef struct PGRAPHState
 	uint32_t draw_arrays_min_start;
 	uint32_t draw_arrays_max_count;
 	/* FIXME: Unknown size, possibly endless, 1000 will do for now */
-	GLint gl_draw_arrays_start[1000];
-	GLsizei gl_draw_arrays_count[1000];
-	bool draw_arrays_prevent_connect;
+	GLint    gl_draw_arrays_start[1000];
+	GLsizei  gl_draw_arrays_count[1000];
+	bool     draw_arrays_prevent_connect;
 
 	GLuint gl_memory_buffer;
 	GLuint gl_vertex_array;
 
 	uint32_t regs[0x2000];
 
-	bool waiting_for_nop;
-	bool waiting_for_flip;
-	bool waiting_for_context_switch;
-	bool downloads_pending;
-	bool download_dirty_surfaces_pending;
-	bool flush_pending;
-	bool gl_sync_pending;
+	bool      clearing;
+	bool      waiting_for_nop;
+	bool      waiting_for_flip;
+	bool      waiting_for_context_switch;
+	bool      downloads_pending;
+	bool      download_dirty_surfaces_pending;
+	bool      flush_pending;
+	bool      gl_sync_pending;
 	QemuEvent downloads_complete;
 	QemuEvent dirty_surfaces_download_complete;
 	QemuEvent flush_complete;
@@ -409,17 +432,17 @@ typedef struct NV2AState
 	/*< public >*/
 
 	qemu_irq irq;
-	bool exiting;
+	bool     exiting;
 
 	VGACommonState vga;
-	GraphicHwOps hw_ops;
-	QEMUTimer* vblank_timer;
+	GraphicHwOps   hw_ops;
+	QEMUTimer*     vblank_timer;
 
 	MemoryRegion* vram;
-	MemoryRegion vram_pci;
-	uint8_t* vram_ptr;
-	MemoryRegion ramin;
-	uint8_t* ramin_ptr;
+	MemoryRegion  vram_pci;
+	uint8_t*      vram_ptr;
+	MemoryRegion  ramin;
+	uint8_t*      ramin_ptr;
 
 	MemoryRegion mmio;
 	MemoryRegion block_mmio[NV_NUM_BLOCKS];
@@ -432,15 +455,15 @@ typedef struct NV2AState
 
 	struct
 	{
-		uint32_t pending_interrupts;
-		uint32_t enabled_interrupts;
-		uint32_t regs[0x2000];
-		QemuMutex lock;
+		uint32_t   pending_interrupts;
+		uint32_t   enabled_interrupts;
+		uint32_t   regs[0x2000];
+		QemuMutex  lock;
 		QemuThread thread;
-		QemuCond fifo_cond;
-		QemuCond fifo_idle_cond;
-		bool fifo_kick;
-		bool halt;
+		QemuCond   fifo_cond;
+		QemuCond   fifo_idle_cond;
+		bool       fifo_kick;
+		bool       halt;
 	} pfifo;
 
 	struct
@@ -468,7 +491,7 @@ typedef struct NV2AState
 	{
 		uint32_t pending_interrupts;
 		uint32_t enabled_interrupts;
-		hwaddr start;
+		hwaddr   start;
 		uint32_t raster;
 	} pcrtc;
 
@@ -491,16 +514,16 @@ typedef struct NV2AState
 	struct
 	{
 		uint16_t write_mode_address;
-		uint8_t palette[256 * 3];
+		uint8_t  palette[256 * 3];
 	} puserdac;
 
 } NV2AState;
 
 typedef struct NV2ABlockInfo
 {
-	const char* name;
-	hwaddr offset;
-	uint64_t size;
+	const char*     name;
+	hwaddr          offset;
+	uint64_t        size;
 	MemoryRegionOps ops;
 } NV2ABlockInfo;
 
@@ -509,7 +532,7 @@ extern GloContext* g_nv2a_context_display;
 
 void nv2a_update_irq(NV2AState* d);
 
-#ifdef NV2A_DEBUG
+#ifdef DEBUG_NV2A_REG
 void nv2a_reg_log_read(int block, hwaddr addr, uint64_t val);
 void nv2a_reg_log_write(int block, hwaddr addr, uint64_t val);
 #else
@@ -517,9 +540,9 @@ void nv2a_reg_log_write(int block, hwaddr addr, uint64_t val);
 #	define nv2a_reg_log_write(block, addr, val) do {} while (0)
 #endif
 
-#define DEFINE_PROTO(n) \
+#define DEFINE_PROTO(n)                                          \
 	uint64_t n##_read(void* opaque, hwaddr addr, uint32_t size); \
-	void n##_write(void* opaque, hwaddr addr, uint64_t val, uint32_t size);
+	void     n##_write(void* opaque, hwaddr addr, uint64_t val, uint32_t size);
 
 DEFINE_PROTO(pmc)
 DEFINE_PROTO(pbus)
@@ -544,21 +567,20 @@ DEFINE_PROTO(user)
 #undef DEFINE_PROTO
 
 DMAObject nv_dma_load(NV2AState* d, hwaddr dma_obj_address);
-void* nv_dma_map(NV2AState* d, hwaddr dma_obj_address, hwaddr* len);
+void*     nv_dma_map(NV2AState* d, hwaddr dma_obj_address, hwaddr* len);
 
 void pgraph_init(NV2AState* d);
 void pgraph_destroy(PGRAPHState* pg);
 void pgraph_context_switch(NV2AState* d, uint32_t channel_id);
-int pgraph_method(
-	NV2AState* d, uint32_t subchannel, uint32_t method, uint32_t parameter, uint32_t* parameters,
-	size_t num_words_available, size_t max_lookahead_words);
+int  pgraph_method(NV2AState* d, uint32_t subchannel, uint32_t method, uint32_t parameter, uint32_t* parameters, size_t num_words_available, size_t max_lookahead_words, bool inc);
 void pgraph_gl_sync(NV2AState* d);
+void pgraph_process_pending_reports(NV2AState* d);
 void pgraph_process_pending_downloads(NV2AState* d);
 void pgraph_download_dirty_surfaces(NV2AState* d);
 void pgraph_flush(NV2AState* d);
 
 void* pfifo_thread(void* arg);
-void pfifo_kick(NV2AState* d);
+void  pfifo_kick(NV2AState* d);
 
 #ifdef __cplusplus
 }
