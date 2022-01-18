@@ -33,6 +33,7 @@ extern "C" {
 #include "qemu/main-loop.h"
 #include "qapi/error.h"
 #include "qemu/error-report.h"
+#include "qemu/units.h"
 #include "migration/vmstate.h"
 #include "sysemu/runstate.h"
 

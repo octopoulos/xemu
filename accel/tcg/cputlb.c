@@ -2771,9 +2771,8 @@ uint32_t cpu_ldub_code(CPUArchState *env, abi_ptr addr)
 void cpu_ld_code(CPUArchState *env, abi_ptr addr, size_t len, uint8_t *out)
 {
     TCGMemOpIdx oi = make_memop_idx(MO_UB, cpu_mmu_index(env, true));
-    for (size_t i = 0; i < len; i++) {
-        out[i] = full_ldub_code(env, addr, oi, 0);
-    }
+    for (size_t i = 0; i < len; i++)
+        out[i] = full_ldub_code(env, addr + i, oi, 0);
 }
 
 static uint64_t full_lduw_code(CPUArchState *env, target_ulong addr,
