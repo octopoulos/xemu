@@ -757,14 +757,21 @@ static std::string generate_vertex_shader(const ShaderState state, char vtx_pref
 		case FOG_MODE_LINEAR_ABS:
 
 			/* f = (end - d) / (end - start)
-			 *    fogParam[1] = 1 / (end - start)
-			 *    fogParam[0] = 1 + end * fogParam[1];
+			 *    fogParam[1] = -1 / (end - start)
+			 *    fogParam[0] = 1 - end * fogParam[1];
 			 */
 
-			body << "  float fogFactor = fogParam[0] + fogDistance * fogParam[1];\n"
-			     << "  fogFactor -= 1.0;\n"; // FIXME: WHHYYY?!!
+			body << "  if (isinf(fogDistance)) {\n"
+			     << "    fogDistance = 0.0;\n"
+			     << "  }\n"
+			     << "  float fogFactor = fogParam[0] + fogDistance * fogParam[1];\n"
+			     << "  fogFactor -= 1.0;\n";
 			break;
 		case FOG_MODE_EXP:
+			body << "  if (isinf(fogDistance)) {\n"
+			     << "    fogDistance = 0.0;\n"
+			     << "  }\n";
+		// fallthru
 		case FOG_MODE_EXP_ABS:
 
 			/* f = 1 / (e^(d * density))
@@ -773,7 +780,7 @@ static std::string generate_vertex_shader(const ShaderState state, char vtx_pref
 			 */
 
 			body << "  float fogFactor = fogParam[0] + exp2(fogDistance * fogParam[1] * 16.0);\n"
-			     << "  fogFactor -= 1.5;\n"; // FIXME: WHHYYY?!!
+			     << "  fogFactor -= 1.5;\n";
 			break;
 		case FOG_MODE_EXP2:
 		case FOG_MODE_EXP2_ABS:
@@ -785,7 +792,7 @@ static std::string generate_vertex_shader(const ShaderState state, char vtx_pref
 
 			body << "  float fogFactor = fogParam[0] + exp2(-fogDistance * fogDistance * fogParam[1] * fogParam[1] * "
 			        "32.0);\n"
-			     << "  fogFactor -= 1.5;\n"; // FIXME: WHHYYY?!!
+			     << "  fogFactor -= 1.5;\n";
 			break;
 		default:
 			assert(false);
@@ -802,7 +809,6 @@ static std::string generate_vertex_shader(const ShaderState state, char vtx_pref
 		default:
 			break;
 		}
-		// FIXME: What about fog alpha?!
 		body << "  oFog.xyzw = vec4(fogFactor);\n";
 	}
 	else

@@ -12,11 +12,20 @@
 namespace ui
 {
 
+const char* colorNames[] = { "All", "Text", "Error", "Info", "Warning" };
+
 const ImVec4 colorValues[] = {
 	{1.0f,  1.0f, 1.0f, 1.0f}, // text
 	{ 1.0f, 0.5f, 0.5f, 1.0f}, // error
 	{ 0.3f, 0.7f, 1.0f, 1.0f}, // info
 	{ 1.0f, 0.8f, 0.5f, 1.0f}, // warning
+};
+
+struct LogEntry
+{
+	int         color;
+	std::string date;
+	std::string text;
 };
 
 class LogWindow : public CommonWindow
@@ -30,44 +39,64 @@ public:
 
 	void AddLog(int color, std::string text)
 	{
-		colors.push_back(color);
-		lines.push_back(text);
+		colorLines[0].push_back({ color, "", text });
+		colorLines[color + 1].push_back({ color, "", text });
 	}
 
 	void Draw()
 	{
 		CHECK_DRAW();
-		if (!ImGui::Begin("Log", &isOpen))
+		if (!ImGui::Begin("Log", &isOpen, ImGuiWindowFlags_NoScrollbar))
 		{
 			ImGui::End();
 			return;
 		}
 
-		ImGui::PushFont(FindFont("mono"));
-		ImGuiListClipper clipper;
-		clipper.Begin(lines.size());
-		while (clipper.Step())
+		if (ImGui::BeginTabBar("Log#tabs"))
 		{
-			for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
-			{
-				if (colors[i]) ImGui::PushStyleColor(ImGuiCol_Text, colorValues[colors[i]]);
-				ImGui::TextUnformatted(lines[i].c_str());
-				if (colors[i]) ImGui::PopStyleColor();
-			}
+			for (int i = 0; i < 5; ++i)
+				if (ImGui::BeginTabItem(colorNames[i]))
+				{
+					active = i - 1;
+					ImGui::EndTabItem();
+				}
+			ImGui::EndTabBar();
 		}
-		clipper.End();
-		ImGui::PopFont();
 
-		// auto scroll
-		if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-			ImGui::SetScrollHereY(1.0f);
+		auto   lines  = colorLines[active + 1];
+		auto   region = ImGui::GetContentRegionAvail();
+		ImVec2 childDims(region.x, region.y);
 
+		ImGui::BeginChild("Scroll", childDims, false);
+		{
+			ImGui::PushFont(FindFont("mono"));
+			ImGuiListClipper clipper;
+			clipper.Begin(lines.size());
+			while (clipper.Step())
+			{
+				for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
+				{
+					auto color = lines[i].color;
+					if (color) ImGui::PushStyleColor(ImGuiCol_Text, colorValues[color]);
+					ImGui::TextUnformatted(lines[i].text.c_str());
+					if (color) ImGui::PopStyleColor();
+				}
+			}
+			clipper.End();
+			ImGui::PopFont();
+
+			// auto scroll
+			if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+				ImGui::SetScrollHereY(1.0f);
+
+		}
+		ImGui::EndChild();
 		ImGui::End();
 	}
 
 private:
-	std::vector<int>         colors;
-	std::vector<std::string> lines;
+	int                   active = -1;
+	std::vector<LogEntry> colorLines[5];
 };
 
 static LogWindow logWindow;

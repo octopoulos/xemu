@@ -695,7 +695,7 @@ static void sdl2_display_very_early_init(DisplayOptions* o)
 		if (xsettings.start_fullscreen)
 			flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 
-		m_window = SDL_CreateWindow("Xemu", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, winWidth, winHeight, flags);
+		m_window = SDL_CreateWindow("Shuriken", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, winWidth, winHeight, flags);
 		if (!m_window)
 		{
 			ui::LogError("Failed to create main window");
