@@ -31,6 +31,7 @@ extern "C" {
 #include "qapi/qapi-commands-block.h"
 
 extern int      askedIntercept;
+extern bool     capture_renderdoc_frame;
 extern uint64_t memoryData[4];
 extern int      want_screenshot;
 
@@ -446,6 +447,10 @@ void ShowMainMenu(float alpha)
 			if (ImGui::MenuItem("Screenshot", xsettings.shortcut_screenshot)) want_screenshot = (1 + 4) + 2; // force screenshot + maybe icon
 			if (ImGui::MenuItem("Save Icon")) want_screenshot = 2 + 8;                                       // force icon
 			if (ImGui::MenuItem("Intercept", xsettings.shortcut_intercept)) GetFileWindow().isOpen = true;
+#ifdef ENABLE_RENDERDOC
+            if (nv2a_dbg_renderdoc_available())
+                ImGui::MenuItem("RenderDoc: Capture", nullptr, &capture_renderdoc_frame);
+#endif
 			ImGui::EndMenu();
 		}
 

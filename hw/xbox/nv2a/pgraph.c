@@ -2001,6 +2001,52 @@ DEF_METHOD_INC(NV097, SET_VERTEX4F)
 		pgraph_finish_inline_buffer_vertex(pg);
 }
 
+#define SET_VERTEX_ATTRIBUTE(command, attr_index)                          \
+	do {                                                                   \
+		int              slot      = (method - (command)) / 4;             \
+		VertexAttribute* attribute = &pg->vertex_attributes[(attr_index)]; \
+		pgraph_allocate_inline_buffer_vertices(pg, (attr_index));          \
+		attribute->inline_value[slot] = *(float*)&parameter;               \
+	}                                                                      \
+	while (0)
+
+DEF_METHOD_INC(NV097, SET_NORMAL)
+{
+	SET_VERTEX_ATTRIBUTE(NV097_SET_NORMAL, NV2A_VERTEX_ATTR_NORMAL);
+}
+
+DEF_METHOD_INC(NV097, SET_DIFFUSE_COLOR4F)
+{
+	SET_VERTEX_ATTRIBUTE(NV097_SET_DIFFUSE_COLOR4F, NV2A_VERTEX_ATTR_DIFFUSE);
+}
+
+DEF_METHOD_INC(NV097, SET_SPECULAR_COLOR4F)
+{
+	SET_VERTEX_ATTRIBUTE(NV097_SET_SPECULAR_COLOR4F, NV2A_VERTEX_ATTR_SPECULAR);
+}
+
+DEF_METHOD_INC(NV097, SET_TEXCOORD0)
+{
+	SET_VERTEX_ATTRIBUTE(NV097_SET_TEXCOORD0, NV2A_VERTEX_ATTR_TEXTURE0);
+}
+
+DEF_METHOD_INC(NV097, SET_TEXCOORD1)
+{
+	SET_VERTEX_ATTRIBUTE(NV097_SET_TEXCOORD1, NV2A_VERTEX_ATTR_TEXTURE1);
+}
+
+DEF_METHOD_INC(NV097, SET_TEXCOORD2)
+{
+	SET_VERTEX_ATTRIBUTE(NV097_SET_TEXCOORD2, NV2A_VERTEX_ATTR_TEXTURE2);
+}
+
+DEF_METHOD_INC(NV097, SET_TEXCOORD3)
+{
+	SET_VERTEX_ATTRIBUTE(NV097_SET_TEXCOORD3, NV2A_VERTEX_ATTR_TEXTURE3);
+}
+
+#undef SET_VERTEX_ATTRIBUTE
+
 DEF_METHOD_INC(NV097, SET_VERTEX_DATA_ARRAY_FORMAT)
 {
 	int              slot = (method - NV097_SET_VERTEX_DATA_ARRAY_FORMAT) / 4;
@@ -4180,6 +4226,8 @@ static void pgraph_init_display_renderer(NV2AState* d)
 	    "uniform bool pvideo_enable;\n"
 	    "uniform sampler2D pvideo_tex;\n"
 	    "uniform vec4 pvideo_pos;\n"
+        "uniform bool pvideo_color_key_enable;\n"
+        "uniform vec4 pvideo_color_key;\n"
 	    "uniform vec2 display_size;\n"
 	    "uniform float line_offset;\n"
 	    "layout(location = 0) out vec4 out_Color;\n"
@@ -4196,18 +4244,23 @@ static void pgraph_init_display_renderer(NV2AState* d)
 	    "        if (!any(clip)) {\n"
 	    "            vec2 spos = vec2(gl_FragCoord.x, textureSize(tex,0).y-gl_FragCoord.y);\n"
 	    "            vec2 coord = (spos-pvideo_pos.xy)/pvideo_pos.zw;\n"
+        "            if (!pvideo_color_key_enable || out_Color.rgba == pvideo_color_key) {\n"
+        "               out_Color.rgba = texture(pvideo_tex, coord);\n"
+        "            }\n"
 	    "            out_Color.rgba = texture(pvideo_tex, coord);\n"
 	    "        }\n"
 	    "    }\n"
 	    "}\n";
 
-	pg->disp_rndr.prog              = pgraph_compile_shader(vs, fs);
-	pg->disp_rndr.tex_loc           = glGetUniformLocation(pg->disp_rndr.prog, "tex");
-	pg->disp_rndr.pvideo_enable_loc = glGetUniformLocation(pg->disp_rndr.prog, "pvideo_enable");
-	pg->disp_rndr.pvideo_tex_loc    = glGetUniformLocation(pg->disp_rndr.prog, "pvideo_tex");
-	pg->disp_rndr.pvideo_pos_loc    = glGetUniformLocation(pg->disp_rndr.prog, "pvideo_pos");
-	pg->disp_rndr.display_size_loc  = glGetUniformLocation(pg->disp_rndr.prog, "display_size");
-	pg->disp_rndr.line_offset_loc   = glGetUniformLocation(pg->disp_rndr.prog, "line_offset");
+	pg->disp_rndr.prog                        = pgraph_compile_shader(vs, fs);
+	pg->disp_rndr.tex_loc                     = glGetUniformLocation(pg->disp_rndr.prog, "tex");
+	pg->disp_rndr.pvideo_enable_loc           = glGetUniformLocation(pg->disp_rndr.prog, "pvideo_enable");
+	pg->disp_rndr.pvideo_tex_loc              = glGetUniformLocation(pg->disp_rndr.prog, "pvideo_tex");
+	pg->disp_rndr.pvideo_pos_loc              = glGetUniformLocation(pg->disp_rndr.prog, "pvideo_pos");
+	pg->disp_rndr.pvideo_color_key_enable_loc = glGetUniformLocation(pg->disp_rndr.prog, "pvideo_color_key_enable");
+	pg->disp_rndr.pvideo_color_key_loc        = glGetUniformLocation(pg->disp_rndr.prog, "pvideo_color_key");
+	pg->disp_rndr.display_size_loc            = glGetUniformLocation(pg->disp_rndr.prog, "display_size");
+	pg->disp_rndr.line_offset_loc             = glGetUniformLocation(pg->disp_rndr.prog, "line_offset");
 
 	glGenVertexArrays(1, &pg->disp_rndr.vao);
 	glBindVertexArray(pg->disp_rndr.vao);
@@ -4268,7 +4321,19 @@ static void pgraph_render_display_pvideo_overlay(NV2AState* d)
 	uint32_t out_x      = GET_MASK(d->pvideo.regs[NV_PVIDEO_POINT_OUT], NV_PVIDEO_POINT_OUT_X);
 	uint32_t out_y      = GET_MASK(d->pvideo.regs[NV_PVIDEO_POINT_OUT], NV_PVIDEO_POINT_OUT_Y);
 
-	// TODO: color keys
+	unsigned int color_key_enabled = GET_MASK(d->pvideo.regs[NV_PVIDEO_FORMAT], NV_PVIDEO_FORMAT_DISPLAY);
+	glUniform1ui(d->pgraph.disp_rndr.pvideo_color_key_enable_loc, color_key_enabled);
+
+	// TODO: Verify that masking off the top byte is correct.
+	// SeaBlade sets a color key of 0x80000000 but the texture passed into the shader is cleared to 0 alpha.
+	unsigned int color_key = d->pvideo.regs[NV_PVIDEO_COLOR_KEY] & 0xFFFFFF;
+	glUniform4f(
+	    d->pgraph.disp_rndr.pvideo_color_key_loc,
+	    GET_MASK(color_key, NV_PVIDEO_COLOR_KEY_RED) / 255.0,
+	    GET_MASK(color_key, NV_PVIDEO_COLOR_KEY_GREEN) / 255.0,
+	    GET_MASK(color_key, NV_PVIDEO_COLOR_KEY_BLUE) / 255.0,
+	    GET_MASK(color_key, NV_PVIDEO_COLOR_KEY_ALPHA) / 255.0);
+
 	assert(offset + in_pitch * in_height <= limit);
 	hwaddr end = base + offset + in_pitch * in_height;
 	assert(end <= memory_region_size(d->vram));
@@ -5981,22 +6046,29 @@ static uint8_t* convert_texture_data(const TextureShape s, const uint8_t* data, 
 {
 	if (s.color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8)
 	{
-		assert(depth == 1); // FIXME
-		uint8_t* converted_data = (uint8_t*)g_malloc(width * height * 4);
-		int      x, y;
-		for (y = 0; y < height; y++)
+		uint8_t*       converted_data = (uint8_t*)g_malloc(width * height * depth * 4);
+		int            x, y, z;
+		const uint8_t* src = data;
+		uint32_t*      dst = (uint32_t*)converted_data;
+		for (z = 0; z < depth; z++)
 		{
-			for (x = 0; x < width; x++)
+			for (y = 0; y < height; y++)
 			{
-				uint8_t  index                                       = data[y * row_pitch + x];
-				uint32_t color                                       = *(uint32_t*)(palette_data + index * 4);
-				*(uint32_t*)(converted_data + y * width * 4 + x * 4) = color;
+				for (x = 0; x < width; x++)
+				{
+					uint8_t  index = src[y * row_pitch + x];
+					uint32_t color = *(uint32_t*)(palette_data + index * 4);
+					*dst++         = color;
+				}
 			}
+			src += slice_pitch;
 		}
 		return converted_data;
 	}
 	else if (s.color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8 || s.color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8)
 	{
+        // TODO: Investigate whether a non-1 depth is possible.
+        // Generally the hardware asserts when attempting to use volumetric textures in linear formats.
 		assert(depth == 1); // FIXME
 		// FIXME: only valid if control0 register allows for colorspace conversion
 		uint8_t* converted_data = (uint8_t*)g_malloc(width * height * 4);

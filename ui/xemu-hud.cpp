@@ -1177,6 +1177,10 @@ static NotificationManager   notification_manager;
 static AutoUpdateWindow update_window;
 #endif
 
+#ifdef ENABLE_RENDERDOC
+static bool capture_renderdoc_frame = false;
+#endif
+
 static bool is_shortcut_key_pressed(int scancode, bool isAlt)
 {
 	auto&      io              = ImGui::GetIO();
@@ -1276,6 +1280,14 @@ void xemu_hud_render()
 	ui::UpdateIO();
 
 	ImGui::NewFrame();
+
+#ifdef ENABLE_RENDERDOC
+    if (capture_renderdoc_frame)
+	{
+        nv2a_dbg_renderdoc_capture_frames(1);
+        capture_renderdoc_frame = false;
+    }
+#endif
 
 	{
 		// Auto-hide main menu after 3s of inactivity

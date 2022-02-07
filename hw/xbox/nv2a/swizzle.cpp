@@ -104,7 +104,7 @@ void swizzle_box(const uint8_t* src_buf, uint32_t width, uint32_t height, uint32
 			for (uint32_t x = 0; x < width; x++)
 			{
 				const uint8_t* src = src_buf + y * row_pitch + x * bytes_per_pixel;
-				uint8_t*       dst = dst_buf + get_swizzled_offset(x, y, 0, mask_x, mask_y, 0, bytes_per_pixel);
+				uint8_t*       dst = dst_buf + get_swizzled_offset(x, y, z, mask_x, mask_y, mask_z, bytes_per_pixel);
 				memcpy(dst, src, bytes_per_pixel);
 			}
 		}

@@ -26,11 +26,11 @@ extern "C" {
 
 #include <stdint.h>
 
-#define NV2A_XPRINTF(x, ...) \
-	do \
-	{ \
+#define NV2A_XPRINTF(x, ...)                          \
+	do                                                \
+	{                                                 \
 		if (x) fprintf(stderr, "nv2a: " __VA_ARGS__); \
-	} \
+	}                                                 \
 	while (0)
 
 // #define DEBUG_NV2A
@@ -44,6 +44,9 @@ extern "C" {
 // #define DEBUG_NV2A_GL
 #ifdef DEBUG_NV2A_GL
 
+// Improve frame capture boundaries with RenderDoc.
+// #define ENABLE_RENDERDOC
+
 #	include <stdbool.h>
 #	include "gl/gloffscreen.h"
 
@@ -56,29 +59,30 @@ void gl_debug_frame_terminator(void);
 
 #	define NV2A_GL_DPRINTF(cc, format, ...)  gl_debug_message(cc, "nv2a: " format, ##__VA_ARGS__)
 #	define NV2A_GL_DGROUP_BEGIN(format, ...) gl_debug_group_begin("nv2a: " format, ##__VA_ARGS__)
-#	define NV2A_GL_DGROUP_END()			  gl_debug_group_end()
+#	define NV2A_GL_DGROUP_END()              gl_debug_group_end()
 #	define NV2A_GL_DLABEL(target, name, format, ...) \
 		gl_debug_label(target, name, "nv2a: { " format " }", ##__VA_ARGS__)
 #	define NV2A_GL_DFRAME_TERMINATOR() gl_debug_frame_terminator()
 
 #else
-#	define NV2A_GL_DPRINTF(cc, format, ...) \
-		do \
-		{ \
-			if (cc) \
+#	define NV2A_GL_DPRINTF(cc, format, ...)              \
+		do                                                \
+		{                                                 \
+			if (cc)                                       \
 				NV2A_DPRINTF(format "\n", ##__VA_ARGS__); \
-		} \
+		}                                                 \
 		while (0)
+// clang-format: off
 #	define NV2A_GL_DGROUP_BEGIN(format, ...) do {} while (0)
 #	define NV2A_GL_DGROUP_END() do {} while (0)
 #	define NV2A_GL_DLABEL(target, name, format, ...) do {} 	while (0)
 #	define NV2A_GL_DFRAME_TERMINATOR() do {} while (0)
+// clang-format: on
 #endif
 
-/* Debug prints to identify when unimplemented or unconfirmed features
- * are being exercised. These cases likely result in graphical problems of
- * varying degree, but should otherwise not crash the system. Enable this
- * macro for debugging.
+/* Debug prints to identify when unimplemented or unconfirmed features are being exercised.
+ * These cases likely result in graphical problems of varying degree, but should otherwise not crash the system.
+ * Enable this macro for debugging.
  */
 // #define DEBUG_NV2A_FEATURES 1
 
@@ -94,32 +98,34 @@ void gl_debug_frame_terminator(void);
 
 #else
 
+// clang-format: off
 #define NV2A_UNCONFIRMED(...) do {} while (0)
 #define NV2A_UNIMPLEMENTED(...) do {} while (0)
+// clang-format: on
 
 #endif
 
-#define NV2A_PROF_COUNTERS_XMAC \
-	_X(NV2A_PROF_BEGIN_ENDS) \
-	_X(NV2A_PROF_DRAW_ARRAYS) \
-	_X(NV2A_PROF_INLINE_BUFFERS) \
-	_X(NV2A_PROF_INLINE_ARRAYS) \
-	_X(NV2A_PROF_INLINE_ELEMENTS) \
-	_X(NV2A_PROF_QUERY) \
-	_X(NV2A_PROF_SHADER_GEN) \
-	_X(NV2A_PROF_SHADER_BIND) \
-	_X(NV2A_PROF_SHADER_BIND_NOTDIRTY) \
-	_X(NV2A_PROF_ATTR_BIND) \
-	_X(NV2A_PROF_TEX_UPLOAD) \
-	_X(NV2A_PROF_TEX_BIND) \
-	_X(NV2A_PROF_GEOM_BUFFER_UPDATE_1) \
-	_X(NV2A_PROF_GEOM_BUFFER_UPDATE_2) \
-	_X(NV2A_PROF_GEOM_BUFFER_UPDATE_3) \
-	_X(NV2A_PROF_GEOM_BUFFER_UPDATE_4) \
+#define NV2A_PROF_COUNTERS_XMAC                 \
+	_X(NV2A_PROF_BEGIN_ENDS)                    \
+	_X(NV2A_PROF_DRAW_ARRAYS)                   \
+	_X(NV2A_PROF_INLINE_BUFFERS)                \
+	_X(NV2A_PROF_INLINE_ARRAYS)                 \
+	_X(NV2A_PROF_INLINE_ELEMENTS)               \
+	_X(NV2A_PROF_QUERY)                         \
+	_X(NV2A_PROF_SHADER_GEN)                    \
+	_X(NV2A_PROF_SHADER_BIND)                   \
+	_X(NV2A_PROF_SHADER_BIND_NOTDIRTY)          \
+	_X(NV2A_PROF_ATTR_BIND)                     \
+	_X(NV2A_PROF_TEX_UPLOAD)                    \
+	_X(NV2A_PROF_TEX_BIND)                      \
+	_X(NV2A_PROF_GEOM_BUFFER_UPDATE_1)          \
+	_X(NV2A_PROF_GEOM_BUFFER_UPDATE_2)          \
+	_X(NV2A_PROF_GEOM_BUFFER_UPDATE_3)          \
+	_X(NV2A_PROF_GEOM_BUFFER_UPDATE_4)          \
 	_X(NV2A_PROF_GEOM_BUFFER_UPDATE_4_NOTDIRTY) \
-	_X(NV2A_PROF_SURF_DOWNLOAD) \
-	_X(NV2A_PROF_SURF_UPLOAD) \
-	_X(NV2A_PROF_SURF_TO_TEX) \
+	_X(NV2A_PROF_SURF_DOWNLOAD)                 \
+	_X(NV2A_PROF_SURF_UPLOAD)                   \
+	_X(NV2A_PROF_SURF_TO_TEX)                   \
 	_X(NV2A_PROF_SURF_TO_TEX_FALLBACK)
 
 enum NV2A_PROF_COUNTERS_ENUM
@@ -127,14 +133,14 @@ enum NV2A_PROF_COUNTERS_ENUM
 #define _X(x) x,
 	NV2A_PROF_COUNTERS_XMAC
 #undef _X
-		NV2A_PROF__COUNT
+	    NV2A_PROF__COUNT
 };
 
 #define NV2A_PROF_NUM_FRAMES 300
 
 typedef struct NV2AStats
 {
-	int64_t last_flip_time;
+	int64_t      last_flip_time;
 	unsigned int frame_count;
 	unsigned int increment_fps;
 	struct
@@ -148,7 +154,12 @@ typedef struct NV2AStats
 extern NV2AStats g_nv2a_stats;
 
 const char* nv2a_profile_get_counter_name(unsigned int cnt);
-int nv2a_profile_get_counter_value(unsigned int cnt);
+int         nv2a_profile_get_counter_value(unsigned int cnt);
+
+#ifdef ENABLE_RENDERDOC
+bool nv2a_dbg_renderdoc_available(void);
+void nv2a_dbg_renderdoc_capture_frames(uint32_t num_frames);
+#endif
 
 #ifdef __cplusplus
 }
