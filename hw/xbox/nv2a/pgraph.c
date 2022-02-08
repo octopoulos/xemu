@@ -454,7 +454,7 @@ uint64_t pgraph_read(void* opaque, hwaddr addr, uint32_t size)
 
 	qemu_mutex_unlock(&pg->lock);
 
-	nv2a_reg_log_read(NV_PGRAPH, addr, r);
+	nv2a_reg_log_read(NV_PGRAPH, addr, size, r);
 	return r;
 }
 
@@ -463,7 +463,7 @@ void pgraph_write(void* opaque, hwaddr addr, uint64_t val, uint32_t size)
 	NV2AState*   d  = (NV2AState*)opaque;
 	PGRAPHState* pg = &d->pgraph;
 
-	nv2a_reg_log_write(NV_PGRAPH, addr, val);
+	nv2a_reg_log_write(NV_PGRAPH, addr, size, val);
 
 	qemu_mutex_lock(&d->pfifo.lock); // FIXME: Factor out fifo lock here
 	qemu_mutex_lock(&pg->lock);
@@ -923,7 +923,6 @@ int pgraph_method(NV2AState* d, uint32_t subchannel, uint32_t method, uint32_t p
 		case NV012_SET_OBJECT:
 			beta->object_instance = parameter;
 			break;
-
 		case NV012_SET_BETA:
 			if (parameter & 0x80000000)
 				beta->beta = 0;
@@ -934,6 +933,8 @@ int pgraph_method(NV2AState* d, uint32_t subchannel, uint32_t method, uint32_t p
 				beta->beta = parameter & 0x7f800000;
 			}
 			break;
+		default:
+			goto unhandled;
 		}
 		break;
 	}
@@ -945,6 +946,8 @@ int pgraph_method(NV2AState* d, uint32_t subchannel, uint32_t method, uint32_t p
 		case NV044_SET_MONOCHROME_COLOR0:
 			pg->regs[NV_PGRAPH_PATT_COLOR0] = parameter;
 			break;
+		default:
+			goto unhandled;
 		}
 		break;
 	}
@@ -975,6 +978,8 @@ int pgraph_method(NV2AState* d, uint32_t subchannel, uint32_t method, uint32_t p
 		case NV062_SET_OFFSET_DESTIN:
 			context_surfaces_2d->dest_offset = parameter & 0x07FFFFFF;
 			break;
+		default:
+			goto unhandled;
 		}
 		break;
 	}
@@ -986,7 +991,6 @@ int pgraph_method(NV2AState* d, uint32_t subchannel, uint32_t method, uint32_t p
 		case NV09F_SET_OBJECT:
 			image_blit->object_instance = parameter;
 			break;
-
 		case NV09F_SET_CONTEXT_SURFACES:
 			image_blit->context_surfaces = parameter;
 			break;
@@ -1008,6 +1012,8 @@ int pgraph_method(NV2AState* d, uint32_t subchannel, uint32_t method, uint32_t p
 			if (image_blit->width && image_blit->height)
 				pgraph_image_blit(d);
 			break;
+		default:
+			goto unhandled;
 		}
 		break;
 	}
@@ -1016,39 +1022,39 @@ int pgraph_method(NV2AState* d, uint32_t subchannel, uint32_t method, uint32_t p
 	{
 		MethodFunc handler = pgraph_kelvin_methods[METHOD_ADDR_TO_INDEX(method)].handler;
 		if (handler == NULL)
-			NV2A_GL_DPRINTF(true, "    unhandled  (0x%02x 0x%08x)", graphics_class, method);
-		else
-		{
-			size_t num_words_consumed = 1;
-			handler(d, pg, subchannel, method, parameter, parameters, num_words_available, &num_words_consumed, inc);
+			goto unhandled;
+		size_t num_words_consumed = 1;
+		handler(d, pg, subchannel, method, parameter, parameters, num_words_available, &num_words_consumed, inc);
 
-// Squash repeated BEGIN,DRAW_ARRAYS,END
+		// Squash repeated BEGIN,DRAW_ARRAYS,END
 #define LAM(i, mthd)       ((parameters[i * 2 + 1] & 0x31fff) == (mthd))
 #define LAP(i, prm)        (parameters[i * 2 + 2] == (prm))
 #define LAMP(i, mthd, prm) (LAM(i, mthd) && LAP(i, prm))
 
-			if (method == NV097_DRAW_ARRAYS && (max_lookahead_words >= 7)
-			    && pg->draw_arrays_length < (ARRAY_SIZE(pg->gl_draw_arrays_start) - 1)
-			    && LAMP(0, NV097_SET_BEGIN_END, NV097_SET_BEGIN_END_OP_END)
-			    && LAMP(1, NV097_SET_BEGIN_END, pg->primitive_mode) && LAM(2, NV097_DRAW_ARRAYS))
-			{
-				num_words_consumed += 4;
-				pg->draw_arrays_prevent_connect = true;
-			}
+		if (method == NV097_DRAW_ARRAYS && (max_lookahead_words >= 7)
+		    && pg->draw_arrays_length < (ARRAY_SIZE(pg->gl_draw_arrays_start) - 1)
+		    && LAMP(0, NV097_SET_BEGIN_END, NV097_SET_BEGIN_END_OP_END)
+		    && LAMP(1, NV097_SET_BEGIN_END, pg->primitive_mode) && LAM(2, NV097_DRAW_ARRAYS))
+		{
+			num_words_consumed += 4;
+			pg->draw_arrays_prevent_connect = true;
+		}
 
 #undef LAM
 #undef LAP
 #undef LAMP
-			num_processed = num_words_consumed;
-		}
+		num_processed = num_words_consumed;
 		break;
 	}
 
 	default:
-		NV2A_GL_DPRINTF(true, "    unhandled  (0x%02x 0x%08x)", graphics_class, method);
-		break;
+		goto unhandled;
 	}
 
+	return num_processed;
+
+unhandled:
+	trace_nv2a_pgraph_method_unhandled(subchannel, graphics_class, method, parameter);
 	return num_processed;
 }
 
@@ -1109,16 +1115,18 @@ DEF_METHOD(NV097, SET_FLIP_MODULO)
 
 DEF_METHOD(NV097, FLIP_INCREMENT_WRITE)
 {
-	NV2A_DPRINTF("flip increment write %d -> ", GET_MASK(pg->regs[NV_PGRAPH_SURFACE], NV_PGRAPH_SURFACE_WRITE_3D));
+	uint32_t oldV = GET_MASK(pg->regs[NV_PGRAPH_SURFACE], NV_PGRAPH_SURFACE_WRITE_3D);
 	SET_MASK(pg->regs[NV_PGRAPH_SURFACE], NV_PGRAPH_SURFACE_WRITE_3D, (GET_MASK(pg->regs[NV_PGRAPH_SURFACE], NV_PGRAPH_SURFACE_WRITE_3D) + 1) % GET_MASK(pg->regs[NV_PGRAPH_SURFACE], NV_PGRAPH_SURFACE_MODULO_3D));
-	NV2A_DPRINTF("%d\n", GET_MASK(pg->regs[NV_PGRAPH_SURFACE], NV_PGRAPH_SURFACE_WRITE_3D));
+	uint32_t newV = GET_MASK(pg->regs[NV_PGRAPH_SURFACE], NV_PGRAPH_SURFACE_WRITE_3D);
 
+	trace_nv2a_pgraph_flip_increment_write(oldV, newV);
 	NV2A_GL_DFRAME_TERMINATOR();
 	pg->frame_time++;
 }
 
 DEF_METHOD(NV097, FLIP_STALL)
 {
+	trace_nv2a_pgraph_flip_stall();
 	pgraph_update_surface(d, false, true, true);
 	nv2a_profile_flip_stall();
 	pg->waiting_for_flip = true;
@@ -1669,6 +1677,11 @@ DEF_METHOD_INC(NV097, SET_MATERIAL_EMISSION)
 	// FIXME: Verify NV_IGRAPH_XF_LTCTXA_CM_COL is correct
 	pg->ltctxa[NV_IGRAPH_XF_LTCTXA_CM_COL][slot] = parameter;
 	pg->ltctxa_dirty[NV_IGRAPH_XF_LTCTXA_CM_COL] = true;
+}
+
+DEF_METHOD(NV097, SET_MATERIAL_ALPHA)
+{
+	pg->material_alpha = *(float*)&parameter;
 }
 
 DEF_METHOD(NV097, SET_LIGHT_ENABLE_MASK)
@@ -3108,7 +3121,6 @@ DEF_METHOD(NV097, SET_TRANSFORM_CONSTANT_LOAD)
 {
 	assert(parameter < NV2A_VERTEXSHADER_CONSTANTS);
 	SET_MASK(pg->regs[NV_PGRAPH_CHEOPS_OFFSET], NV_PGRAPH_CHEOPS_OFFSET_CONST_LD_PTR, parameter);
-	NV2A_DPRINTF("load to %d\n", parameter);
 }
 
 void pgraph_context_switch(NV2AState* d, uint32_t channel_id)
@@ -3138,63 +3150,47 @@ void pgraph_context_switch(NV2AState* d, uint32_t channel_id)
 
 static void pgraph_method_log(uint32_t subchannel, uint32_t graphics_class, uint32_t method, uint32_t parameter)
 {
-#ifdef DEBUG_NV2A
+	const char *method_name = "?";
 	static uint32_t last  = 0;
 	static uint32_t count = 0;
-	if (last == 0x1800 && method != last)
-		NV2A_GL_DPRINTF(true, "pgraph method (%d) 0x%x * %d", subchannel, last, count);
 
-	if (method != 0x1800)
+	if (last == NV097_ARRAY_ELEMENT16 && method != last)
 	{
-		const char* method_name = NULL;
-		uint32_t    base        = method;
-		// uint32_t nmethod = 0;
+		method_name = "NV097_ARRAY_ELEMENT16";
+		trace_nv2a_pgraph_method_abbrev(subchannel, graphics_class, last, method_name, count);
+		NV2A_GL_DPRINTF(false, "pgraph method (%d) 0x%x %s * %d", subchannel, last, method_name, count);
+	}
+
+	if (method != NV097_ARRAY_ELEMENT16)
+	{
+		uint32_t base = method;
 		switch (graphics_class)
 		{
 		case NV_KELVIN_PRIMITIVE:
 		{
-			// nmethod = method | (0x5c << 16);
 			int idx = METHOD_ADDR_TO_INDEX(method);
-			if (idx < ARRAY_SIZE(pgraph_kelvin_methods))
+			if (idx < ARRAY_SIZE(pgraph_kelvin_methods) && pgraph_kelvin_methods[idx].handler)
 			{
 				method_name = pgraph_kelvin_methods[idx].name;
 				base        = pgraph_kelvin_methods[idx].base;
 			}
 			break;
 		}
-		case NV_CONTEXT_SURFACES_2D:
-			// nmethod = method | (0x6d << 16);
-			break;
-		case NV_CONTEXT_PATTERN:
-			// nmethod = method | (0x68 << 16);
-			break;
 		default:
 			break;
 		}
 
-		char  buf[256];
-		char* ptr = buf;
-		char* end = ptr + sizeof(buf);
-
-		ptr += snprintf(ptr, end - ptr, "pgraph method (%d): 0x%x -> 0x%04x", subchannel, graphics_class, method);
-
-		if (method_name)
-		{
-			ptr += snprintf(ptr, end - ptr, " %s", method_name);
-			uint32_t o = method - base;
-			if (o) ptr += snprintf(ptr, end - ptr, "+0x%02x", o);
-		}
-
-		ptr += snprintf(ptr, end - ptr, " (0x%x)", parameter);
-		NV2A_GL_DPRINTF(true, "%s", buf);
+		uint32_t offset = method - base;
+		trace_nv2a_pgraph_method(subchannel, graphics_class, method, method_name, offset, parameter);
+		NV2A_GL_DPRINTF(false, "pgraph method (%d): 0x%" PRIx32 " -> 0x%04" PRIx32 " %s[%" PRId32 "] 0x%" PRIx32, subchannel, graphics_class, method, method_name, offset, parameter);
 	}
+
 	if (method == last)
 		count++;
 	else
 		count = 0;
 
 	last = method;
-#endif
 }
 
 static void pgraph_allocate_inline_buffer_vertices(PGRAPHState* pg, uint32_t attr)
@@ -3349,7 +3345,8 @@ void pgraph_init(NV2AState* d)
 	pg->element_cache.init_node     = vertex_cache_entry_init;
 	pg->element_cache.compare_nodes = vertex_cache_entry_compare;
 
-	pg->shader_cache = g_hash_table_new(shader_hash, shader_equal);
+	pg->shader_cache   = g_hash_table_new(shader_hash, shader_equal);
+	pg->material_alpha = 0.0f;
 
 	for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++)
 	{
@@ -3603,6 +3600,9 @@ static void pgraph_shader_update_constants(PGRAPHState* pg, ShaderBinding* bindi
 
 		glUniform4i(pg->shader_binding->clip_region_loc[i], x_min, y_min_xlat, x_max, y_max_xlat);
 	}
+
+	if (binding->material_alpha_loc != -1)
+		glUniform1f(binding->material_alpha_loc, pg->material_alpha);
 }
 
 static bool pgraph_bind_shaders_test_dirty(PGRAPHState* pg)
@@ -3742,10 +3742,11 @@ static void pgraph_bind_shaders(PGRAPHState* pg)
 		state.normalization = pg->regs[NV_PGRAPH_CSV0_C] & NV_PGRAPH_CSV0_C_NORMALIZATION_ENABLE;
 
 		// color material
-		state.emission_src = (enum MaterialColorSource)GET_MASK(pg->regs[NV_PGRAPH_CSV0_C], NV_PGRAPH_CSV0_C_EMISSION);
-		state.ambient_src  = (enum MaterialColorSource)GET_MASK(pg->regs[NV_PGRAPH_CSV0_C], NV_PGRAPH_CSV0_C_AMBIENT);
-		state.diffuse_src  = (enum MaterialColorSource)GET_MASK(pg->regs[NV_PGRAPH_CSV0_C], NV_PGRAPH_CSV0_C_DIFFUSE);
-		state.specular_src = (enum MaterialColorSource)GET_MASK(pg->regs[NV_PGRAPH_CSV0_C], NV_PGRAPH_CSV0_C_SPECULAR);
+		state.emission_src   = (enum MaterialColorSource)GET_MASK(pg->regs[NV_PGRAPH_CSV0_C], NV_PGRAPH_CSV0_C_EMISSION);
+		state.ambient_src    = (enum MaterialColorSource)GET_MASK(pg->regs[NV_PGRAPH_CSV0_C], NV_PGRAPH_CSV0_C_AMBIENT);
+		state.diffuse_src    = (enum MaterialColorSource)GET_MASK(pg->regs[NV_PGRAPH_CSV0_C], NV_PGRAPH_CSV0_C_DIFFUSE);
+		state.specular_src   = (enum MaterialColorSource)GET_MASK(pg->regs[NV_PGRAPH_CSV0_C], NV_PGRAPH_CSV0_C_SPECULAR);
+		state.material_alpha = pg->material_alpha;
 	}
 
 	// vertex program stuff
@@ -4585,13 +4586,13 @@ static void pgraph_surface_access_callback(void* opaque, MemoryRegion* mr, hwadd
 
 	if (qatomic_read(&e->draw_dirty))
 	{
-		NV2A_XPRINTF(DBG_SURFACE_SYNC, "Surface accessed at %" HWADDR_PRIx "+%" HWADDR_PRIx "\n", e->vram_addr, offset);
+		trace_nv2a_pgraph_surface_cpu_access(e->vram_addr, offset);
 		pgraph_wait_for_surface_download(e);
 	}
 
 	if (write && !qatomic_read(&e->upload_pending))
 	{
-		NV2A_XPRINTF(DBG_SURFACE_SYNC, "Surface write at %" HWADDR_PRIx "+%" HWADDR_PRIx "\n", e->vram_addr, offset);
+		trace_nv2a_pgraph_surface_cpu_access(e->vram_addr, offset);
 		qatomic_set(&e->upload_pending, true);
 	}
 }
@@ -4599,7 +4600,7 @@ static void pgraph_surface_access_callback(void* opaque, MemoryRegion* mr, hwadd
 static SurfaceBinding* pgraph_surface_put(NV2AState* d, hwaddr addr, SurfaceBinding* surface_in)
 {
 	assert(pgraph_surface_get(d, addr) == NULL);
-	NV2A_XPRINTF(DBG_SURFACES, "Adding surface region at [%" HWADDR_PRIx ": %" HWADDR_PRIx ")\n", surface_in->vram_addr, surface_in->vram_addr + surface_in->size);
+	trace_nv2a_pgraph_surface_created(surface_in->vram_addr, surface_in->vram_addr + surface_in->size);
 
 	SurfaceBinding *surface, *next;
 	uintptr_t       e_end = surface_in->vram_addr + surface_in->size - 1;
@@ -4659,7 +4660,7 @@ static SurfaceBinding* pgraph_surface_get_within(NV2AState* d, hwaddr addr)
 
 static void pgraph_surface_invalidate(NV2AState* d, SurfaceBinding* surface)
 {
-	NV2A_XPRINTF(DBG_SURFACES, "Removing surface at %" HWADDR_PRIx "\n", surface->vram_addr);
+	trace_nv2a_pgraph_surface_invalidated(surface->vram_addr);
 
 	assert(surface != d->pgraph.color_binding);
 	assert(surface != d->pgraph.zeta_binding);

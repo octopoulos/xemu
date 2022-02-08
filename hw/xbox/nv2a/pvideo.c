@@ -44,7 +44,7 @@ uint64_t pvideo_read(void* opaque, hwaddr addr, unsigned int size)
 		break;
 	}
 
-	nv2a_reg_log_read(NV_PVIDEO, addr, r);
+	nv2a_reg_log_read(NV_PVIDEO, addr, size, r);
 	return r;
 }
 
@@ -52,7 +52,7 @@ void pvideo_write(void* opaque, hwaddr addr, uint64_t val, unsigned int size)
 {
 	NV2AState* d = opaque;
 
-	nv2a_reg_log_write(NV_PVIDEO, addr, val);
+	nv2a_reg_log_write(NV_PVIDEO, addr, size, val);
 
 	switch (addr)
 	{

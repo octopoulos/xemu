@@ -475,12 +475,24 @@ static void generate_fixed_function(const ShaderState state, std::stringstream& 
 	{
 		// FIXME: Do 2 passes if we want 2 sided-lighting?
 
+		static char alpha_source_diffuse[]  = "diffuse.a";
+		static char alpha_source_specular[] = "specular.a";
+		static char alpha_source_material[] = "material_alpha";
+		const char* alpha_source            = alpha_source_diffuse;
+		if (state.diffuse_src == MATERIAL_COLOR_SRC_MATERIAL)
+		{
+			header << "uniform float material_alpha;\n";
+			alpha_source = alpha_source_material;
+		}
+		else if (state.diffuse_src == MATERIAL_COLOR_SRC_SPECULAR)
+			alpha_source = alpha_source_specular;
+
 		if (state.ambient_src == MATERIAL_COLOR_SRC_MATERIAL)
-			body << "oD0 = vec4(sceneAmbientColor, diffuse.a);\n";
+			body << fmt::format("oD0 = vec4(sceneAmbientColor, {});\n", alpha_source);
 		else if (state.ambient_src == MATERIAL_COLOR_SRC_DIFFUSE)
-			body << "oD0 = vec4(diffuse.rgb, diffuse.a);\n";
+			body << fmt::format("oD0 = vec4(diffuse.rgb, {});\n", alpha_source);
 		else if (state.ambient_src == MATERIAL_COLOR_SRC_SPECULAR)
-			body << "oD0 = vec4(specular.rgb, diffuse.a);\n";
+			body << fmt::format("oD0 = vec4(specular.rgb, {});\n", alpha_source);
 
 		body << "oD0.rgb *= materialEmissionColor.rgb;\n";
 		if (state.emission_src == MATERIAL_COLOR_SRC_MATERIAL)
@@ -584,10 +596,22 @@ static void generate_fixed_function(const ShaderState state, std::stringstream& 
 			    "  vec3 lightDiffuse = lightDiffuseColor({}) * attenuation * nDotVP;\n"
 			    "  vec3 lightSpecular = lightSpecularColor({}) * pf;\n",
 			    i, i, i)
+			     << "  oD0.xyz += lightAmbient;\n";
 
-			     << "  oD0.xyz += lightAmbient;\n"
-			     << "  oD0.xyz += diffuse.xyz * lightDiffuse;\n"
-			     << "  oD1.xyz += specular.xyz * lightSpecular;\n"
+			switch (state.diffuse_src)
+			{
+			case MATERIAL_COLOR_SRC_MATERIAL:
+				body << "  oD0.xyz += lightDiffuse;\n";
+				break;
+			case MATERIAL_COLOR_SRC_DIFFUSE:
+				body << "  oD0.xyz += diffuse.xyz * lightDiffuse;\n";
+				break;
+			case MATERIAL_COLOR_SRC_SPECULAR:
+				body << "  oD0.xyz += specular.xyz * lightDiffuse;\n";
+				break;
+			}
+
+			body << "  oD1.xyz += specular.xyz * lightSpecular;\n"
 			     << "}\n";
 		}
 	}
@@ -1046,6 +1070,11 @@ ShaderBinding* generate_shaders(const ShaderState state)
 		snprintf(tmp, sizeof(tmp), "clipRegion[%d]", i);
 		ret->clip_region_loc[i] = glGetUniformLocation(program, tmp);
 	}
+
+	if (state.fixed_function)
+		ret->material_alpha_loc = glGetUniformLocation(program, "material_alpha");
+	else
+		ret->material_alpha_loc = -1;
 
 	return ret;
 }
