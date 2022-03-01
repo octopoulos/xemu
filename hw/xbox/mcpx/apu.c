@@ -2190,8 +2190,6 @@ static void mcpx_apu_vm_state_change(void* opaque, bool running, RunState state)
 	MCPXAPUState* d = opaque;
 	if (state == RUN_STATE_SAVE_VM)
 		qemu_mutex_lock(&d->lock);
-	else if (state == RUN_STATE_RESTORE_VM)
-		mcpx_apu_reset(d);
 }
 
 static int mcpx_apu_post_save(void* opaque)
@@ -2205,6 +2203,7 @@ static int mcpx_apu_post_save(void* opaque)
 static int mcpx_apu_pre_load(void* opaque)
 {
 	MCPXAPUState* d = opaque;
+	mcpx_apu_reset(d);
 	qemu_mutex_lock(&d->lock);
 	return 0;
 }

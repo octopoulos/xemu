@@ -269,7 +269,6 @@ static void append_skinning_code(std::stringstream& str, bool mix, int count, co
 				char c = "xyzw"[i];
 				str << fmt::format("{} += ({} * {}{}).{} * weight.{};\n", output, input, matrix, i, swizzle, c);
 			}
-			assert(false); // FIXME: Untested
 		}
 	}
 }
